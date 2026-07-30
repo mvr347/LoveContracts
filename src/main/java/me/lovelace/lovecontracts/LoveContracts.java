@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts;
 
+import dev.lovelace.lovecore.api.stats.StatBus;
 import me.lovelace.lovecontracts.command.ContractCommand;
 import me.lovelace.lovecontracts.command.LoveContractsAdminCommand;
 import me.lovelace.lovecontracts.gui.ContractGUI;
@@ -20,6 +21,7 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Calendar;
+import java.util.Optional;
 
 public final class LoveContracts extends JavaPlugin {
 
@@ -34,6 +36,7 @@ public final class LoveContracts extends JavaPlugin {
     private ContractStatsGUI statsGUI;
     private ContractRotationTask rotationTask;
     private ContractExpirationTask expirationTask;
+    private Optional<StatBus> statBus = Optional.empty();
 
     @Override
     public void onEnable() {
@@ -55,6 +58,11 @@ public final class LoveContracts extends JavaPlugin {
 
         registry = new ContractRegistry(this);
         registry.loadFromConfig();
+
+        statBus = Optional.ofNullable(Bukkit.getServicesManager().load(StatBus.class));
+        if (statBus.isPresent()) {
+            getLogger().info("LoveCore StatBus hooked for metric reporting");
+        }
 
         rewardProcessor = new RewardProcessor(this);
         syncManager = new SyncManager(this);
@@ -141,4 +149,5 @@ public final class LoveContracts extends JavaPlugin {
     public SyncManager getSyncManager() { return syncManager; }
     public ContractGUI getContractGUI() { return contractGUI; }
     public ContractStatsGUI getStatsGUI() { return statsGUI; }
+    public Optional<StatBus> getStatBus() { return statBus; }
 }
