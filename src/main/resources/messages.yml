@@ -1,0 +1,50 @@
+# ============================================
+# LoveContracts Messages (MiniMessage)
+# ============================================
+
+prefix: "<gradient:#55FF55:#55FFFF>[LoveContracts]</gradient> "
+
+contract:
+  accepted:
+    self: "<green>You accepted:</green> <gold>{CONTRACT}</gold>"
+    broadcast: "<yellow>{PLAYER}</yellow> accepted <gold>{CONTRACT}</gold>"
+    actionbar: "<gold>Contract accepted: {CONTRACT}</gold>"
+  completed:
+    self: "<green>Completed:</green> <gold>{CONTRACT}</gold> <gray>→</gray> <green>{REWARDS}</green>"
+    broadcast: "<yellow>{PLAYER}</yellow> completed <gold>{CONTRACT}</gold>"
+    actionbar: "<green>✓ Complete! +{REWARDS}</green>"
+  failed:
+    self: "<red>Failed:</red> <gold>{CONTRACT}</gold> {PENALTIES}"
+    broadcast: "<yellow>{PLAYER}</yellow> failed <gold>{CONTRACT}</gold>"
+    actionbar: "<red>✗ Failed</red>"
+  already-taken: "<red>You already accepted this contract today.</red>"
+  not-available: "<red>This contract is no longer available.</red>"
+  race-condition: "<red>Someone took this contract just before you!</red>"
+  abandoned: "<yellow>You abandoned:</yellow> <gold>{CONTRACT}</gold>"
+  not-accepted: "<red>You don't have this contract active.</red>"
+
+rotation:
+  announcement: "<green>✓ New daily contracts are available! Use /contracts</green>"
+  warning: "<yellow>⚠ Contracts expire in {TIME} minutes!</yellow>"
+
+gui:
+  title: "<gradient:#55FF55:#55FFFF>Contract Board</gradient>"
+  too-many: "<yellow>Too many contracts to display ({COUNT} hidden)</yellow>"
+  refresh: "<green>Board refreshed</green>"
+
+error:
+  database: "<red>Database error. Contact an admin.</red>"
+  invalid-contract: "<red>Invalid contract.</red>"
+  contract-not-found: "<red>Contract not found.</red>"
+  reward-failed: "<red>Failed to give rewards. Logged for admin.</red>"
+  no-permission: "<red>No permission.</red>"
+  player-only: "<red>Players only.</red>"
+  player-not-found: "<red>Player not found.</red>"
+
+admin:
+  reloaded: "<green>Configs reloaded.</green>"
+  rotated: "<green>Contracts rotated manually.</green>"
+  completed-for: "<green>Force-completed {CONTRACT} for {PLAYER}</green>"
+  failed-for: "<green>Force-failed {CONTRACT} for {PLAYER}</green>"
+  reset: "<green>Reset daily stats for {PLAYER}</green>"
+  diag-header: "<gold>=== LoveContracts Diagnostics ===</gold>"
