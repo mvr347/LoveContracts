@@ -1,0 +1,186 @@
+# ============================================
+# Contract Pool
+# ============================================
+
+contracts:
+
+  kill_zombies_easy:
+    display-name: "<green>Kill 50 Zombies</green>"
+    description: "Slay 50 zombies anywhere on the server"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-hours: 24
+    condition:
+      type: "KillEntity"
+      entity-type: "ZOMBIE"
+      count: 50
+    rewards:
+      money: 500
+      items:
+        - "DIAMOND 1"
+        - "OAK_LOG 16"
+    penalties:
+      none: true
+
+  kill_skeletons_easy:
+    display-name: "<green>Hunt Skeletons</green>"
+    description: "Eliminate 40 skeletons"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-hours: 24
+    condition:
+      type: "KillEntity"
+      entity-type: "SKELETON"
+      count: 40
+    rewards:
+      money: 450
+    penalties:
+      none: true
+
+  kill_creepers_medium:
+    display-name: "<yellow>Creeper Cleanup</yellow>"
+    description: "Kill 30 creepers"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    weight: 5
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-hours: 24
+    condition:
+      type: "KillEntity"
+      entity-type: "CREEPER"
+      count: 30
+    rewards:
+      money: 900
+      items:
+        - "GUNPOWDER 32"
+    penalties:
+      money: -100
+
+  mine_iron_easy:
+    display-name: "<green>Iron Miner</green>"
+    description: "Mine 64 iron ore"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-hours: 24
+    condition:
+      type: "MineMaterial"
+      material: "IRON_ORE"
+      count: 64
+    rewards:
+      money: 400
+    penalties:
+      none: true
+
+  mine_diamonds_hard:
+    display-name: "<red>Diamond Rush</red>"
+    description: "Mine 32 diamond ore blocks"
+    difficulty: "HARD"
+    type: "ONE_TIME"
+    enabled: true
+    weight: 1
+    daily-spawns: 1
+    max-acceptances: 1
+    expiration-hours: 24
+    condition:
+      type: "MineMaterial"
+      material: "DIAMOND_ORE"
+      count: 32
+    rewards:
+      money: 2500
+      items:
+        - "DIAMOND 8"
+    penalties:
+      money: -300
+
+  kill_endermen_medium:
+    display-name: "<yellow>Enderman Hunter</yellow>"
+    description: "Defeat 25 endermen"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    weight: 5
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-hours: 24
+    condition:
+      type: "KillEntity"
+      entity-type: "ENDERMAN"
+      count: 25
+    rewards:
+      money: 1200
+      items:
+        - "ENDER_PEARL 8"
+    penalties:
+      money: -150
+
+  kill_blaze_hard:
+    display-name: "<red>Blaze Slayer</red>"
+    description: "Kill 40 blazes in the Nether"
+    difficulty: "HARD"
+    type: "ONE_TIME"
+    enabled: true
+    weight: 1
+    daily-spawns: 1
+    max-acceptances: 1
+    expiration-hours: 24
+    condition:
+      type: "KillEntity"
+      entity-type: "BLAZE"
+      count: 40
+    rewards:
+      money: 3000
+      items:
+        - "BLAZE_ROD 16"
+    penalties:
+      money: -400
+
+  catch_fish_easy:
+    display-name: "<green>Fisherman</green>"
+    description: "Catch 20 fish of any kind"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-hours: 24
+    condition:
+      type: "CatchFish"
+      count: 20
+    rewards:
+      money: 350
+    penalties:
+      none: true
+
+  craft_tools_medium:
+    display-name: "<yellow>Toolsmith</yellow>"
+    description: "Craft 5 iron pickaxes"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    weight: 5
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-hours: 24
+    condition:
+      type: "CraftItem"
+      material: "IRON_PICKAXE"
+      count: 5
+    rewards:
+      money: 800
+    penalties:
+      none: true
