@@ -70,8 +70,9 @@ public class ContractExpirationTask implements Runnable {
                 UUID uuid = UUID.fromString(row[0]);
                 Contract c = plugin.getRegistry().getContract(row[1]);
                 if (c == null) continue;
-                Player p = Bukkit.getPlayer(uuid);
-                plugin.getContractManager().failContract(p, c);
+                // UUID-based overload: the player may be offline, dropping the id via
+                // Bukkit.getPlayer() first would make an offline player's expiry unfixable.
+                plugin.getContractManager().failContract(uuid, c);
             }
 
         } catch (Exception e) {

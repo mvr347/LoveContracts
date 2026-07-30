@@ -1,5 +1,7 @@
 package me.lovelace.lovecontracts.manager;
 
+import dev.lovelace.lovecore.api.LoveCore;
+import dev.lovelace.lovecore.api.economy.LoveEconomy;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.Penalty;
@@ -11,8 +13,9 @@ import java.util.Map;
 import java.util.logging.Level;
 
 /**
- * Gives rewards and applies penalties.
- * No economy plugin dependency — MONEY type is ignored (items / XP / reputation only).
+ * Gives rewards and applies penalties. Money goes through LoveCore's LoveEconomy — the same
+ * physical-coin wallet the rest of the ecosystem uses — and is silently skipped if LoveCore
+ * isn't installed (contracts still work for items/XP/reputation).
  */
 public class RewardProcessor {
 
@@ -25,14 +28,20 @@ public class RewardProcessor {
     public void giveRewards(Player player, Contract contract) {
         if (player == null || !player.isOnline() || contract == null) return;
 
+        boolean moneyEnabled = plugin.getConfig().getBoolean("rewards.money.enabled", true);
         StringBuilder display = new StringBuilder();
 
         for (Reward reward : contract.getRewards()) {
             try {
                 switch (reward.getType()) {
                     case MONEY -> {
-                        // Economy removed — skip money rewards
-                        plugin.getLogger().fine("Skipping MONEY reward (no economy): " + reward.getAmount());
+                        if (moneyEnabled && reward.getAmount() > 0) {
+                            LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
+                                economy.give(player, Math.round(reward.getAmount()));
+                                display.append(String.format("%.0f %s", reward.getAmount(), economy.currencyName())).append(" ");
+                            }, () -> plugin.getLogger().fine(
+                                    "Skipping MONEY reward — LoveCore not present: " + reward.getAmount()));
+                        }
                     }
                     case ITEMS -> {
                         ItemStack item = reward.getItemStack();
@@ -65,17 +74,24 @@ public class RewardProcessor {
 
     public void applyPenalties(Player player, Contract contract) {
         if (player == null || contract == null) return;
+        boolean moneyEnabled = plugin.getConfig().getBoolean("penalties.money.enabled", true);
 
         for (Penalty penalty : contract.getPenalties()) {
             if (penalty.getType() == Penalty.Type.NONE) continue;
             try {
                 switch (penalty.getType()) {
                     case MONEY -> {
-                        // Economy removed — skip money penalties
-                        plugin.getLogger().fine("Skipping MONEY penalty (no economy): " + penalty.getAmount());
+                        if (!moneyEnabled) break;
+                        long amount = Math.round(Math.abs(penalty.getAmount()));
+                        if (amount <= 0) break;
+                        // Physical currency has no debt — cap the charge at what the player actually has.
+                        LoveCore.service(LoveEconomy.class).ifPresent(economy -> {
+                            long charge = Math.min(amount, economy.balance(player));
+                            if (charge > 0) economy.charge(player, charge);
+                        });
                     }
                     case REPUTATION -> {
-                        // integration point
+                        // LoveBehavior integration point — no shared service exposed for it yet.
                     }
                     default -> {
                     }
