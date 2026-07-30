@@ -1,0 +1,95 @@
+# ============================================
+# LoveContracts Configuration
+# ============================================
+
+plugin:
+  enabled: true
+  debug: false
+
+# Daily rotation
+rotation:
+  enabled: true
+  time: "00:00"          # HH:mm server time
+  timezone: "UTC"
+  daily-count: 20
+
+  difficulty-distribution:
+    easy: 60             # %
+    medium: 30
+    hard: 10
+
+  notify-rotation: true
+  rotation-announcement: "<green>✓ New contracts are available! Use /contracts</green>"
+
+  warning-before-expiration-minutes: 5
+  expiration-warning: "<yellow>⚠ Your contracts expire in {TIME} minutes!</yellow>"
+
+# Rewards defaults
+rewards:
+  enabled: true
+  money:
+    enabled: true
+    currency-symbol: "$"
+  items:
+    enabled: true
+  reputation:
+    enabled: false
+    integration: "lovebehavior"
+
+# Penalties
+penalties:
+  enabled: true
+  money:
+    enabled: true
+  reputation:
+    enabled: false
+  track-failures: true
+
+# GUI
+gui:
+  enabled: true
+  title: "<gradient:#55FF55:#55FFFF>Contract Board</gradient>"
+  auto-update: true
+  update-interval-ms: 500
+
+  difficulty-colors:
+    easy: "green"
+    medium: "yellow"
+    hard: "red"
+
+  materials:
+    all: "COMPASS"
+    accepted: "CHEST"
+    completed: "EMERALD"
+    failed: "REDSTONE"
+    stats: "BOOK"
+
+# NPC (Citizens)
+npc:
+  enabled: true
+  info-update-interval: 10
+
+# Signs
+signs:
+  enabled: true
+
+# PlaceholderAPI
+placeholders:
+  enabled: true
+  prefix: "lovecontracts"
+
+# Database
+database:
+  # SQLite only for now
+  file: "contracts.db"
+  pool-size: 10
+  connection-timeout: 30000
+  leak-detection-threshold: 15000
+
+# Logging
+logging:
+  enabled: true
+  log-acceptances: true
+  log-completions: true
+  log-failures: true
+  log-level: "INFO"

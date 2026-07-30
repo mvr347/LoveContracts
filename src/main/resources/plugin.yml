@@ -1,0 +1,34 @@
+name: LoveContracts
+version: '${project.version}'
+main: me.lovelace.lovecontracts.LoveContracts
+api-version: '1.21'
+authors: [mvr347, LoveLACE]
+description: Daily contract system (Witcher 3 style) for Paper 1.21
+website: https://github.com/mvr347/LoveContracts
+softdepend: [PlaceholderAPI, Citizens, Vault, LoveCore]
+
+commands:
+  contracts:
+    description: Open contract board / view stats
+    usage: /contracts [stats|abandon <id>]
+    aliases: [contract, lc]
+    permission: lovecontracts.use
+  lovecontracts:
+    description: Admin commands for LoveContracts
+    usage: /lovecontracts <reload|rotate|npc|sign|complete|fail|stats|reset|diag>
+    aliases: [lca, lcadmin]
+    permission: lovecontracts.admin
+
+permissions:
+  lovecontracts.use:
+    description: Allows using /contracts
+    default: true
+  lovecontracts.admin:
+    description: Admin access
+    default: op
+  lovecontracts.npc:
+    description: Create/manage contract NPCs
+    default: op
+  lovecontracts.sign:
+    description: Create/manage contract signs
+    default: op
