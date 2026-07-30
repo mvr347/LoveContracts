@@ -14,6 +14,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -35,31 +36,51 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
     }
 
     public void open(Player player) {
-        Inventory inv = Bukkit.createInventory(this, 27,
+        Inventory inv = Bukkit.createInventory(this, 54,
                 mm.deserialize("<aqua>Contract Statistics</aqua>"));
 
-        ItemStack glass = pane(Material.GRAY_STAINED_GLASS_PANE, " ");
-        for (int i = 0; i < 27; i++) inv.setItem(i, glass);
+        ItemStack glass = pane();
 
-        inv.setItem(22, button(Material.ARROW, "<yellow>← Back</yellow>"));
+        inv.setItem(0, headItem(player));
+        inv.setItem(1, glass);
+        inv.setItem(8, glass);
+
+        for (int s = 9; s <= 17; s++) {
+            inv.setItem(s, glass);
+        }
+
+        inv.setItem(18, glass);
+        inv.setItem(26, glass);
+        inv.setItem(27, glass);
+        inv.setItem(35, glass);
+        inv.setItem(36, glass);
+        inv.setItem(44, glass);
+
+        for (int s = 45; s <= 51; s++) {
+            inv.setItem(s, glass);
+        }
+        inv.setItem(52, button(Material.ARROW, "<yellow>← Back</yellow>",
+                List.of("<gray>Return to board</gray>")));
+        inv.setItem(53, button(Material.BARRIER, "<red>Close</red>",
+                List.of("<gray>Close menu</gray>")));
 
         UUID uuid = player.getUniqueId();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             int[] stats = loadStats(uuid);
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!player.isOnline()) return;
-                if (!(player.getOpenInventory().getTopInventory().getHolder() instanceof ContractStatsGUI)) return;
-                inv.setItem(10, statItem(Material.EMERALD, "<green>Daily Completed</green>", stats[0]));
-                inv.setItem(11, statItem(Material.REDSTONE, "<red>Daily Failed</red>", stats[1]));
-                inv.setItem(12, statItem(Material.CHEST, "<gold>Daily Accepted</gold>", stats[2]));
-                inv.setItem(14, statItem(Material.DIAMOND, "<aqua>Total Completed</aqua>", stats[3]));
-                inv.setItem(15, statItem(Material.COAL, "<gray>Total Failed</gray>", stats[4]));
-                inv.setItem(16, statItem(Material.BOOK, "<yellow>Total Accepted</yellow>", stats[5]));
-                double rate = stats[5] == 0 ? 0.0 : (stats[3] * 100.0) / stats[5];
-                inv.setItem(13, rateItem(rate));
-                inv.setItem(4, statItem(Material.BLAZE_POWDER, "<gold>Current Streak</gold>", stats[6]));
-                inv.setItem(8, statItem(Material.NETHER_STAR, "<light_purple>Best Streak</light_purple>", stats[7]));
-                inv.setItem(22, button(Material.ARROW, "<yellow>← Back</yellow>"));
+                if (!(player.getOpenInventory().getTopInventory().getHolder() instanceof ContractStatsGUI)) {
+                    return;
+                }
+                inv.setItem(19, statItem(Material.EMERALD, "<green>Daily Completed</green>", stats[0]));
+                inv.setItem(20, statItem(Material.REDSTONE, "<red>Daily Failed</red>", stats[1]));
+                inv.setItem(21, statItem(Material.CHEST, "<gold>Daily Accepted</gold>", stats[2]));
+                inv.setItem(22, rateItem(stats[5] == 0 ? 0.0 : (stats[3] * 100.0) / stats[5]));
+                inv.setItem(23, statItem(Material.DIAMOND, "<aqua>Total Completed</aqua>", stats[3]));
+                inv.setItem(24, statItem(Material.COAL, "<gray>Total Failed</gray>", stats[4]));
+                inv.setItem(25, statItem(Material.BOOK, "<yellow>Total Accepted</yellow>", stats[5]));
+                inv.setItem(30, statItem(Material.BLAZE_POWDER, "<gold>Current Streak</gold>", stats[6]));
+                inv.setItem(32, statItem(Material.NETHER_STAR, "<light_purple>Best Streak</light_purple>", stats[7]));
             });
         });
 
@@ -89,7 +110,11 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
         if (!(event.getInventory().getHolder() instanceof ContractStatsGUI)) return;
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player)) return;
-        if (event.getRawSlot() == 22) {
+
+        int slot = event.getRawSlot();
+        if (slot == 53) {
+            player.closeInventory();
+        } else if (slot == 52) {
             plugin.getContractGUI().open(player);
         }
     }
@@ -101,11 +126,21 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
         }
     }
 
+    private ItemStack headItem(Player player) {
+        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) item.getItemMeta();
+        meta.setOwningPlayer(player);
+        meta.displayName(mm.deserialize("<aqua>" + player.getName() + "</aqua>"));
+        item.setItemMeta(meta);
+        return item;
+    }
+
     private ItemStack statItem(Material mat, String name, int value) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(mm.deserialize(name));
         List<Component> lore = new ArrayList<>();
+        lore.add(Component.empty());
         lore.add(mm.deserialize("<white>" + value + "</white>"));
         meta.lore(lore);
         item.setItemMeta(meta);
@@ -117,24 +152,31 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
         ItemMeta meta = item.getItemMeta();
         meta.displayName(mm.deserialize("<gold>Success Rate</gold>"));
         List<Component> lore = new ArrayList<>();
+        lore.add(Component.empty());
         lore.add(mm.deserialize("<white>" + String.format("%.1f%%", rate) + "</white>"));
         meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }
 
-    private ItemStack pane(Material mat, String name) {
-        ItemStack item = new ItemStack(mat);
+    private ItemStack pane() {
+        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize(name));
+        meta.displayName(Component.text(" "));
         item.setItemMeta(meta);
         return item;
     }
 
-    private ItemStack button(Material mat, String name) {
+    private ItemStack button(Material mat, String name, List<String> loreLines) {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(mm.deserialize(name));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.empty());
+        for (String line : loreLines) {
+            lore.add(mm.deserialize(line));
+        }
+        meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }
