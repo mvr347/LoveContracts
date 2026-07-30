@@ -4,6 +4,8 @@ import me.lovelace.lovecontracts.command.ContractCommand;
 import me.lovelace.lovecontracts.command.LoveContractsAdminCommand;
 import me.lovelace.lovecontracts.gui.ContractGUI;
 import me.lovelace.lovecontracts.gui.ContractStatsGUI;
+import me.lovelace.lovecontracts.integration.CitizensIntegration;
+import me.lovelace.lovecontracts.listener.ContractNpcListener;
 import me.lovelace.lovecontracts.listener.ContractSignListener;
 import me.lovelace.lovecontracts.manager.ContractManager;
 import me.lovelace.lovecontracts.manager.ContractRegistry;
@@ -108,6 +110,7 @@ public final class LoveContracts extends JavaPlugin {
         }
 
         Bukkit.getPluginManager().registerEvents(new ContractSignListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new ContractNpcListener(this, new CitizensIntegration()), this);
         Bukkit.getPluginManager().registerEvents(contractGUI, this);
         Bukkit.getPluginManager().registerEvents(statsGUI, this);
         Bukkit.getPluginManager().registerEvents(playerContractBoardGUI, this);

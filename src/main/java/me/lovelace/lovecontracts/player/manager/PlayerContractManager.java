@@ -93,6 +93,12 @@ public class PlayerContractManager {
             return future;
         }
 
+        if (totalCharge > 0 && !bridge.hasBalance(creator, totalCharge)) {
+            future.complete(ContractActionResult.fail(
+                    "<red>Не хватает " + bridge.currencyName() + " (нужно " + totalCharge + " с учётом налога).</red>"));
+            return future;
+        }
+
         int maxOpen = cfg().getInt("max-open-per-creator", 3);
         UUID creatorId = creator.getUniqueId();
         String creatorName = creator.getName();
@@ -106,42 +112,46 @@ public class PlayerContractManager {
                     return;
                 }
 
-                boolean charged;
-                try {
-                    charged = totalCharge <= 0 || Boolean.TRUE.equals(
-                            bridge.withdraw(creatorId, totalCharge, "pcontract-create").join());
-                } catch (RuntimeException e) {
-                    plugin.getLogger().log(Level.WARNING, "Escrow withdraw failed on create", e);
-                    charged = false;
-                }
-                if (!charged) {
-                    runSync(() -> future.complete(ContractActionResult.fail(
-                            "<red>Не хватает " + bridge.currencyName() + " (нужно " + totalCharge + " с учётом налога).</red>")));
-                    return;
-                }
+                runSync(() -> {
+                    if (!creator.isOnline()) {
+                        future.complete(ContractActionResult.fail("<red>Нужно быть онлайн, чтобы разместить контракт.</red>"));
+                        return;
+                    }
+                    // Монеты физические — списываем на главном потоке прямо здесь, а не после
+                    // очередного runAsync, иначе игрок между проверкой и списанием мог бы успеть
+                    // потратить деньги.
+                    if (totalCharge > 0 && !bridge.charge(creator, totalCharge)) {
+                        future.complete(ContractActionResult.fail("<red>Не удалось списать эскроу — баланс изменился.</red>"));
+                        return;
+                    }
 
-                PlayerContract contract = new PlayerContract(
-                        UUID.randomUUID(), creatorId, creatorName,
-                        null, null, req.description(), req.type(), req.target(), req.amount(), 0,
-                        req.goldReward(), req.itemRewards(), req.reputationHint(), req.visibility(),
-                        PlayerContractStatus.OPEN, Instant.now(),
-                        Instant.now().plus(req.deadlineHours(), ChronoUnit.HOURS), null, null
-                );
+                    PlayerContract contract = new PlayerContract(
+                            UUID.randomUUID(), creatorId, creatorName,
+                            null, null, req.description(), req.type(), req.target(), req.amount(), 0,
+                            req.goldReward(), req.itemRewards(), req.reputationHint(), req.visibility(),
+                            PlayerContractStatus.OPEN, Instant.now(),
+                            Instant.now().plus(req.deadlineHours(), ChronoUnit.HOURS), null, null
+                    );
 
-                try {
-                    db.insert(contract);
-                    runSync(() -> {
-                        Bukkit.getPluginManager().callEvent(new PlayerContractCreatedEvent(contract));
-                        bridge.recordStat(creatorId, "contracts.player.posted");
-                        future.complete(ContractActionResult.ok(
-                                "<green>Контракт размещён:</green> <gold>" + contract.getDescription() + "</gold> "
-                                        + "<gray>(id " + shortId(contract.getId()) + ")</gray>"));
+                    runAsync(() -> {
+                        try {
+                            db.insert(contract);
+                            runSync(() -> {
+                                Bukkit.getPluginManager().callEvent(new PlayerContractCreatedEvent(contract));
+                                bridge.recordStat(creatorId, "contracts.player.posted");
+                                future.complete(ContractActionResult.ok(
+                                        "<green>Контракт размещён:</green> <gold>" + contract.getDescription() + "</gold> "
+                                                + "<gray>(id " + shortId(contract.getId()) + ")</gray>"));
+                            });
+                        } catch (SQLException e) {
+                            plugin.getLogger().log(Level.WARNING, "Failed to insert player contract", e);
+                            runSync(() -> {
+                                if (totalCharge > 0 && creator.isOnline()) bridge.give(creator, totalCharge);
+                                future.complete(ContractActionResult.fail("<red>Ошибка БД — эскроу возвращён.</red>"));
+                            });
+                        }
                     });
-                } catch (SQLException e) {
-                    plugin.getLogger().log(Level.WARNING, "Failed to insert player contract", e);
-                    if (totalCharge > 0) bridge.deposit(creatorId, totalCharge, "pcontract-create-refund");
-                    runSync(() -> future.complete(ContractActionResult.fail("<red>Ошибка БД — эскроу возвращён.</red>")));
-                }
+                });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to count active player contracts", e);
                 runSync(() -> future.complete(ContractActionResult.fail("<red>Ошибка БД.</red>")));
@@ -543,20 +553,21 @@ public class PlayerContractManager {
                 List<PendingPayout> payouts = db.getPendingPayouts(player.getUniqueId());
                 if (payouts.isEmpty()) return;
 
-                // Золото всегда идёт через LoveEconomy.deposit() сразу при завершении/рефанде —
-                // здесь остаются только предметные награды, ждавшие живого инвентаря.
+                long totalGold = 0;
                 List<ItemStack> allItems = new ArrayList<>();
                 for (PendingPayout p : payouts) {
+                    totalGold += p.goldAmount();
                     allItems.addAll(p.items());
                     db.deletePendingPayout(p.payoutId());
                 }
-                if (allItems.isEmpty()) return;
 
+                long finalGold = totalGold;
                 runSync(() -> {
                     if (!player.isOnline()) return;
-                    bridge.deliverItemsToLivePlayer(player, allItems);
+                    bridge.deliverToLivePlayer(player, finalGold, allItems);
                     player.sendMessage(mm.deserialize(
-                            "<green>Вам доставлена отложенная предметная награда по контракту.</green>"));
+                            "<green>Вам доставлена отложенная выплата по контракту: " + finalGold + " "
+                                    + bridge.currencyName() + ".</green>"));
                 });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to deliver pending contract payouts for " + player.getName(), e);
@@ -671,28 +682,20 @@ public class PlayerContractManager {
     }
 
     /**
-     * Выдаёт награду. Золото уходит через виртуальный счёт LoveEconomy — доходит и до
-     * офлайн-игрока. Предметы существуют только в живом инвентаре: если игрок офлайн,
-     * они ждут в очереди отложенных выплат до следующего входа.
+     * Выдаёт награду живому игроку, иначе кладёт её в очередь отложенных выплат — золото
+     * физическое (монеты в инвентаре), офлайн-выдачи не существует так же, как и для предметов.
      */
     private void payout(UUID playerId, long gold, List<ItemStack> items, String reason) {
-        if (gold > 0) {
-            bridge.deposit(playerId, gold, reason).exceptionally(ex -> {
-                plugin.getLogger().log(Level.WARNING, "Failed to deposit contract payout for " + playerId, ex);
-                return null;
-            });
-        }
-        if (items.isEmpty()) return;
-
         Player online = bridge.onlinePlayer(playerId);
         if (online != null && online.isOnline()) {
-            runSync(() -> bridge.deliverItemsToLivePlayer(online, items));
+            runSync(() -> bridge.deliverToLivePlayer(online, gold, items));
             return;
         }
+        if (gold <= 0 && items.isEmpty()) return;
         try {
-            db.addPendingPayout(playerId, 0, items, reason);
+            db.addPendingPayout(playerId, gold, items, reason);
         } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to queue pending item payout for " + playerId, e);
+            plugin.getLogger().log(Level.WARNING, "Failed to queue pending payout for " + playerId, e);
         }
     }
 

@@ -1,5 +1,7 @@
 package me.lovelace.lovecontracts.model;
 
+import dev.lovelace.lovecore.api.LoveCore;
+import dev.lovelace.lovecore.api.economy.LoveEconomy;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 
@@ -48,10 +50,14 @@ public class Reward {
 
     public String getDisplay() {
         return switch (type) {
-            case MONEY -> String.format("$%.0f", amount);
+            case MONEY -> String.format("%.0f %s", amount, currencyName());
             case ITEMS -> item != null ? item.getAmount() + "x " + item.getType().name() : "items";
             case EXPERIENCE -> (int) amount + " XP";
             case REPUTATION -> (int) amount + " reputation (" + reputationType + ")";
         };
+    }
+
+    private static String currencyName() {
+        return LoveCore.service(LoveEconomy.class).map(LoveEconomy::currencyName).orElse("coins");
     }
 }

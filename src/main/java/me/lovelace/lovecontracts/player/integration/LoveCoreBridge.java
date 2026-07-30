@@ -1,7 +1,6 @@
 package me.lovelace.lovecontracts.player.integration;
 
 import dev.lovelace.lovecore.api.LoveCore;
-import dev.lovelace.lovecore.api.economy.AccountId;
 import dev.lovelace.lovecore.api.economy.LoveEconomy;
 import dev.lovelace.lovecore.api.social.ProfileOracle;
 import dev.lovelace.lovecore.api.social.ReputationOracle;
@@ -13,13 +12,12 @@ import org.bukkit.inventory.ItemStack;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /**
- * Единственная точка соприкосновения с LoveCore. {@link LoveEconomy} тут — виртуальный счёт
- * ({@link AccountId}), а не физические монеты, поэтому списание/начисление золота работает
- * независимо от того, онлайн игрок или нет. Предметные награды — исключение: инвентарь
- * существует только у живого игрока, их доставка ждёт следующего входа при необходимости.
+ * Единственная точка соприкосновения с LoveCore. {@link LoveEconomy} тут — физические монеты
+ * в инвентаре игрока (тот же кошелёк, что уже использует {@code /contracts}), а не виртуальный
+ * счёт, поэтому все денежные операции требуют живого онлайн-игрока — офлайн эскроу-выплаты
+ * (как и предметные) ждут в очереди {@code pcontract_payouts} до следующего входа.
  */
 public class LoveCoreBridge {
 
@@ -28,26 +26,24 @@ public class LoveCoreBridge {
         return LoveCore.service(LoveEconomy.class).isPresent();
     }
 
-    public long balance(UUID playerId) {
+    public boolean hasBalance(Player player, long amount) {
         return LoveCore.service(LoveEconomy.class)
-                .map(economy -> economy.balance(AccountId.player(playerId)))
-                .orElse(0L);
+                .map(economy -> economy.has(player, amount))
+                .orElse(false);
     }
 
-    /** Списывает золото со счёта игрока в эскроу. Результат {@code false} = не хватило средств. */
-    public CompletableFuture<Boolean> withdraw(UUID playerId, long amount, String reason) {
-        if (amount <= 0) return CompletableFuture.completedFuture(true);
+    /** Списывает золото у живого игрока в эскроу. false = не хватило монет. */
+    public boolean charge(Player player, long amount) {
+        if (amount <= 0) return true;
         return LoveCore.service(LoveEconomy.class)
-                .map(economy -> economy.withdraw(AccountId.player(playerId), amount, reason))
-                .orElse(CompletableFuture.completedFuture(false));
+                .map(economy -> economy.charge(player, amount))
+                .orElse(false);
     }
 
-    /** Зачисляет золото на счёт игрока — работает и для офлайн-игрока. */
-    public CompletableFuture<Void> deposit(UUID playerId, long amount, String reason) {
-        if (amount <= 0) return CompletableFuture.completedFuture(null);
-        return LoveCore.service(LoveEconomy.class)
-                .map(economy -> economy.deposit(AccountId.player(playerId), amount, reason))
-                .orElse(CompletableFuture.completedFuture(null));
+    /** Выдаёт золото живому игроку. Вызывать только когда player.isOnline(). */
+    public void give(Player player, long amount) {
+        if (amount <= 0) return;
+        LoveCore.service(LoveEconomy.class).ifPresent(economy -> economy.give(player, amount));
     }
 
     public String currencyName() {
@@ -74,8 +70,9 @@ public class LoveCoreBridge {
                 .orElse(a.equals(b));
     }
 
-    /** Кладёт предметы в инвентарь живого игрока либо роняет под ноги, если места не хватило. */
-    public void deliverItemsToLivePlayer(Player player, List<ItemStack> items) {
+    /** Выдаёт золото и предметы живому игроку либо роняет под ноги, если инвентарь полон. */
+    public void deliverToLivePlayer(Player player, long gold, List<ItemStack> items) {
+        give(player, gold);
         for (ItemStack item : items) {
             if (item == null) continue;
             Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
