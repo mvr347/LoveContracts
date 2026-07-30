@@ -168,7 +168,7 @@ public class ContractManager {
                     ps.setInt(4, activeId);
                     ps.executeUpdate();
                 } catch (SQLException e) {
-                    // UNIQUE(player_uuid, contract_id, date(accepted_at)) — already accepted today.
+                    // UNIQUE(player_uuid, contract_id, accepted_date) — already accepted today.
                     conn.rollback();
                     return false;
                 }
