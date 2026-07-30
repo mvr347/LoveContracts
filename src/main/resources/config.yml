@@ -27,9 +27,11 @@ rotation:
 # Rewards defaults
 rewards:
   enabled: true
+  # Money rewards pay out through LoveCore.LoveEconomy — physical coins in the player's
+  # inventory, same unified currency as the rest of the ecosystem. Silently skipped if
+  # LoveCore isn't installed (items/XP/reputation rewards still work).
   money:
     enabled: true
-    currency-symbol: "$"
   items:
     enabled: true
   reputation:
@@ -39,6 +41,8 @@ rewards:
 # Penalties
 penalties:
   enabled: true
+  # Money penalties charge through LoveCore.LoveEconomy, capped at the player's current
+  # balance — physical currency has no debt.
   money:
     enabled: true
   reputation:
@@ -68,6 +72,9 @@ gui:
 npc:
   enabled: true
   info-update-interval: 10
+  # Bound via /lovecontracts npc (look at the NPC first). -1 = no NPC bound, board is
+  # still reachable via /contracts and signs.
+  id: -1
 
 # Signs
 signs:
