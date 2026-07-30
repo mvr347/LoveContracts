@@ -5,7 +5,7 @@ api-version: '1.21'
 authors: [mvr347, LoveLACE]
 description: Daily contract system (Witcher 3 style) for Paper 1.21
 website: https://github.com/mvr347/LoveContracts
-softdepend: [PlaceholderAPI, Citizens, Vault, LoveCore]
+softdepend: [PlaceholderAPI, Citizens, LoveCore]
 
 commands:
   contracts:

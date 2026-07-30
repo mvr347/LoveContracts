@@ -2,7 +2,7 @@
 
 Daily contract system for **Paper 1.21** in the style of Witcher 3.
 
-Players accept contracts via GUI (`/contracts`), signs or Citizens NPCs, complete conditions (kill, mine, craft, fish\u2026), receive rewards / penalties. Full race-condition protection, SQLite + HikariCP, MiniMessage, PlaceholderAPI.
+Players accept contracts via GUI (`/contracts`), signs or Citizens NPCs, complete conditions (kill, mine, craft, fish…), receive rewards / penalties. Full race-condition protection, SQLite + HikariCP, MiniMessage, PlaceholderAPI.
 
 ## Features (Phase 1)
 
@@ -13,8 +13,8 @@ Players accept contracts via GUI (`/contracts`), signs or Citizens NPCs, complet
 - Transaction-safe accept / complete / fail
 - Double-completion & double-fail protection
 - Sign integration `[LoveContracts]`
-- PlaceholderAPI (`%lovecontracts_daily_completed%` \u2026)
-- Vault money rewards/penalties
+- PlaceholderAPI (`%lovecontracts_daily_completed%` …)
+- Item / XP / reputation rewards & penalties
 - Admin commands: reload, rotate, force-complete/fail, diag
 
 ## Build
@@ -40,7 +40,6 @@ Requires **Java 21**.
 ## Soft depends
 
 - PlaceholderAPI
-- Vault
 - Citizens (planned trait)
 - LoveCore (optional deeper integration)
 
