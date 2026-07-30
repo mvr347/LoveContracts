@@ -41,6 +41,20 @@ error:
   player-only: "<red>Players only.</red>"
   player-not-found: "<red>Player not found.</red>"
 
+player-contract:
+  # NOTE: /pcontract currently builds its MiniMessage strings inline in code (same as
+  # /contracts today) rather than reading this section — kept here for the eventual
+  # LangManager migration so translators have real keys to work from.
+  created: "<green>Contract posted:</green> <gold>{DESCRIPTION}</gold>"
+  accepted: "<green>Contract accepted:</green> <gold>{DESCRIPTION}</gold>"
+  completed: "<green>Contract completed!</green> Reward: {GOLD} {CURRENCY}."
+  cancelled: "<yellow>Contract cancelled.</yellow>"
+  abandoned: "<yellow>You abandoned the contract. It's back on the board.</yellow>"
+  expired: "<yellow>Your contract expired.</yellow>"
+  not-found: "<red>Contract not found.</red>"
+  not-yours: "<red>This isn't your contract.</red>"
+  race-condition: "<red>Someone accepted this contract just before you!</red>"
+
 admin:
   reloaded: "<green>Configs reloaded.</green>"
   rotated: "<green>Contracts rotated manually.</green>"

@@ -86,6 +86,42 @@ database:
   connection-timeout: 30000
   leak-detection-threshold: 15000
 
+# Player-to-player contracts (/pcontract) — separate from the daily NPC contract board above.
+# Players hire each other: gold + items are escrowed via LoveCore's LoveEconomy on creation
+# and paid out to the executor on completion (or refunded to the creator on cancel/expire).
+player-contracts:
+  enabled: true
+
+  # Reputation gates (requires LoveCore + LoveBehavior; ignored if unavailable)
+  min-reputation-to-create: 0
+  min-reputation-to-accept: 0
+
+  # Anti-spam limits
+  max-open-per-creator: 3
+  max-accepted-per-executor: 3
+  allow-self-accept: false
+
+  # Escrow bounds
+  min-gold-reward: 10
+  max-gold-reward: 100000
+  # % of the gold reward burned as a gold sink on creation, on top of the escrowed reward
+  creation-tax-percent: 5
+
+  # Deadlines
+  min-deadline-hours: 1
+  max-deadline-hours: 168
+  default-deadline-hours: 24
+
+  # Refund the creator's escrow when a contract is cancelled / expires unclaimed
+  refund-on-abandon: true
+  refund-on-expire: true
+
+  # How often (in minutes) to sweep for overdue contracts
+  expiration-check-interval-minutes: 5
+
+  board:
+    title: "<gradient:#55FF55:#55FFFF>Player Contracts</gradient>"
+
 # Logging
 logging:
   enabled: true

@@ -9,6 +9,14 @@ import me.lovelace.lovecontracts.manager.ContractManager;
 import me.lovelace.lovecontracts.manager.ContractRegistry;
 import me.lovelace.lovecontracts.manager.RewardProcessor;
 import me.lovelace.lovecontracts.manager.SyncManager;
+import me.lovelace.lovecontracts.player.PlayerContractCommand;
+import me.lovelace.lovecontracts.player.PlayerContractListener;
+import me.lovelace.lovecontracts.player.gui.PlayerContractBoardGUI;
+import me.lovelace.lovecontracts.player.gui.PlayerContractMyGUI;
+import me.lovelace.lovecontracts.player.integration.LoveCoreBridge;
+import me.lovelace.lovecontracts.player.manager.PlayerContractManager;
+import me.lovelace.lovecontracts.player.storage.PlayerContractDatabase;
+import me.lovelace.lovecontracts.player.task.PlayerContractExpirationTask;
 import me.lovelace.lovecontracts.service.ContractPlaceholderExpansion;
 import me.lovelace.lovecontracts.storage.ContractDatabase;
 import me.lovelace.lovecontracts.task.ContractExpirationTask;
@@ -33,6 +41,12 @@ public final class LoveContracts extends JavaPlugin {
     private ContractRotationTask rotationTask;
     private ContractExpirationTask expirationTask;
 
+    private PlayerContractDatabase playerContractDatabase;
+    private PlayerContractManager playerContractManager;
+    private PlayerContractBoardGUI playerContractBoardGUI;
+    private PlayerContractMyGUI playerContractMyGUI;
+    private PlayerContractExpirationTask playerContractExpirationTask;
+
     @Override
     public void onEnable() {
         instance = this;
@@ -50,6 +64,17 @@ public final class LoveContracts extends JavaPlugin {
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
+
+        try {
+            playerContractDatabase = new PlayerContractDatabase(this);
+            playerContractDatabase.initialize();
+        } catch (Exception e) {
+            getLogger().severe("Failed to initialize player contract tables: " + e.getMessage());
+            e.printStackTrace();
+        }
+        playerContractManager = new PlayerContractManager(this, playerContractDatabase, new LoveCoreBridge());
+        playerContractBoardGUI = new PlayerContractBoardGUI(this, playerContractManager);
+        playerContractMyGUI = new PlayerContractMyGUI(this, playerContractManager);
 
         registry = new ContractRegistry(this);
         registry.loadFromConfig();
@@ -74,9 +99,20 @@ public final class LoveContracts extends JavaPlugin {
             adminCmd.setTabCompleter(admin);
         }
 
+        PluginCommand pcontractCmd = getCommand("pcontract");
+        if (pcontractCmd != null) {
+            PlayerContractCommand executor = new PlayerContractCommand(
+                    this, playerContractManager, playerContractBoardGUI, playerContractMyGUI);
+            pcontractCmd.setExecutor(executor);
+            pcontractCmd.setTabCompleter(executor);
+        }
+
         Bukkit.getPluginManager().registerEvents(new ContractSignListener(this), this);
         Bukkit.getPluginManager().registerEvents(contractGUI, this);
         Bukkit.getPluginManager().registerEvents(statsGUI, this);
+        Bukkit.getPluginManager().registerEvents(playerContractBoardGUI, this);
+        Bukkit.getPluginManager().registerEvents(playerContractMyGUI, this);
+        Bukkit.getPluginManager().registerEvents(new PlayerContractListener(playerContractManager), this);
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new ContractPlaceholderExpansion(this).register();
@@ -89,6 +125,11 @@ public final class LoveContracts extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, expirationTask, 20L * 60, 20L * 60);
 
         contractManager.startRotationTask();
+
+        playerContractExpirationTask = new PlayerContractExpirationTask(playerContractManager);
+        long pcontractIntervalTicks = 20L * 60 * getConfig().getInt("player-contracts.expiration-check-interval-minutes", 5);
+        Bukkit.getScheduler().runTaskTimerAsynchronously(this, playerContractExpirationTask,
+                pcontractIntervalTicks, pcontractIntervalTicks);
 
         getLogger().info("LoveContracts v" + getPluginMeta().getVersion() + " enabled — "
                 + registry.size() + " contracts loaded");
@@ -138,4 +179,8 @@ public final class LoveContracts extends JavaPlugin {
     public SyncManager getSyncManager() { return syncManager; }
     public ContractGUI getContractGUI() { return contractGUI; }
     public ContractStatsGUI getStatsGUI() { return statsGUI; }
+    public PlayerContractDatabase getPlayerContractDatabase() { return playerContractDatabase; }
+    public PlayerContractManager getPlayerContractManager() { return playerContractManager; }
+    public PlayerContractBoardGUI getPlayerContractBoardGUI() { return playerContractBoardGUI; }
+    public PlayerContractMyGUI getPlayerContractMyGUI() { return playerContractMyGUI; }
 }

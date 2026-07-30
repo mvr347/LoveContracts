@@ -18,6 +18,11 @@ commands:
     usage: /lovecontracts <reload|rotate|npc|sign|complete|fail|stats|reset|diag>
     aliases: [lca, lcadmin]
     permission: lovecontracts.admin
+  pcontract:
+    description: Player-to-player contracts — hire other players for gold and items
+    usage: /pcontract <board|my|create|accept|turnin|submit|review|cancel|info|help>
+    aliases: [pcontracts, playercontract]
+    permission: pcontracts.use
 
 permissions:
   lovecontracts.use:
@@ -32,3 +37,6 @@ permissions:
   lovecontracts.sign:
     description: Create/manage contract signs
     default: op
+  pcontracts.use:
+    description: Allows using /pcontract
+    default: true
