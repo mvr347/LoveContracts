@@ -1,6 +1,5 @@
 package me.lovelace.lovecontracts;
 
-import dev.lovelace.lovecore.api.stats.StatBus;
 import me.lovelace.lovecontracts.command.ContractCommand;
 import me.lovelace.lovecontracts.command.LoveContractsAdminCommand;
 import me.lovelace.lovecontracts.gui.ContractGUI;
@@ -24,6 +23,7 @@ import me.lovelace.lovecontracts.service.ContractPlaceholderExpansion;
 import me.lovelace.lovecontracts.storage.ContractDatabase;
 import me.lovelace.lovecontracts.task.ContractExpirationTask;
 import me.lovelace.lovecontracts.task.ContractRotationTask;
+import dev.lovelace.lovecore.api.stats.StatBus;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -194,4 +194,5 @@ public final class LoveContracts extends JavaPlugin {
     public PlayerContractManager getPlayerContractManager() { return playerContractManager; }
     public PlayerContractBoardGUI getPlayerContractBoardGUI() { return playerContractBoardGUI; }
     public PlayerContractMyGUI getPlayerContractMyGUI() { return playerContractMyGUI; }
+    public Optional<StatBus> getStatBus() { return statBus; }
 }
