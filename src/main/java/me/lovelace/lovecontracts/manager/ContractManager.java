@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.manager;
 
+import dev.lovelace.lovecore.api.stats.Metrics;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.task.ContractRotationTask;
@@ -219,6 +220,7 @@ public class ContractManager {
 
             Bukkit.getScheduler().runTask(plugin, () -> {
                 plugin.getRewardProcessor().giveRewards(player, contract);
+                plugin.getStatBus().ifPresent(bus -> bus.record(player.getUniqueId(), Metrics.CONTRACTS_COMPLETED, 1.0));
                 if (player.isOnline()) {
                     player.sendMessage(mm.deserialize("<green>Completed:</green> <gold>" +
                             strip(contract.getDisplayName()) + "</gold>"));
