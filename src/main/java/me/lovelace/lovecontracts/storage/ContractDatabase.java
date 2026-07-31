@@ -100,7 +100,8 @@ public class ContractDatabase implements AutoCloseable {
                     completed_at TEXT,
                     failed_at TEXT,
                     progress_data TEXT,
-                    UNIQUE(player_uuid, contract_id, date(accepted_at))
+                    accepted_date TEXT GENERATED ALWAYS AS (date(accepted_at)) VIRTUAL,
+                    UNIQUE(player_uuid, contract_id, accepted_date)
                 )
                 """);
 
