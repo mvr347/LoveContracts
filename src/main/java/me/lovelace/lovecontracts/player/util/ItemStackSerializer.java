@@ -18,6 +18,7 @@ import java.util.logging.Logger;
  * Base64(BukkitObjectStream) сериализация списка ItemStack для хранения в TEXT-колонке SQLite.
  * Стандартный для Bukkit-плагинов подход — переживает рестарт сервера и смену версии Paper.
  */
+@SuppressWarnings("deprecation")
 public final class ItemStackSerializer {
 
     private ItemStackSerializer() {

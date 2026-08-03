@@ -18,18 +18,29 @@ public class ContractNpcListener implements Listener {
 
     @EventHandler
     public void onNpcInteract(PlayerInteractEntityEvent event) {
-        if (!plugin.getConfig().getBoolean("npc.enabled", true) || !citizens.isAvailable()) {
-            return;
-        }
-        int boundId = plugin.getConfig().getInt("npc.id", -1);
-        if (boundId < 0) {
+        if (!citizens.isAvailable()) {
             return;
         }
         Integer npcId = citizens.npcId(event.getRightClicked());
-        if (npcId == null || npcId != boundId) {
-            return;
+        if (npcId == null) return;
+
+        // Check if NPC has assigned chain quests
+        var quests = plugin.getNpcQuestManager().getQuestsForNpc(npcId);
+        if (!quests.isEmpty()) {
+            event.setCancelled(true);
+            var quest = quests.get(0);
+            var dialogueNode = quest.getDialogueNode(quest.getInitialDialogueNode());
+            if (dialogueNode != null) {
+                plugin.getNpcDialogueGUI().open(event.getPlayer(), quest, dialogueNode);
+                return;
+            }
         }
-        event.setCancelled(true);
-        plugin.getContractGUI().open(event.getPlayer());
+
+        // Default bound NPC for server contracts board
+        int boundId = plugin.getConfig().getInt("npc.id", -1);
+        if (boundId >= 0 && npcId == boundId) {
+            event.setCancelled(true);
+            plugin.getContractGUI().open(event.getPlayer());
+        }
     }
 }

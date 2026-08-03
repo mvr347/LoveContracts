@@ -7,6 +7,7 @@ import me.lovelace.lovecontracts.condition.CraftItemCondition;
 import me.lovelace.lovecontracts.condition.KillEntityCondition;
 import me.lovelace.lovecontracts.condition.MineMaterialCondition;
 import me.lovelace.lovecontracts.model.Contract;
+import me.lovelace.lovecontracts.model.ContractRequirement;
 import me.lovelace.lovecontracts.model.ContractType;
 import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.model.Penalty;
@@ -74,17 +75,30 @@ public class ContractRegistry {
         int maxAcceptances = section.getInt("max-acceptances", -1);
         int dailySpawns = section.getInt("daily-spawns", 1);
         int weight = section.getInt("weight", 0);
-        int expirationHours = section.getInt("expiration-hours", 24);
+        int expirationMinutes = section.contains("expiration-minutes")
+                ? section.getInt("expiration-minutes")
+                : section.getInt("expiration-hours", 24) * 60;
+        boolean starter = section.getBoolean("starter", section.getBoolean("is-starter", false));
         boolean enabled = section.getBoolean("enabled", true);
 
         List<Reward> rewards = parseRewards(section.getConfigurationSection("rewards"));
         List<Penalty> penalties = parsePenalties(section.getConfigurationSection("penalties"));
+        ContractRequirement requirement = parseRequirements(section.getConfigurationSection("requirements"));
 
         Contract contract = new Contract(id, displayName, description, difficulty, type,
-                maxAcceptances, dailySpawns, weight, expirationHours, enabled, rewards, penalties);
+                maxAcceptances, dailySpawns, weight, expirationMinutes, starter, enabled, rewards, penalties, requirement);
 
         contract.setCondition(parseCondition(contract, section.getConfigurationSection("condition")));
         return contract;
+    }
+
+    private ContractRequirement parseRequirements(ConfigurationSection sec) {
+        if (sec == null) return null;
+        int minLevel = sec.getInt("min-level", 0);
+        String perm = sec.getString("permission", null);
+        int minCompleted = sec.getInt("min-completed-contracts", 0);
+        if (minLevel <= 0 && perm == null && minCompleted <= 0) return null;
+        return new ContractRequirement(minLevel, perm, minCompleted);
     }
 
     private List<Reward> parseRewards(ConfigurationSection section) {

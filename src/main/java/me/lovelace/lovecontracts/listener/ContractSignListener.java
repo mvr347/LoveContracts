@@ -14,6 +14,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@SuppressWarnings("deprecation")
 public class ContractSignListener implements Listener {
 
     private final LoveContracts plugin;

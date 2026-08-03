@@ -22,8 +22,8 @@ import java.util.logging.Level;
 public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "reload", "rotate", "npc", "sign", "complete", "fail", "stats", "reset", "diag");
-    private static final List<String> PLAYER_ARG_SUBCOMMANDS = List.of("complete", "fail", "stats", "reset");
+            "reload", "rotate", "npc", "sign", "complete", "fail", "stats", "reset", "diag", "toggle");
+    private static final List<String> PLAYER_ARG_SUBCOMMANDS = List.of("complete", "fail", "stats", "reset", "toggle");
 
     private final LoveContracts plugin;
     private final MiniMessage mm = MiniMessage.miniMessage();
@@ -38,7 +38,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                               @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
             sender.sendMessage(mm.deserialize(
-                    "<yellow>Usage: /lovecontracts <reload|rotate|npc|sign|complete|fail|stats|reset|diag></yellow>"));
+                    "<yellow>Использование: /lovecontracts <reload|rotate|npc|sign|complete|fail|stats|reset|diag|toggle></yellow>"));
             return true;
         }
 
@@ -52,109 +52,128 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             case "stats" -> stats(sender, args);
             case "reset" -> reset(sender, args);
             case "diag" -> diag(sender);
-            default -> sender.sendMessage(mm.deserialize("<red>Unknown subcommand.</red>"));
+            case "toggle" -> toggle(sender, args);
+            default -> sender.sendMessage(mm.deserialize("<red>Неизвестная подкоманда.</red>"));
         }
         return true;
+    }
+
+    private void toggle(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(mm.deserialize("<red>Использование: /lovecontracts toggle <player></red>"));
+            return;
+        }
+        Player target = org.bukkit.Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage(mm.deserialize("<red>Игрок не найден.</red>"));
+            return;
+        }
+        boolean enabled = plugin.getContractManager().togglePlayerContracts(target.getUniqueId());
+        if (enabled) {
+            sender.sendMessage(mm.deserialize("<green>Доступ к контрактам для игрока " + target.getName() + " ВКЛЮЧЕН.</green>"));
+        } else {
+            sender.sendMessage(mm.deserialize("<red>Доступ к контрактам для игрока " + target.getName() + " ОТКЛЮЧЕН.</red>"));
+        }
     }
 
     private void reload(CommandSender sender) {
         plugin.reloadConfig();
         plugin.getRegistry().loadFromConfig();
-        sender.sendMessage(mm.deserialize("<green>Configs reloaded — " +
-                plugin.getRegistry().size() + " contracts loaded.</green>"));
+        sender.sendMessage(mm.deserialize("<green>Конфигурация перезагружена — загружено " +
+                plugin.getRegistry().size() + " контрактов.</green>"));
     }
 
     private void rotate(CommandSender sender) {
         plugin.getContractManager().forceRotate();
-        sender.sendMessage(mm.deserialize("<green>Contracts rotated manually.</green>"));
+        sender.sendMessage(mm.deserialize("<green>Контракты обновлены вручную.</green>"));
     }
 
     private void npc(CommandSender sender) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(mm.deserialize("<red>Players only.</red>"));
+            sender.sendMessage(mm.deserialize("<red>Команда только для игроков.</red>"));
             return;
         }
         if (!sender.hasPermission("lovecontracts.npc")) {
-            sender.sendMessage(mm.deserialize("<red>No permission.</red>"));
+            sender.sendMessage(mm.deserialize("<red>Недостаточно прав.</red>"));
             return;
         }
         if (!citizens.isAvailable()) {
-            player.sendMessage(mm.deserialize("<red>Citizens is not installed or enabled.</red>"));
+            player.sendMessage(mm.deserialize("<red>Плагин Citizens не установлен или отключен.</red>"));
             return;
         }
         Entity looked = citizens.lookedAtNpc(player, 6.0);
         if (looked == null) {
-            player.sendMessage(mm.deserialize("<red>Look at a Citizens NPC first.</red>"));
+            player.sendMessage(mm.deserialize("<red>Сначала посмотрите на NPC Citizens.</red>"));
             return;
         }
         Integer id = citizens.npcId(looked);
         if (id == null) {
-            player.sendMessage(mm.deserialize("<red>Could not resolve NPC id.</red>"));
+            player.sendMessage(mm.deserialize("<red>Не удалось определить ID NPC.</red>"));
             return;
         }
         plugin.getConfig().set("npc.id", id);
         plugin.saveConfig();
-        player.sendMessage(mm.deserialize("<green>Bound Contract NPC #" + id + ". Right-click opens the board.</green>"));
+        player.sendMessage(mm.deserialize("<green>Привязан NPC контрактов #" + id + ". ПКМ открывает доску.</green>"));
     }
 
     private void sign(CommandSender sender) {
         if (!sender.hasPermission("lovecontracts.sign")) {
-            sender.sendMessage(mm.deserialize("<red>No permission.</red>"));
+            sender.sendMessage(mm.deserialize("<red>Недостаточно прав.</red>"));
             return;
         }
         sender.sendMessage(mm.deserialize(
-                "<yellow>No binding step needed — place any sign with first line " +
-                "<gold>[LoveContracts]</gold> and second line = a contract id from contracts.yml.</yellow>"));
+                "<yellow>Привязка не требуется — поставьте любую табличку с 1-й строкой " +
+                "<gold>[LoveContracts]</gold> и 2-й строкой = ID контракта из contracts.yml.</yellow>"));
     }
 
     private void completeOrFail(CommandSender sender, String[] args, boolean complete) {
         if (args.length < 3) {
-            sender.sendMessage(mm.deserialize("<red>Usage: /lovecontracts " + args[0] + " <player> <contractId></red>"));
+            sender.sendMessage(mm.deserialize("<red>Использование: /lovecontracts " + args[0] + " <игрок> <idКонтракта></red>"));
             return;
         }
         Player target = plugin.getServer().getPlayerExact(args[1]);
         if (target == null) {
-            sender.sendMessage(mm.deserialize("<red>Player not found (must be online).</red>"));
+            sender.sendMessage(mm.deserialize("<red>Игрок не найден (должен быть в сети).</red>"));
             return;
         }
         Contract contract = plugin.getRegistry().getContract(args[2]);
         if (contract == null) {
-            sender.sendMessage(mm.deserialize("<red>Unknown contract id.</red>"));
+            sender.sendMessage(mm.deserialize("<red>Неизвестный ID контракта.</red>"));
             return;
         }
         if (complete) {
             plugin.getContractManager().completeContract(target, contract);
-            sender.sendMessage(mm.deserialize("<green>Force-completed " + contract.getId() +
-                    " for " + target.getName() + "</green>"));
+            sender.sendMessage(mm.deserialize("<green>Контракт " + contract.getId() +
+                    " принудительно выполнен для " + target.getName() + "</green>"));
         } else {
             plugin.getContractManager().failContract(target, contract);
-            sender.sendMessage(mm.deserialize("<green>Force-failed " + contract.getId() +
-                    " for " + target.getName() + "</green>"));
+            sender.sendMessage(mm.deserialize("<green>Контракт " + contract.getId() +
+                    " принудительно провален для " + target.getName() + "</green>"));
         }
     }
 
     private void stats(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(mm.deserialize("<red>Usage: /lovecontracts stats <player></red>"));
+            sender.sendMessage(mm.deserialize("<red>Использование: /lovecontracts stats <игрок></red>"));
             return;
         }
         Player target = plugin.getServer().getPlayerExact(args[1]);
         if (target == null) {
-            sender.sendMessage(mm.deserialize("<red>Player not found (must be online).</red>"));
+            sender.sendMessage(mm.deserialize("<red>Игрок не найден (должен быть в сети).</red>"));
             return;
         }
         plugin.getStatsGUI().open(target);
-        sender.sendMessage(mm.deserialize("<green>Opened stats for " + target.getName() + "</green>"));
+        sender.sendMessage(mm.deserialize("<green>Открыта статистика для " + target.getName() + "</green>"));
     }
 
     private void reset(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(mm.deserialize("<red>Usage: /lovecontracts reset <player></red>"));
+            sender.sendMessage(mm.deserialize("<red>Использование: /lovecontracts reset <игрок></red>"));
             return;
         }
         Player target = plugin.getServer().getPlayerExact(args[1]);
         if (target == null) {
-            sender.sendMessage(mm.deserialize("<red>Player not found (must be online).</red>"));
+            sender.sendMessage(mm.deserialize("<red>Игрок не найден (должен быть в сети).</red>"));
             return;
         }
         UUID uuid = target.getUniqueId();
@@ -170,7 +189,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                 plugin.getLogger().log(Level.WARNING, "Reset failed", e);
             }
         });
-        sender.sendMessage(mm.deserialize("<green>Reset daily stats for " + name + "</green>"));
+        sender.sendMessage(mm.deserialize("<green>Ежедневная статистика сброшена для " + name + "</green>"));
     }
 
     private void diag(CommandSender sender) {
@@ -178,15 +197,15 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
         boolean placeholderApi = plugin.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI");
         boolean citizensPlugin = citizens.isAvailable();
 
-        sender.sendMessage(mm.deserialize("<gold>=== LoveContracts Diagnostics ===</gold>"));
-        sender.sendMessage(mm.deserialize("<gray>Contracts loaded: <white>" + plugin.getRegistry().size() + "</white></gray>"));
-        sender.sendMessage(mm.deserialize("<gray>Active now: <white>" +
+        sender.sendMessage(mm.deserialize("<gold>=== Диагностика LoveContracts ===</gold>"));
+        sender.sendMessage(mm.deserialize("<gray>Загружено контрактов: <white>" + plugin.getRegistry().size() + "</white></gray>"));
+        sender.sendMessage(mm.deserialize("<gray>Активных сейчас: <white>" +
                 plugin.getContractManager().getActiveContracts().size() + "</white></gray>"));
-        sender.sendMessage(mm.deserialize("<gray>LoveCore: " + (loveCore ? "<green>found</green>" : "<red>missing (no money rewards/penalties)</red>") + "</gray>"));
-        sender.sendMessage(mm.deserialize("<gray>PlaceholderAPI: " + (placeholderApi ? "<green>found</green>" : "<red>missing</red>") + "</gray>"));
-        sender.sendMessage(mm.deserialize("<gray>Citizens: " + (citizensPlugin ? "<green>found</green>" : "<red>missing</red>") + "</gray>"));
+        sender.sendMessage(mm.deserialize("<gray>LoveCore: " + (loveCore ? "<green>найден</green>" : "<red>отсутствует (нет денежных наград/штрафов)</red>") + "</gray>"));
+        sender.sendMessage(mm.deserialize("<gray>PlaceholderAPI: " + (placeholderApi ? "<green>найден</green>" : "<red>отсутствует</red>") + "</gray>"));
+        sender.sendMessage(mm.deserialize("<gray>Citizens: " + (citizensPlugin ? "<green>найден</green>" : "<red>отсутствует</red>") + "</gray>"));
         int boundNpc = plugin.getConfig().getInt("npc.id", -1);
-        sender.sendMessage(mm.deserialize("<gray>Bound NPC: <white>" + (boundNpc < 0 ? "none" : "#" + boundNpc) + "</white></gray>"));
+        sender.sendMessage(mm.deserialize("<gray>Привязанный NPC: <white>" + (boundNpc < 0 ? "нет" : "#" + boundNpc) + "</white></gray>"));
     }
 
     @Override

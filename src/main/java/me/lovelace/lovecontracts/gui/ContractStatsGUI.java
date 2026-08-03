@@ -31,38 +31,50 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
     private final MiniMessage mm = MiniMessage.miniMessage();
     private final Set<UUID> open = ConcurrentHashMap.newKeySet();
 
+    private static final ItemStack GLASS_PANE;
+    private static final ItemStack CLOSE_BUTTON;
+    private static final ItemStack BACK_BUTTON;
+
+    static {
+        GLASS_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta glassMeta = GLASS_PANE.getItemMeta();
+        glassMeta.displayName(Component.text(" "));
+        GLASS_PANE.setItemMeta(glassMeta);
+
+        CLOSE_BUTTON = new ItemStack(Material.BARRIER);
+        ItemMeta closeMeta = CLOSE_BUTTON.getItemMeta();
+        closeMeta.displayName(MiniMessage.miniMessage().deserialize("<red>Закрыть</red>"));
+        closeMeta.lore(List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>")));
+        CLOSE_BUTTON.setItemMeta(closeMeta);
+
+        BACK_BUTTON = new ItemStack(Material.ARROW);
+        ItemMeta backMeta = BACK_BUTTON.getItemMeta();
+        backMeta.displayName(MiniMessage.miniMessage().deserialize("<yellow>← Назад</yellow>"));
+        backMeta.lore(List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Вернуться к контрактам</gray>")));
+        BACK_BUTTON.setItemMeta(backMeta);
+    }
+
     public ContractStatsGUI(LoveContracts plugin) {
         this.plugin = plugin;
     }
 
     public void open(Player player) {
         Inventory inv = Bukkit.createInventory(this, 54,
-                mm.deserialize("<aqua>Contract Statistics</aqua>"));
-
-        ItemStack glass = pane();
+                mm.deserialize("<aqua>Статистика контрактов</aqua>"));
 
         inv.setItem(0, headItem(player));
-        inv.setItem(1, glass);
-        inv.setItem(8, glass);
+        inv.setItem(1, GLASS_PANE);
+        inv.setItem(8, GLASS_PANE);
 
         for (int s = 9; s <= 17; s++) {
-            inv.setItem(s, glass);
+            inv.setItem(s, GLASS_PANE);
         }
-
-        inv.setItem(18, glass);
-        inv.setItem(26, glass);
-        inv.setItem(27, glass);
-        inv.setItem(35, glass);
-        inv.setItem(36, glass);
-        inv.setItem(44, glass);
 
         for (int s = 45; s <= 51; s++) {
-            inv.setItem(s, glass);
+            inv.setItem(s, GLASS_PANE);
         }
-        inv.setItem(52, button(Material.ARROW, "<yellow>← Back</yellow>",
-                List.of("<gray>Return to board</gray>")));
-        inv.setItem(53, button(Material.BARRIER, "<red>Close</red>",
-                List.of("<gray>Close menu</gray>")));
+        inv.setItem(52, BACK_BUTTON);
+        inv.setItem(53, CLOSE_BUTTON);
 
         UUID uuid = player.getUniqueId();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -72,15 +84,15 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
                 if (!(player.getOpenInventory().getTopInventory().getHolder() instanceof ContractStatsGUI)) {
                     return;
                 }
-                inv.setItem(19, statItem(Material.EMERALD, "<green>Daily Completed</green>", stats[0]));
-                inv.setItem(20, statItem(Material.REDSTONE, "<red>Daily Failed</red>", stats[1]));
-                inv.setItem(21, statItem(Material.CHEST, "<gold>Daily Accepted</gold>", stats[2]));
+                inv.setItem(19, statItem(Material.EMERALD, "<green>Выполнено за день</green>", stats[0]));
+                inv.setItem(20, statItem(Material.REDSTONE, "<red>Провалено за день</red>", stats[1]));
+                inv.setItem(21, statItem(Material.CHEST, "<gold>Принято за день</gold>", stats[2]));
                 inv.setItem(22, rateItem(stats[5] == 0 ? 0.0 : (stats[3] * 100.0) / stats[5]));
-                inv.setItem(23, statItem(Material.DIAMOND, "<aqua>Total Completed</aqua>", stats[3]));
-                inv.setItem(24, statItem(Material.COAL, "<gray>Total Failed</gray>", stats[4]));
-                inv.setItem(25, statItem(Material.BOOK, "<yellow>Total Accepted</yellow>", stats[5]));
-                inv.setItem(30, statItem(Material.BLAZE_POWDER, "<gold>Current Streak</gold>", stats[6]));
-                inv.setItem(32, statItem(Material.NETHER_STAR, "<light_purple>Best Streak</light_purple>", stats[7]));
+                inv.setItem(23, statItem(Material.DIAMOND, "<aqua>Всего выполнено</aqua>", stats[3]));
+                inv.setItem(24, statItem(Material.COAL, "<gray>Всего провалено</gray>", stats[4]));
+                inv.setItem(25, statItem(Material.BOOK, "<yellow>Всего принято</yellow>", stats[5]));
+                inv.setItem(30, statItem(Material.BLAZE_POWDER, "<gold>Текущая серия</gold>", stats[6]));
+                inv.setItem(32, statItem(Material.NETHER_STAR, "<light_purple>Лучшая серия</light_purple>", stats[7]));
             });
         });
 
@@ -131,6 +143,9 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         meta.setOwningPlayer(player);
         meta.displayName(mm.deserialize("<aqua>" + player.getName() + "</aqua>"));
+        List<Component> lore = new ArrayList<>();
+        lore.add(mm.deserialize("<gray>Ваша статистика контрактов</gray>"));
+        meta.lore(lore);
         item.setItemMeta(meta);
         return item;
     }
@@ -150,34 +165,11 @@ public class ContractStatsGUI implements Listener, InventoryHolder {
     private ItemStack rateItem(double rate) {
         ItemStack item = new ItemStack(Material.GOLD_INGOT);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize("<gold>Success Rate</gold>"));
+        meta.displayName(mm.deserialize("<gold>Успешность</gold>"));
         List<Component> lore = new ArrayList<>();
         lore.add(Component.empty());
         lore.add(mm.deserialize("<white>" + String.format("%.1f%%", rate) + "</white>"));
         meta.lore(lore);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack pane() {
-        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(" "));
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack button(Material mat, String name, List<String> loreLines) {
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize(name));
-        List<Component> lore = new ArrayList<>();
-        lore.add(Component.empty());
-        for (String line : loreLines) {
-            lore.add(mm.deserialize(line));
-        }
-        meta.lore(lore);
-        item.setItemMeta(meta);
         return item;
     }
 

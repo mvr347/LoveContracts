@@ -68,7 +68,7 @@ public class RewardProcessor {
 
         if (!display.isEmpty()) {
             player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                    .deserialize("<green>Rewards:</green> <gold>" + display.toString().trim() + "</gold>"));
+                    .deserialize("<green>Награды:</green> <gold>" + display.toString().trim() + "</gold>"));
         }
     }
 

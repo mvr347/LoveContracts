@@ -27,20 +27,20 @@ public class SyncManager {
     }
 
     public void broadcastAccept(Player player, Contract contract) {
-        String msg = "<yellow>" + player.getName() + "</yellow> accepted <gold>"
+        String msg = "<yellow>" + (player != null ? player.getName() : "Игрок") + "</yellow> принял(а) контракт <gold>"
                 + strip(contract.getDisplayName()) + "</gold>";
         broadcast(msg);
     }
 
     public void broadcastComplete(Player player, Contract contract) {
-        String msg = "<yellow>" + player.getName() + "</yellow> completed <gold>"
+        String msg = "<yellow>" + (player != null ? player.getName() : "Игрок") + "</yellow> выполнил(а) контракт <gold>"
                 + strip(contract.getDisplayName()) + "</gold>";
         broadcast(msg);
     }
 
     public void broadcastFail(Player player, Contract contract) {
-        String msg = "<yellow>" + (player != null ? player.getName() : "Someone")
-                + "</yellow> failed <gold>" + strip(contract.getDisplayName()) + "</gold>";
+        String msg = "<yellow>" + (player != null ? player.getName() : "Кто-то")
+                + "</yellow> провалил(а) контракт <gold>" + strip(contract.getDisplayName()) + "</gold>";
         broadcast(msg);
     }
 

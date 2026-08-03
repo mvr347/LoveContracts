@@ -1,6 +1,7 @@
 package me.lovelace.lovecontracts.model;
 
 public enum Difficulty {
+    STARTER(100),
     EASY(10),
     MEDIUM(5),
     HARD(1);

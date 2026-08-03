@@ -3,6 +3,7 @@ package me.lovelace.lovecontracts.manager;
 import dev.lovelace.lovecore.api.stats.Metrics;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.model.Contract;
+import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.task.ContractRotationTask;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -14,7 +15,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
@@ -28,6 +32,8 @@ public class ContractManager {
     private final LoveContracts plugin;
     private final MiniMessage mm = MiniMessage.miniMessage();
     private volatile List<String> activeIds = new ArrayList<>();
+    private final Map<UUID, Set<String>> acceptedTodayCache = new ConcurrentHashMap<>();
+    private final Set<UUID> disabledPlayers = ConcurrentHashMap.newKeySet();
 
     public ContractManager(LoveContracts plugin) {
         this.plugin = plugin;
@@ -58,11 +64,13 @@ public class ContractManager {
     }
 
     public void forceRotate() {
+        acceptedTodayCache.clear();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, new ContractRotationTask(plugin));
     }
 
     public void setCurrentActiveIds(List<String> ids) {
         this.activeIds = new ArrayList<>(ids);
+        this.acceptedTodayCache.clear();
     }
 
     public boolean isActive(String id) {
@@ -80,20 +88,83 @@ public class ContractManager {
         return result;
     }
 
-    public boolean hasAcceptedToday(UUID uuid, String contractId) {
+    public boolean togglePlayerContracts(UUID uuid) {
+        if (disabledPlayers.contains(uuid)) {
+            disabledPlayers.remove(uuid);
+            return true; // Now enabled
+        } else {
+            disabledPlayers.add(uuid);
+            return false; // Now disabled
+        }
+    }
+
+    public boolean isContractsDisabled(Player player) {
+        if (player == null) return false;
+        return disabledPlayers.contains(player.getUniqueId());
+    }
+
+    public int getCompletedContractsCount(UUID uuid) {
+        if (uuid == null) return 0;
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                     "SELECT 1 FROM player_contracts WHERE player_uuid = ? AND contract_id = ? " +
-                     "AND date(accepted_at) = date('now') LIMIT 1")) {
+                     "SELECT COUNT(*) FROM player_contracts WHERE player_uuid = ? AND completed_at IS NOT NULL")) {
             ps.setString(1, uuid.toString());
-            ps.setString(2, contractId);
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
+                if (rs.next()) return rs.getInt(1);
             }
         } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "hasAcceptedToday query failed", e);
-            return false;
+            plugin.getLogger().log(Level.WARNING, "Failed to get completed contracts count", e);
         }
+        return 0;
+    }
+
+    public boolean hasCompletedStarterContracts(Player player) {
+        if (player == null) return false;
+        int starterCompleted = 0;
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT DISTINCT contract_id FROM player_contracts WHERE player_uuid = ? AND completed_at IS NOT NULL")) {
+            ps.setString(1, player.getUniqueId().toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString(1);
+                    Contract c = plugin.getRegistry().getContract(id);
+                    if (c != null && (c.isStarter() || c.getDifficulty() == Difficulty.STARTER)) {
+                        starterCompleted++;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to check starter contracts count", e);
+        }
+        return starterCompleted >= 3 || getCompletedContractsCount(player.getUniqueId()) >= 3;
+    }
+
+    public boolean hasAcceptedToday(UUID uuid, String contractId) {
+        Set<String> accepted = acceptedTodayCache.get(uuid);
+        if (accepted == null) {
+            accepted = loadAcceptedTodayForPlayer(uuid);
+            acceptedTodayCache.put(uuid, accepted);
+        }
+        return accepted.contains(contractId);
+    }
+
+    private Set<String> loadAcceptedTodayForPlayer(UUID uuid) {
+        Set<String> set = ConcurrentHashMap.newKeySet();
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT contract_id FROM player_contracts WHERE player_uuid = ? " +
+                     "AND date(accepted_at) = date('now')")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    set.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "loadAcceptedTodayForPlayer query failed", e);
+        }
+        return set;
     }
 
     public void acceptContract(Player player, String id) {
@@ -101,7 +172,7 @@ public class ContractManager {
 
         Contract contract = plugin.getRegistry().getContract(id);
         if (contract == null || !contract.isEnabled() || !isActive(id)) {
-            player.sendMessage(mm.deserialize("<red>This contract is no longer available.</red>"));
+            player.sendMessage(mm.deserialize("<red>Этот контракт больше недоступен.</red>"));
             return;
         }
 
@@ -112,22 +183,21 @@ public class ContractManager {
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Accept-contract failed", e);
                 Bukkit.getScheduler().runTask(plugin, () ->
-                        player.sendMessage(mm.deserialize("<red>Database error. Contact an admin.</red>")));
+                        player.sendMessage(mm.deserialize("<red>Ошибка базы данных. Обратитесь к администратору.</red>")));
                 return;
             }
 
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!player.isOnline()) return;
                 if (!accepted) {
-                    player.sendMessage(mm.deserialize("<red>You already accepted this contract today, " +
-                            "or no slots are left.</red>"));
+                    player.sendMessage(mm.deserialize("<red>Вы уже приняли этот контракт сегодня или свободные слоты закончились.</red>"));
                     return;
                 }
                 if (contract.getCondition() != null) {
                     contract.getCondition().reset(player);
                     contract.getCondition().register(player);
                 }
-                player.sendMessage(mm.deserialize("<green>You accepted:</green> <gold>" +
+                player.sendMessage(mm.deserialize("<green>Вы приняли контракт:</green> <gold>" +
                         strip(contract.getDisplayName()) + "</gold>"));
                 plugin.getSyncManager().broadcastAccept(player, contract);
                 plugin.getSyncManager().syncGUIForPlayer(player);
@@ -184,6 +254,7 @@ public class ContractManager {
                 upsertStat(conn, player.getUniqueId(), "total_accepted", 1);
 
                 conn.commit();
+                acceptedTodayCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
                 return true;
             } catch (SQLException e) {
                 conn.rollback();
@@ -222,7 +293,7 @@ public class ContractManager {
                 plugin.getRewardProcessor().giveRewards(player, contract);
                 plugin.getStatBus().ifPresent(bus -> bus.record(player.getUniqueId(), Metrics.CONTRACTS_COMPLETED, 1.0));
                 if (player.isOnline()) {
-                    player.sendMessage(mm.deserialize("<green>Completed:</green> <gold>" +
+                    player.sendMessage(mm.deserialize("<green>Выполнено:</green> <gold>" +
                             strip(contract.getDisplayName()) + "</gold>"));
                 }
                 plugin.getSyncManager().broadcastComplete(player, contract);
@@ -271,14 +342,81 @@ public class ContractManager {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 Player player = Bukkit.getPlayer(uuid);
                 if (player != null && player.isOnline()) {
-                    plugin.getRewardProcessor().applyPenalties(player, contract);
-                    player.sendMessage(mm.deserialize("<red>Failed:</red> <gold>" +
+                    if (!contract.isStarter()) {
+                        plugin.getRewardProcessor().applyPenalties(player, contract);
+                    }
+                    player.sendMessage(mm.deserialize("<red>Провал:</red> <gold>" +
                             strip(contract.getDisplayName()) + "</gold>"));
                     plugin.getSyncManager().syncGUIForPlayer(player);
                 }
                 plugin.getSyncManager().broadcastFail(player, contract);
             });
         });
+    }
+
+    public boolean hasActiveContract(UUID uuid) {
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT 1 FROM player_contracts WHERE player_uuid = ? AND completed_at IS NULL AND failed_at IS NULL LIMIT 1")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "hasActiveContract query failed", e);
+            return false;
+        }
+    }
+
+    public Set<String> getCompletedTodayContractIds(UUID uuid) {
+        Set<String> set = new java.util.HashSet<>();
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT contract_id FROM player_contracts WHERE player_uuid = ? AND completed_at IS NOT NULL AND date(completed_at) = date('now')")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    set.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "getCompletedTodayContractIds query failed", e);
+        }
+        return set;
+    }
+
+    public Set<String> getFailedContractIds(UUID uuid) {
+        Set<String> set = new java.util.HashSet<>();
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT contract_id FROM player_contracts WHERE player_uuid = ? AND failed_at IS NOT NULL")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    set.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "getFailedContractIds query failed", e);
+        }
+        return set;
+    }
+
+    public Set<String> getActiveContractIds(UUID uuid) {
+        Set<String> set = new java.util.HashSet<>();
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT contract_id FROM player_contracts WHERE player_uuid = ? AND completed_at IS NULL AND failed_at IS NULL")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    set.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "getActiveContractIds query failed", e);
+        }
+        return set;
     }
 
     private void upsertStat(Connection conn, UUID uuid, String column, int delta) throws SQLException {

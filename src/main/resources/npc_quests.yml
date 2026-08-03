@@ -1,0 +1,94 @@
+# ============================================
+# Многоразовые NPC-квесты с диалогами и цепочками
+# ============================================
+
+npc_quests:
+
+  blacksmith_chain:
+    npc-id: 1
+    display-name: "<gold>Кузнечный заказ</gold>"
+    repeatable: true
+    cooldown-minutes: 60
+    initial-dialogue: "greeting"
+
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Кузнец Брон:</yellow> Приветствую тебя, путешественник!"
+          - "<yellow>Кузнец Брон:</yellow> Страже спавна срочно нужны новые доспехи. Можешь помочь?"
+        options:
+          - text: "<green>1. Конечно! Что нужно сделать?</green>"
+            action: "ACCEPT_QUEST"
+          - text: "<aqua>2. Зачем вам столько железа?</aqua>"
+            next-node: "story"
+          - text: "<red>3. Нет, у меня нет времени.</red>"
+            action: "CLOSE"
+
+      story:
+        text:
+          - "<yellow>Кузнец Брон:</yellow> Орки на границе активизировались."
+          - "<yellow>Кузнец Брон:</yellow> Нам нужно снарядить 20 новых рекрутов."
+        options:
+          - text: "<green>1. Хорошо, я помогу кузнецам!</green>"
+            action: "ACCEPT_QUEST"
+          - text: "<red>2. Удачи, я ухожу.</red>"
+            action: "CLOSE"
+
+    steps:
+      - step: 1
+        type: "CRAFT_ITEM"
+        material: "IRON_INGOT"
+        count: 16
+        description: "Скрафтите 16 железных слитков"
+      - step: 2
+        type: "VISIT_NPC"
+        target-npc-id: 2
+        target-npc-name: "Оружейник"
+        description: "Отнесите слитки Оружейнику (NPC #2)"
+        dialogue:
+          text:
+            - "<yellow>Оружейник Карл:</yellow> О! Это слитки от Брона?"
+            - "<yellow>Оружейник Карл:</yellow> Отлично, отдавай их сюда."
+          options:
+            - text: "<green>Передать слитки</green>"
+              action: "COMPLETE_STEP"
+
+    rewards:
+      money: 1500
+      items:
+        - "IRON_SWORD 1"
+        - "DIAMOND 2"
+
+  guard_patrol:
+    npc-id: 3
+    display-name: "<red>Зачистка периметра</red>"
+    repeatable: true
+    cooldown-minutes: 120
+    initial-dialogue: "start"
+
+    dialogues:
+      start:
+        text:
+          - "<yellow>Капитан Стражи:</yellow> Эй, боец! Вокруг спавна развелось много монстров."
+          - "<yellow>Капитан Стражи:</yellow> Помоги очистить территорию!"
+        options:
+          - text: "<green>Я готов к бою!</green>"
+            action: "ACCEPT_QUEST"
+          - text: "<gray>Позже.</gray>"
+            action: "CLOSE"
+
+    steps:
+      - step: 1
+        type: "KILL_ENTITY"
+        entity-type: "ZOMBIE"
+        count: 15
+        description: "Уничтожьте 15 зомби около спавна"
+      - step: 2
+        type: "KILL_ENTITY"
+        entity-type: "SKELETON"
+        count: 10
+        description: "Уничтожьте 10 скелетов"
+
+    rewards:
+      money: 2000
+      experience: 250

@@ -42,10 +42,26 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
     private final Map<UUID, Long> lastClick = new ConcurrentHashMap<>();
     private final Set<UUID> openInventories = ConcurrentHashMap.newKeySet();
 
+    private static final ItemStack GLASS_PANE;
+    private static final ItemStack CLOSE_BUTTON;
+
+    static {
+        GLASS_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta glassMeta = GLASS_PANE.getItemMeta();
+        glassMeta.displayName(Component.text(" "));
+        GLASS_PANE.setItemMeta(glassMeta);
+
+        CLOSE_BUTTON = new ItemStack(Material.BARRIER);
+        ItemMeta closeMeta = CLOSE_BUTTON.getItemMeta();
+        closeMeta.displayName(MiniMessage.miniMessage().deserialize("<red>Закрыть</red>"));
+        closeMeta.lore(List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>")));
+        CLOSE_BUTTON.setItemMeta(closeMeta);
+    }
+
     private static final int[] CONTRACT_SLOTS = {
-            10, 11, 12, 13, 14, 15, 16,
             19, 20, 21, 22, 23, 24, 25,
-            28, 29, 30, 31, 32, 33, 34
+            28, 29, 30, 31, 32, 33, 34,
+            37, 38, 39, 40, 41, 42, 43
     };
     private static final int SLOT_CLOSE = 53;
 
@@ -64,13 +80,12 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
         Inventory inv = Bukkit.createInventory(this, 54,
                 mm.deserialize("<gradient:#55FF55:#55FFFF>Мои контракты</gradient>"));
 
-        ItemStack glass = pane();
-        for (int s = 0; s <= 8; s++) inv.setItem(s, glass);
-        for (int s = 45; s <= 53; s++) inv.setItem(s, glass);
-        for (int row = 1; row <= 4; row++) {
-            inv.setItem(row * 9, glass);
-            inv.setItem(row * 9 + 8, glass);
-        }
+        // Header (0-8)
+        inv.setItem(0, headItem(player));
+        for (int s = 1; s <= 8; s++) inv.setItem(s, GLASS_PANE);
+
+        // Row 1 (9-17) - Pure glass divider
+        for (int s = 9; s <= 17; s++) inv.setItem(s, GLASS_PANE);
 
         int idx = 0;
         for (PlayerContract c : contracts) {
@@ -78,7 +93,10 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
             inv.setItem(CONTRACT_SLOTS[idx++], contractItem(c, player));
         }
 
-        inv.setItem(SLOT_CLOSE, button(Material.BARRIER, "<red>Закрыть</red>"));
+        // Footer (45-53)
+        for (int s = 45; s <= 52; s++) inv.setItem(s, GLASS_PANE);
+        inv.setItem(SLOT_CLOSE, CLOSE_BUTTON);
+
         player.openInventory(inv);
         openInventories.add(player.getUniqueId());
     }
@@ -121,7 +139,9 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() instanceof PlayerContractMyGUI) {
-            openInventories.remove(event.getPlayer().getUniqueId());
+            UUID uuid = event.getPlayer().getUniqueId();
+            openInventories.remove(uuid);
+            lastClick.remove(uuid);
         }
     }
 
@@ -142,7 +162,7 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
 
         List<Component> lore = new ArrayList<>();
         lore.add(mm.deserialize("<gray>Роль:</gray> <white>" + (isCreator ? "Наниматель" : "Исполнитель") + "</white>"));
-        lore.add(mm.deserialize("<gray>Статус:</gray> <white>" + c.getStatus() + "</white>"));
+        lore.add(mm.deserialize("<gray>Статус:</gray> <white>" + statusLabel(c.getStatus()) + "</white>"));
         if (c.getObjectiveType() == PlayerContractObjectiveType.KILL_ENTITY) {
             lore.add(mm.deserialize("<gray>Прогресс:</gray> <white>" + c.getProgressString() + "</white>"));
         }
@@ -170,19 +190,25 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
         return item;
     }
 
-    private ItemStack pane() {
-        ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(" "));
-        item.setItemMeta(meta);
-        return item;
+    private String statusLabel(me.lovelace.lovecontracts.player.model.PlayerContractStatus status) {
+        return switch (status) {
+            case OPEN -> "<yellow>ОТКРЫТ</yellow>";
+            case IN_PROGRESS -> "<gold>В ВЫПОЛНЕНИИ</gold>";
+            case PENDING_REVIEW -> "<light_purple>НА ПРОВЕРКЕ</light_purple>";
+            case COMPLETED -> "<green>ВЫПОЛНЕН</green>";
+            case ABANDONED, CANCELLED -> "<red>ОТМЕНЕН</red>";
+            case EXPIRED -> "<gray>ИСТЕК</gray>";
+        };
     }
 
-    private ItemStack button(Material mat, String name) {
-        ItemStack item = new ItemStack(mat);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize(name));
-        item.setItemMeta(meta);
+    private ItemStack headItem(Player player) {
+        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
+        org.bukkit.inventory.meta.SkullMeta meta = (org.bukkit.inventory.meta.SkullMeta) item.getItemMeta();
+        meta.setOwningPlayer(player);
+        meta.displayName(mm.deserialize("<aqua>" + player.getName() + "</aqua>"));
+        List<Component> lore = new ArrayList<>();
+        lore.add(mm.deserialize("<gray>Мои контракты</gray>"));
+        meta.lore(lore);
         return item;
     }
 

@@ -1,15 +1,15 @@
 # ============================================
-# LoveContracts Configuration
+# LoveContracts Конфигурация
 # ============================================
 
 plugin:
   enabled: true
   debug: false
 
-# Daily rotation
+# Ежедневная ротация
 rotation:
   enabled: true
-  time: "00:00"          # HH:mm server time
+  time: "00:00"          # HH:mm по времени сервера
   timezone: "UTC"
   daily-count: 20
 
@@ -19,17 +19,14 @@ rotation:
     hard: 10
 
   notify-rotation: true
-  rotation-announcement: "<green>✓ New contracts are available! Use /contracts</green>"
+  rotation-announcement: "<green>✓ Появились новые контракты! Используйте /contracts</green>"
 
   warning-before-expiration-minutes: 5
-  expiration-warning: "<yellow>⚠ Your contracts expire in {TIME} minutes!</yellow>"
+  expiration-warning: "<yellow>⚠ Срок действия контрактов истекает через {TIME} мин.!</yellow>"
 
-# Rewards defaults
+# Настройки наград
 rewards:
   enabled: true
-  # Money rewards pay out through LoveCore.LoveEconomy — physical coins in the player's
-  # inventory, same unified currency as the rest of the ecosystem. Silently skipped if
-  # LoveCore isn't installed (items/XP/reputation rewards still work).
   money:
     enabled: true
   items:
@@ -38,11 +35,9 @@ rewards:
     enabled: false
     integration: "lovebehavior"
 
-# Penalties
+# Штрафы
 penalties:
   enabled: true
-  # Money penalties charge through LoveCore.LoveEconomy, capped at the player's current
-  # balance — physical currency has no debt.
   money:
     enabled: true
   reputation:
@@ -52,9 +47,10 @@ penalties:
 # GUI
 gui:
   enabled: true
-  title: "<gradient:#55FF55:#55FFFF>Contract Board</gradient>"
+  title: "<gradient:#55FF55:#55FFFF>Доска контрактов</gradient>"
   auto-update: true
   update-interval-ms: 500
+  locked-head-texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzkxMzZlZTFjYzk5NDU3YTNjZjhhMmIzZWVjOWFiMzAyODlmNzg2ZWNpeDNhNWVjMjAyYWViNjZlYjEzNmFiIn19fQ=="
 
   difficulty-colors:
     easy: "green"
@@ -72,11 +68,9 @@ gui:
 npc:
   enabled: true
   info-update-interval: 10
-  # Bound via /lovecontracts npc (look at the NPC first). -1 = no NPC bound, board is
-  # still reachable via /contracts and signs.
   id: -1
 
-# Signs
+# Таблички
 signs:
   enabled: true
 
@@ -85,51 +79,41 @@ placeholders:
   enabled: true
   prefix: "lovecontracts"
 
-# Database
+# База данных
 database:
-  # SQLite only for now
   file: "contracts.db"
   pool-size: 10
   connection-timeout: 30000
   leak-detection-threshold: 15000
 
-# Player-to-player contracts (/pcontract) — separate from the daily NPC contract board above.
-# Players hire each other: gold + items are escrowed via LoveCore's LoveEconomy on creation
-# and paid out to the executor on completion (or refunded to the creator on cancel/expire).
+# Заказы между игроками (/pcontract)
 player-contracts:
   enabled: true
 
-  # Reputation gates (requires LoveCore + LoveBehavior; ignored if unavailable)
   min-reputation-to-create: 0
   min-reputation-to-accept: 0
 
-  # Anti-spam limits
   max-open-per-creator: 3
   max-accepted-per-executor: 3
   allow-self-accept: false
 
-  # Escrow bounds
   min-gold-reward: 10
   max-gold-reward: 100000
-  # % of the gold reward burned as a gold sink on creation, on top of the escrowed reward
   creation-tax-percent: 5
 
-  # Deadlines
   min-deadline-hours: 1
   max-deadline-hours: 168
   default-deadline-hours: 24
 
-  # Refund the creator's escrow when a contract is cancelled / expires unclaimed
   refund-on-abandon: true
   refund-on-expire: true
 
-  # How often (in minutes) to sweep for overdue contracts
   expiration-check-interval-minutes: 5
 
   board:
-    title: "<gradient:#55FF55:#55FFFF>Player Contracts</gradient>"
+    title: "<gradient:#55FF55:#55FFFF>Заказы игроков</gradient>"
 
-# Logging
+# Логирование
 logging:
   enabled: true
   log-acceptances: true

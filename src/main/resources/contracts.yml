@@ -1,19 +1,20 @@
 # ============================================
-# Contract Pool
+# Пул контрактов
 # ============================================
 
 contracts:
 
   kill_zombies_easy:
-    display-name: "<green>Kill 50 Zombies</green>"
-    description: "Slay 50 zombies anywhere on the server"
+    display-name: "<green>Убить 50 зомби</green>"
+    description: "Убейте 50 зомби в любом месте на сервере"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
+    starter: true
     weight: 10
     daily-spawns: 1
     max-acceptances: -1
-    expiration-hours: 24
+    expiration-minutes: 1440
     condition:
       type: "KillEntity"
       entity-type: "ZOMBIE"
@@ -27,15 +28,16 @@ contracts:
       none: true
 
   kill_skeletons_easy:
-    display-name: "<green>Hunt Skeletons</green>"
-    description: "Eliminate 40 skeletons"
+    display-name: "<green>Охота на скелетов</green>"
+    description: "Уничтожьте 40 скелетов"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
+    starter: true
     weight: 10
     daily-spawns: 1
     max-acceptances: -1
-    expiration-hours: 24
+    expiration-minutes: 120
     condition:
       type: "KillEntity"
       entity-type: "SKELETON"
@@ -45,37 +47,17 @@ contracts:
     penalties:
       none: true
 
-  kill_creepers_medium:
-    display-name: "<yellow>Creeper Cleanup</yellow>"
-    description: "Kill 30 creepers"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-hours: 24
-    condition:
-      type: "KillEntity"
-      entity-type: "CREEPER"
-      count: 30
-    rewards:
-      money: 900
-      items:
-        - "GUNPOWDER 32"
-    penalties:
-      money: -100
-
   mine_iron_easy:
-    display-name: "<green>Iron Miner</green>"
-    description: "Mine 64 iron ore"
+    display-name: "<green>Добытчик железа</green>"
+    description: "Добудьте 64 железной руды"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
+    starter: true
     weight: 10
     daily-spawns: 1
     max-acceptances: -1
-    expiration-hours: 24
+    expiration-minutes: 720
     condition:
       type: "MineMaterial"
       material: "IRON_ORE"
@@ -85,102 +67,85 @@ contracts:
     penalties:
       none: true
 
+  kill_creepers_medium:
+    display-name: "<yellow>Зачистка криперов</yellow>"
+    description: "Убейте 30 криперов"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 5
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "KillEntity"
+      entity-type: "CREEPER"
+      count: 30
+    rewards:
+      money: 900
+      items:
+        - "GUNPOWDER 32"
+    penalties:
+      money: 100
+
   mine_diamonds_hard:
-    display-name: "<red>Diamond Rush</red>"
-    description: "Mine 32 diamond ore blocks"
+    display-name: "<red>Алмазная лихорадка</red>"
+    description: "Добудьте 32 алмазной руды"
     difficulty: "HARD"
     type: "ONE_TIME"
     enabled: true
+    starter: false
     weight: 1
     daily-spawns: 1
     max-acceptances: 1
-    expiration-hours: 24
+    expiration-minutes: 30
     condition:
       type: "MineMaterial"
       material: "DIAMOND_ORE"
       count: 32
     rewards:
-      money: 2500
+      money: 5000
       items:
-        - "DIAMOND 8"
+        - "DIAMOND_BLOCK 2"
     penalties:
-      money: -300
+      money: 500
 
-  kill_endermen_medium:
-    display-name: "<yellow>Enderman Hunter</yellow>"
-    description: "Defeat 25 endermen"
+  catch_salmon_medium:
+    display-name: "<yellow>Ловец лосося</yellow>"
+    description: "Поймайте 20 лососей удочкой"
     difficulty: "MEDIUM"
     type: "REPEATING"
     enabled: true
+    starter: false
     weight: 5
     daily-spawns: 1
     max-acceptances: -1
-    expiration-hours: 24
-    condition:
-      type: "KillEntity"
-      entity-type: "ENDERMAN"
-      count: 25
-    rewards:
-      money: 1200
-      items:
-        - "ENDER_PEARL 8"
-    penalties:
-      money: -150
-
-  kill_blaze_hard:
-    display-name: "<red>Blaze Slayer</red>"
-    description: "Kill 40 blazes in the Nether"
-    difficulty: "HARD"
-    type: "ONE_TIME"
-    enabled: true
-    weight: 1
-    daily-spawns: 1
-    max-acceptances: 1
-    expiration-hours: 24
-    condition:
-      type: "KillEntity"
-      entity-type: "BLAZE"
-      count: 40
-    rewards:
-      money: 3000
-      items:
-        - "BLAZE_ROD 16"
-    penalties:
-      money: -400
-
-  catch_fish_easy:
-    display-name: "<green>Fisherman</green>"
-    description: "Catch 20 fish of any kind"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    weight: 8
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-hours: 24
+    expiration-minutes: 45
     condition:
       type: "CatchFish"
       count: 20
     rewards:
-      money: 350
+      money: 600
     penalties:
-      none: true
+      money: 50
 
-  craft_tools_medium:
-    display-name: "<yellow>Toolsmith</yellow>"
-    description: "Craft 5 iron pickaxes"
-    difficulty: "MEDIUM"
+  craft_bread_easy:
+    display-name: "<green>Пекарь</green>"
+    description: "Скрафтите 64 хлеба"
+    difficulty: "EASY"
     type: "REPEATING"
     enabled: true
-    weight: 5
+    starter: false
+    weight: 8
     daily-spawns: 1
     max-acceptances: -1
-    expiration-hours: 24
+    expiration-minutes: 15
     condition:
       type: "CraftItem"
-      material: "IRON_PICKAXE"
-      count: 5
+      material: "BREAD"
+      count: 64
     rewards:
-      money: 800
+      money: 300
     penalties:
-      none: true
+      money: 20

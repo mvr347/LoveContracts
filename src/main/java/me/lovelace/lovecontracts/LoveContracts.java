@@ -2,6 +2,7 @@ package me.lovelace.lovecontracts;
 
 import me.lovelace.lovecontracts.command.ContractCommand;
 import me.lovelace.lovecontracts.command.LoveContractsAdminCommand;
+import me.lovelace.lovecontracts.gui.ContractConfirmGUI;
 import me.lovelace.lovecontracts.gui.ContractGUI;
 import me.lovelace.lovecontracts.gui.ContractStatsGUI;
 import me.lovelace.lovecontracts.integration.CitizensIntegration;
@@ -41,6 +42,7 @@ public final class LoveContracts extends JavaPlugin {
     private RewardProcessor rewardProcessor;
     private SyncManager syncManager;
     private ContractGUI contractGUI;
+    private ContractConfirmGUI confirmGUI;
     private ContractStatsGUI statsGUI;
     private ContractRotationTask rotationTask;
     private ContractExpirationTask expirationTask;
@@ -52,6 +54,10 @@ public final class LoveContracts extends JavaPlugin {
     private PlayerContractMyGUI playerContractMyGUI;
     private PlayerContractExpirationTask playerContractExpirationTask;
 
+    private me.lovelace.lovecontracts.npc.storage.NpcQuestDatabase npcQuestDatabase;
+    private me.lovelace.lovecontracts.npc.manager.NpcQuestManager npcQuestManager;
+    private me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI npcDialogueGUI;
+
     @Override
     public void onEnable() {
         instance = this;
@@ -59,6 +65,7 @@ public final class LoveContracts extends JavaPlugin {
         saveDefaultConfig();
         saveResource("contracts.yml", false);
         saveResource("messages.yml", false);
+        saveResource("npc_quests.yml", false);
 
         try {
             database = new ContractDatabase(this);
@@ -81,6 +88,12 @@ public final class LoveContracts extends JavaPlugin {
         playerContractBoardGUI = new PlayerContractBoardGUI(this, playerContractManager);
         playerContractMyGUI = new PlayerContractMyGUI(this, playerContractManager);
 
+        npcQuestDatabase = new me.lovelace.lovecontracts.npc.storage.NpcQuestDatabase(this);
+        npcQuestDatabase.initialize();
+        npcQuestManager = new me.lovelace.lovecontracts.npc.manager.NpcQuestManager(this, npcQuestDatabase);
+        npcQuestManager.loadFromConfig();
+        npcDialogueGUI = new me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI(this);
+
         registry = new ContractRegistry(this);
         registry.loadFromConfig();
 
@@ -93,6 +106,7 @@ public final class LoveContracts extends JavaPlugin {
         syncManager = new SyncManager(this);
         contractManager = new ContractManager(this);
         contractGUI = new ContractGUI(this);
+        confirmGUI = new ContractConfirmGUI(this);
         statsGUI = new ContractStatsGUI(this);
 
         PluginCommand contractsCmd = getCommand("contracts");
@@ -120,9 +134,12 @@ public final class LoveContracts extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new ContractSignListener(this), this);
         Bukkit.getPluginManager().registerEvents(new ContractNpcListener(this, new CitizensIntegration()), this);
         Bukkit.getPluginManager().registerEvents(contractGUI, this);
+        Bukkit.getPluginManager().registerEvents(confirmGUI, this);
         Bukkit.getPluginManager().registerEvents(statsGUI, this);
         Bukkit.getPluginManager().registerEvents(playerContractBoardGUI, this);
         Bukkit.getPluginManager().registerEvents(playerContractMyGUI, this);
+        Bukkit.getPluginManager().registerEvents(npcDialogueGUI, this);
+        Bukkit.getPluginManager().registerEvents(npcQuestManager, this);
         Bukkit.getPluginManager().registerEvents(new PlayerContractListener(playerContractManager), this);
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
@@ -189,10 +206,13 @@ public final class LoveContracts extends JavaPlugin {
     public RewardProcessor getRewardProcessor() { return rewardProcessor; }
     public SyncManager getSyncManager() { return syncManager; }
     public ContractGUI getContractGUI() { return contractGUI; }
+    public ContractConfirmGUI getConfirmGUI() { return confirmGUI; }
     public ContractStatsGUI getStatsGUI() { return statsGUI; }
     public PlayerContractDatabase getPlayerContractDatabase() { return playerContractDatabase; }
     public PlayerContractManager getPlayerContractManager() { return playerContractManager; }
     public PlayerContractBoardGUI getPlayerContractBoardGUI() { return playerContractBoardGUI; }
     public PlayerContractMyGUI getPlayerContractMyGUI() { return playerContractMyGUI; }
+    public me.lovelace.lovecontracts.npc.manager.NpcQuestManager getNpcQuestManager() { return npcQuestManager; }
+    public me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI getNpcDialogueGUI() { return npcDialogueGUI; }
     public Optional<StatBus> getStatBus() { return statBus; }
 }

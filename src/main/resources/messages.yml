@@ -1,64 +1,61 @@
 # ============================================
-# LoveContracts Messages (MiniMessage)
+# Сообщения LoveContracts (MiniMessage)
 # ============================================
 
 prefix: "<gradient:#55FF55:#55FFFF>[LoveContracts]</gradient> "
 
 contract:
   accepted:
-    self: "<green>You accepted:</green> <gold>{CONTRACT}</gold>"
-    broadcast: "<yellow>{PLAYER}</yellow> accepted <gold>{CONTRACT}</gold>"
-    actionbar: "<gold>Contract accepted: {CONTRACT}</gold>"
+    self: "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>"
+    broadcast: "<yellow>{PLAYER}</yellow> принял контракт <gold>{CONTRACT}</gold>"
+    actionbar: "<gold>Контракт принят: {CONTRACT}</gold>"
   completed:
-    self: "<green>Completed:</green> <gold>{CONTRACT}</gold> <gray>→</gray> <green>{REWARDS}</green>"
-    broadcast: "<yellow>{PLAYER}</yellow> completed <gold>{CONTRACT}</gold>"
-    actionbar: "<green>✓ Complete! +{REWARDS}</green>"
+    self: "<green>Выполнено:</green> <gold>{CONTRACT}</gold> <gray>→</gray> <green>{REWARDS}</green>"
+    broadcast: "<yellow>{PLAYER}</yellow> выполнил контракт <gold>{CONTRACT}</gold>"
+    actionbar: "<green>✓ Выполнено! +{REWARDS}</green>"
   failed:
-    self: "<red>Failed:</red> <gold>{CONTRACT}</gold> {PENALTIES}"
-    broadcast: "<yellow>{PLAYER}</yellow> failed <gold>{CONTRACT}</gold>"
-    actionbar: "<red>✗ Failed</red>"
-  already-taken: "<red>You already accepted this contract today.</red>"
-  not-available: "<red>This contract is no longer available.</red>"
-  race-condition: "<red>Someone took this contract just before you!</red>"
-  abandoned: "<yellow>You abandoned:</yellow> <gold>{CONTRACT}</gold>"
-  not-accepted: "<red>You don't have this contract active.</red>"
+    self: "<red>Провалено:</red> <gold>{CONTRACT}</gold> {PENALTIES}"
+    broadcast: "<yellow>{PLAYER}</yellow> провалил контракт <gold>{CONTRACT}</gold>"
+    actionbar: "<red>✗ Провалено</red>"
+  already-taken: "<red>Вы уже приняли этот контракт сегодня.</red>"
+  not-available: "<red>Этот контракт больше недоступен.</red>"
+  race-condition: "<red>Кто-то уже взял этот контракт прямо перед вами!</red>"
+  abandoned: "<yellow>Вы отказались от контракта:</yellow> <gold>{CONTRACT}</gold>"
+  not-accepted: "<red>У вас нет этого активного контракта.</red>"
 
 rotation:
-  announcement: "<green>✓ New daily contracts are available! Use /contracts</green>"
-  warning: "<yellow>⚠ Contracts expire in {TIME} minutes!</yellow>"
+  announcement: "<green>✓ Появились новые ежедневные контракты! Используйте /contracts</green>"
+  warning: "<yellow>⚠ Срок действия контрактов истекает через {TIME} мин.!</yellow>"
 
 gui:
-  title: "<gradient:#55FF55:#55FFFF>Contract Board</gradient>"
-  too-many: "<yellow>Too many contracts to display ({COUNT} hidden)</yellow>"
-  refresh: "<green>Board refreshed</green>"
+  title: "<gradient:#55FF55:#55FFFF>Доска контрактов</gradient>"
+  too-many: "<yellow>Слишком много контрактов для отображения ({COUNT} скрыто)</yellow>"
+  refresh: "<green>Доска обновлена</green>"
 
 error:
-  database: "<red>Database error. Contact an admin.</red>"
-  invalid-contract: "<red>Invalid contract.</red>"
-  contract-not-found: "<red>Contract not found.</red>"
-  reward-failed: "<red>Failed to give rewards. Logged for admin.</red>"
-  no-permission: "<red>No permission.</red>"
-  player-only: "<red>Players only.</red>"
-  player-not-found: "<red>Player not found.</red>"
+  database: "<red>Ошибка базы данных. Обратитесь к администратору.</red>"
+  invalid-contract: "<red>Некорректный контракт.</red>"
+  contract-not-found: "<red>Контракт не найден.</red>"
+  reward-failed: "<red>Не удалось выдать награды. Ошибка записана в лог.</red>"
+  no-permission: "<red>Недостаточно прав.</red>"
+  player-only: "<red>Команда только для игроков.</red>"
+  player-not-found: "<red>Игрок не найден.</red>"
 
 player-contract:
-  # NOTE: /pcontract currently builds its MiniMessage strings inline in code (same as
-  # /contracts today) rather than reading this section — kept here for the eventual
-  # LangManager migration so translators have real keys to work from.
-  created: "<green>Contract posted:</green> <gold>{DESCRIPTION}</gold>"
-  accepted: "<green>Contract accepted:</green> <gold>{DESCRIPTION}</gold>"
-  completed: "<green>Contract completed!</green> Reward: {GOLD} {CURRENCY}."
-  cancelled: "<yellow>Contract cancelled.</yellow>"
-  abandoned: "<yellow>You abandoned the contract. It's back on the board.</yellow>"
-  expired: "<yellow>Your contract expired.</yellow>"
-  not-found: "<red>Contract not found.</red>"
-  not-yours: "<red>This isn't your contract.</red>"
-  race-condition: "<red>Someone accepted this contract just before you!</red>"
+  created: "<green>Заказ создан:</green> <gold>{DESCRIPTION}</gold>"
+  accepted: "<green>Заказ принят:</green> <gold>{DESCRIPTION}</gold>"
+  completed: "<green>Заказ выполнен!</green> Награда: {GOLD} {CURRENCY}."
+  cancelled: "<yellow>Заказ отменен.</yellow>"
+  abandoned: "<yellow>Вы отказались от заказа. Он снова вернулся на доску.</yellow>"
+  expired: "<yellow>Срок заказа истек.</yellow>"
+  not-found: "<red>Заказ не найден.</red>"
+  not-yours: "<red>Это не ваш заказ.</red>"
+  race-condition: "<red>Кто-то принял этот заказ прямо перед вами!</red>"
 
 admin:
-  reloaded: "<green>Configs reloaded.</green>"
-  rotated: "<green>Contracts rotated manually.</green>"
-  completed-for: "<green>Force-completed {CONTRACT} for {PLAYER}</green>"
-  failed-for: "<green>Force-failed {CONTRACT} for {PLAYER}</green>"
-  reset: "<green>Reset daily stats for {PLAYER}</green>"
-  diag-header: "<gold>=== LoveContracts Diagnostics ===</gold>"
+  reloaded: "<green>Конфигурация перезагружена.</green>"
+  rotated: "<green>Контракты обновлены вручную.</green>"
+  completed-for: "<green>Контракт {CONTRACT} принудительно выполнен для {PLAYER}</green>"
+  failed-for: "<green>Контракт {CONTRACT} принудительно провален для {PLAYER}</green>"
+  reset: "<green>Ежедневная статистика сброшена для {PLAYER}</green>"
+  diag-header: "<gold>=== Диагностика LoveContracts ===</gold>"

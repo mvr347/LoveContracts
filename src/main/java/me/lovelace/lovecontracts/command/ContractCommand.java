@@ -25,12 +25,12 @@ public class ContractCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                              @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Players only.");
+            sender.sendMessage("Команда только для игроков.");
             return true;
         }
 
         if (!player.hasPermission("lovecontracts.use")) {
-            player.sendMessage(mm.deserialize("<red>No permission.</red>"));
+            player.sendMessage(mm.deserialize("<red>Недостаточно прав.</red>"));
             return true;
         }
 
@@ -43,10 +43,10 @@ public class ContractCommand implements CommandExecutor, TabCompleter {
             case "stats" -> plugin.getStatsGUI().open(player);
             case "abandon" -> {
                 if (args.length < 2) {
-                    player.sendMessage(mm.deserialize("<red>Usage: /contracts abandon <id></red>"));
+                    player.sendMessage(mm.deserialize("<red>Использование: /contracts abandon <id></red>"));
                     return true;
                 }
-                player.sendMessage(mm.deserialize("<yellow>Abandon not fully implemented yet.</yellow>"));
+                player.sendMessage(mm.deserialize("<yellow>Отмена контракта пока не реализована.</yellow>"));
             }
             default -> plugin.getContractGUI().open(player);
         }
