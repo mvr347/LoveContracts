@@ -24,16 +24,10 @@ rotation:
   warning-before-expiration-minutes: 5
   expiration-warning: "<yellow>⚠ Срок действия контрактов истекает через {TIME} мин.!</yellow>"
 
-# Настройки наград
+# Настройки наград — все награды выдаются только физической валютой LoveCore
 rewards:
-  enabled: true
   money:
     enabled: true
-  items:
-    enabled: true
-  reputation:
-    enabled: false
-    integration: "lovebehavior"
 
 # Штрафы
 penalties:

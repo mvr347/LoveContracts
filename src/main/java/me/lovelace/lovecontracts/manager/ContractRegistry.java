@@ -16,7 +16,6 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
-import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -101,25 +100,18 @@ public class ContractRegistry {
         return new ContractRequirement(minLevel, perm, minCompleted);
     }
 
+    /**
+     * Contract rewards are physical LoveCore currency only — see {@link Reward}. Only
+     * {@code money} is read from the {@code rewards} section; any {@code items}/{@code
+     * experience}/{@code reputation} keys left over in an old {@code contracts.yml} are
+     * ignored rather than silently miscounted.
+     */
     private List<Reward> parseRewards(ConfigurationSection section) {
         List<Reward> rewards = new ArrayList<>();
         if (section == null) return rewards;
 
         if (section.contains("money")) {
             rewards.add(Reward.money(section.getDouble("money")));
-        }
-        if (section.contains("experience")) {
-            rewards.add(new Reward(Reward.Type.EXPERIENCE, section.getDouble("experience")));
-        }
-        ConfigurationSection rep = section.getConfigurationSection("reputation");
-        if (rep != null) {
-            for (String repType : rep.getKeys(false)) {
-                rewards.add(Reward.reputation(repType, rep.getDouble(repType)));
-            }
-        }
-        for (String itemLine : section.getStringList("items")) {
-            ItemStack stack = parseItemLine(itemLine);
-            if (stack != null) rewards.add(Reward.item(stack));
         }
         return rewards;
     }
@@ -139,19 +131,6 @@ public class ContractRegistry {
             }
         }
         return penalties;
-    }
-
-    private ItemStack parseItemLine(String line) {
-        if (line == null || line.isBlank()) return null;
-        String[] parts = line.trim().split("\\s+");
-        try {
-            Material material = Material.matchMaterial(parts[0]);
-            if (material == null) return null;
-            int amount = parts.length > 1 ? Integer.parseInt(parts[1]) : 1;
-            return new ItemStack(material, Math.max(1, amount));
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private ContractCondition parseCondition(Contract contract, ConfigurationSection section) {

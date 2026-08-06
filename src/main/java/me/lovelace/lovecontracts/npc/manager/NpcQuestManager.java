@@ -196,14 +196,12 @@ public class NpcQuestManager implements Listener {
         return new NpcQuestStep(number, type, mat, ent, targetNpcId, targetNpcName, count, desc, visitDialogue);
     }
 
+    /** NPC quest rewards are physical LoveCore currency only — see {@link me.lovelace.lovecontracts.model.Reward}. */
     private List<me.lovelace.lovecontracts.model.Reward> parseRewards(ConfigurationSection sec) {
         List<me.lovelace.lovecontracts.model.Reward> rewards = new ArrayList<>();
         if (sec == null) return rewards;
         if (sec.contains("money")) {
             rewards.add(me.lovelace.lovecontracts.model.Reward.money(sec.getDouble("money")));
-        }
-        if (sec.contains("experience")) {
-            rewards.add(new me.lovelace.lovecontracts.model.Reward(me.lovelace.lovecontracts.model.Reward.Type.EXPERIENCE, sec.getDouble("experience")));
         }
         return rewards;
     }

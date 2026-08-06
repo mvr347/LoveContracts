@@ -25,8 +25,6 @@ contracts:
       count: 150
     rewards:
       money: 300
-      items:
-        - "WHITE_WOOL 16"
     penalties:
       none: true
 
@@ -87,8 +85,6 @@ contracts:
       count: 120
     rewards:
       money: 350
-      items:
-        - "LEATHER 12"
     penalties:
       none: true
 
@@ -129,8 +125,6 @@ contracts:
       count: 160
     rewards:
       money: 300
-      items:
-        - "FEATHER 16"
     penalties:
       none: true
 
@@ -151,8 +145,6 @@ contracts:
       count: 120
     rewards:
       money: 450
-      items:
-        - "STRING 12"
     penalties:
       none: true
 
@@ -193,8 +185,6 @@ contracts:
       count: 120
     rewards:
       money: 500
-      items:
-        - "BONE 12"
     penalties:
       none: true
 
@@ -539,8 +529,6 @@ contracts:
       count: 400
     rewards:
       money: 1500
-      items:
-        - "ROTTEN_FLESH 32"
     penalties:
       money: 300
 
@@ -561,8 +549,6 @@ contracts:
       count: 300
     rewards:
       money: 1600
-      items:
-        - "ARROW 16"
     penalties:
       money: 300
 
@@ -583,8 +569,6 @@ contracts:
       count: 200
     rewards:
       money: 2500
-      items:
-        - "GUNPOWDER 16"
     penalties:
       money: 500
 
@@ -645,8 +629,6 @@ contracts:
       count: 300
     rewards:
       money: 2800
-      items:
-        - "GOLD_INGOT 8"
     penalties:
       money: 500
 
@@ -826,7 +808,5 @@ contracts:
       count: 250
     rewards:
       money: 3000
-      items:
-        - "GOLD_BLOCK 1"
     penalties:
       money: 600

@@ -7,15 +7,14 @@ import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.Penalty;
 import me.lovelace.lovecontracts.model.Reward;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
-import java.util.Map;
 import java.util.logging.Level;
 
 /**
- * Gives rewards and applies penalties. Money goes through LoveCore's LoveEconomy — the same
- * physical-coin wallet the rest of the ecosystem uses — and is silently skipped if LoveCore
- * isn't installed (contracts still work for items/XP/reputation).
+ * Gives rewards and applies penalties. Every contract reward is physical LoveCore currency —
+ * see {@link Reward} — granted through {@link LoveEconomy}, the same physical-coin wallet the
+ * rest of the ecosystem uses. Silently skipped (contract still completes/fails normally) if
+ * LoveCore isn't installed.
  */
 public class RewardProcessor {
 
@@ -29,46 +28,25 @@ public class RewardProcessor {
         if (player == null || !player.isOnline() || contract == null) return;
 
         boolean moneyEnabled = plugin.getConfig().getBoolean("rewards.money.enabled", true);
-        StringBuilder display = new StringBuilder();
+        if (!moneyEnabled) return;
 
+        long totalAmount = 0;
         for (Reward reward : contract.getRewards()) {
-            try {
-                switch (reward.getType()) {
-                    case MONEY -> {
-                        if (moneyEnabled && reward.getAmount() > 0) {
-                            LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
-                                economy.give(player, Math.round(reward.getAmount()));
-                                display.append(String.format("%.0f %s", reward.getAmount(), economy.currencyName())).append(" ");
-                            }, () -> plugin.getLogger().fine(
-                                    "Skipping MONEY reward — LoveCore not present: " + reward.getAmount()));
-                        }
-                    }
-                    case ITEMS -> {
-                        ItemStack item = reward.getItemStack();
-                        if (item != null && item.getAmount() > 0 && item.getType().isItem()) {
-                            Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
-                            leftover.values().forEach(drop ->
-                                    player.getWorld().dropItemNaturally(player.getLocation(), drop));
-                            display.append(reward.getDisplay()).append(" ");
-                        }
-                    }
-                    case EXPERIENCE -> {
-                        player.giveExp((int) reward.getAmount());
-                        display.append(reward.getDisplay()).append(" ");
-                    }
-                    case REPUTATION -> {
-                        // LoveBehavior / custom integration point
-                        display.append(reward.getDisplay()).append(" ");
-                    }
-                }
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to give reward " + reward.getType(), e);
+            if (reward.getAmount() > 0) {
+                totalAmount += Math.round(reward.getAmount());
             }
         }
+        if (totalAmount <= 0) return;
 
-        if (!display.isEmpty()) {
-            player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                    .deserialize("<green>Награды:</green> <gold>" + display.toString().trim() + "</gold>"));
+        long amount = totalAmount;
+        try {
+            LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
+                economy.give(player, amount);
+                player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                        .deserialize("<green>Награды:</green> <gold>" + amount + " " + economy.currencyName() + "</gold>"));
+            }, () -> plugin.getLogger().fine("Skipping MONEY reward — LoveCore not present: " + amount));
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to give reward", e);
         }
     }
 
@@ -86,11 +64,10 @@ public class RewardProcessor {
         }
 
         // Если у контракта не задан прямой штраф монетами — штрафуем на сумму денежной награды
+        // (все награды контракта — монеты, см. Reward).
         if (explicitMoneyPenalty <= 0.0 && contract.getRewards() != null) {
             for (Reward r : contract.getRewards()) {
-                if (r.getType() == Reward.Type.MONEY) {
-                    explicitMoneyPenalty += r.getAmount();
-                }
+                explicitMoneyPenalty += r.getAmount();
             }
         }
 

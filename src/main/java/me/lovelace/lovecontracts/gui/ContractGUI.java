@@ -266,15 +266,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
         if (c == null || c.getRewards() == null) return 0.0;
         double total = 0.0;
         for (me.lovelace.lovecontracts.model.Reward r : c.getRewards()) {
-            if (r.getType() == me.lovelace.lovecontracts.model.Reward.Type.MONEY) {
-                total += r.getAmount();
-            } else if (r.getType() == me.lovelace.lovecontracts.model.Reward.Type.ITEMS) {
-                total += r.getAmount() * 10.0;
-            } else if (r.getType() == me.lovelace.lovecontracts.model.Reward.Type.EXPERIENCE) {
-                total += r.getAmount();
-            } else if (r.getType() == me.lovelace.lovecontracts.model.Reward.Type.REPUTATION) {
-                total += r.getAmount() * 5.0;
-            }
+            total += r.getAmount();
         }
         return total;
     }
