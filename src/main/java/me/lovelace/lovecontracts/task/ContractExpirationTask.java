@@ -28,51 +28,43 @@ public class ContractExpirationTask implements Runnable {
         int warnMinutes = plugin.getConfig().getInt("rotation.warning-before-expiration-minutes", 5);
 
         try (Connection conn = plugin.getDatabase().getConnection()) {
-            String offset = "-" + (24 * 60 - warnMinutes) + " minutes";
-
-            List<String[]> toWarn = new ArrayList<>();
+            List<String[]> activeContracts = new ArrayList<>();
             try (PreparedStatement ps = conn.prepareStatement("""
-                SELECT player_uuid, contract_id FROM player_contracts
+                SELECT player_uuid, contract_id, accepted_at FROM player_contracts
                 WHERE completed_at IS NULL AND failed_at IS NULL
-                  AND accepted_at <= datetime('now', ?)
-                  AND accepted_at > datetime('now', '-24 hours')
-                """)) {
-                ps.setString(1, offset);
-                ResultSet rs = ps.executeQuery();
-                while (rs.next()) {
-                    toWarn.add(new String[]{rs.getString(1), rs.getString(2)});
-                }
-            }
-
-            for (String[] row : toWarn) {
-                Player p = Bukkit.getPlayer(UUID.fromString(row[0]));
-                if (p != null && p.isOnline()) {
-                    String msg = plugin.getConfig().getString("rotation.expiration-warning",
-                                    "<yellow>⚠ Your contracts expire in {TIME} minutes!</yellow>")
-                            .replace("{TIME}", String.valueOf(warnMinutes));
-                    p.sendMessage(mm.deserialize(msg));
-                }
-            }
-
-            List<String[]> toFail = new ArrayList<>();
-            try (PreparedStatement ps = conn.prepareStatement("""
-                SELECT player_uuid, contract_id FROM player_contracts
-                WHERE completed_at IS NULL AND failed_at IS NULL
-                  AND accepted_at < datetime('now', '-24 hours')
                 """);
                  ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    toFail.add(new String[]{rs.getString(1), rs.getString(2)});
+                    activeContracts.add(new String[]{rs.getString(1), rs.getString(2), rs.getString(3)});
                 }
             }
 
-            for (String[] row : toFail) {
+            for (String[] row : activeContracts) {
                 UUID uuid = UUID.fromString(row[0]);
                 Contract c = plugin.getRegistry().getContract(row[1]);
                 if (c == null) continue;
-                // UUID-based overload: the player may be offline, dropping the id via
-                // Bukkit.getPlayer() first would make an offline player's expiry unfixable.
-                plugin.getContractManager().failContract(uuid, c);
+
+                java.time.Instant acceptedAt;
+                try {
+                    acceptedAt = java.time.Instant.parse(row[2].replace(" ", "T") + "Z");
+                } catch (Exception e) {
+                    acceptedAt = java.time.Instant.now();
+                }
+
+                long elapsedMinutes = java.time.Duration.between(acceptedAt, java.time.Instant.now()).toMinutes();
+                long totalMinutes = c.getExpirationMinutes();
+
+                if (elapsedMinutes >= totalMinutes) {
+                    plugin.getContractManager().failContract(uuid, c);
+                } else if (totalMinutes - elapsedMinutes <= warnMinutes && totalMinutes - elapsedMinutes > 0) {
+                    Player p = Bukkit.getPlayer(uuid);
+                    if (p != null && p.isOnline()) {
+                        String msg = plugin.getConfig().getString("rotation.expiration-warning",
+                                        "<yellow>⚠ Срок действия вашего контракта истекает через {TIME} мин.!</yellow>")
+                                .replace("{TIME}", String.valueOf(totalMinutes - elapsedMinutes));
+                        p.sendMessage(mm.deserialize(msg));
+                    }
+                }
             }
 
         } catch (Exception e) {

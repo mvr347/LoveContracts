@@ -56,12 +56,14 @@ public class MineMaterialCondition extends ContractCondition {
     private boolean isDeepslateVariant(Material broken) {
         if (material == Material.DIAMOND_ORE && broken == Material.DEEPSLATE_DIAMOND_ORE) return true;
         if (material == Material.IRON_ORE && broken == Material.DEEPSLATE_IRON_ORE) return true;
-        if (material == Material.GOLD_ORE && broken == Material.DEEPSLATE_GOLD_ORE) return true;
+        if (material == Material.GOLD_ORE && (broken == Material.DEEPSLATE_GOLD_ORE || broken == Material.NETHER_GOLD_ORE)) return true;
         if (material == Material.COAL_ORE && broken == Material.DEEPSLATE_COAL_ORE) return true;
         if (material == Material.LAPIS_ORE && broken == Material.DEEPSLATE_LAPIS_ORE) return true;
         if (material == Material.REDSTONE_ORE && broken == Material.DEEPSLATE_REDSTONE_ORE) return true;
         if (material == Material.COPPER_ORE && broken == Material.DEEPSLATE_COPPER_ORE) return true;
         if (material == Material.EMERALD_ORE && broken == Material.DEEPSLATE_EMERALD_ORE) return true;
+        if (material == Material.QUARTZ && broken == Material.NETHER_QUARTZ_ORE) return true;
+        if (material == Material.NETHERITE_SCRAP && broken == Material.ANCIENT_DEBRIS) return true;
         return false;
     }
 }

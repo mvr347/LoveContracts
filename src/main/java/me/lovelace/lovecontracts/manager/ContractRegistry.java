@@ -183,6 +183,12 @@ public class ContractRegistry {
         return contracts.get(id);
     }
 
+    public void registerContract(Contract contract) {
+        if (contract != null) {
+            contracts.put(contract.getId(), contract);
+        }
+    }
+
     public List<Contract> getEnabled() {
         return contracts.values().stream().filter(Contract::isEnabled).toList();
     }

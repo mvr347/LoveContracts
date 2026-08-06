@@ -16,6 +16,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.CraftItemEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.io.File;
 import java.sql.Connection;
@@ -23,17 +25,40 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class NpcQuestManager implements Listener {
+
+    public static class ActiveQuestProgress {
+        private int currentStep;
+        private int stepProgress;
+
+        public ActiveQuestProgress(int currentStep, int stepProgress) {
+            this.currentStep = currentStep;
+            this.stepProgress = stepProgress;
+        }
+
+        public int getCurrentStep() { return currentStep; }
+        public int getStepProgress() { return stepProgress; }
+        public void setCurrentStep(int currentStep) { this.currentStep = currentStep; }
+        public void setStepProgress(int stepProgress) { this.stepProgress = stepProgress; }
+    }
 
     private final LoveContracts plugin;
     private final MiniMessage mm = MiniMessage.miniMessage();
     private final Map<String, NpcQuest> questMap = new LinkedHashMap<>();
     private final Map<Integer, List<NpcQuest>> npcQuestMap = new HashMap<>();
+    private final Map<UUID, Map<String, ActiveQuestProgress>> activePlayerQuests = new ConcurrentHashMap<>();
 
     public NpcQuestManager(LoveContracts plugin, NpcQuestDatabase db) {
         this.plugin = plugin;
+    }
+
+    public void cleanupPlayer(UUID uuid) {
+        if (uuid != null) {
+            activePlayerQuests.remove(uuid);
+        }
     }
 
     public void loadFromConfig() {
@@ -124,11 +149,22 @@ public class NpcQuestManager implements Listener {
 
     private NpcQuestStep parseStep(int number, Map<?, ?> map) {
         String typeStr = getMapString(map, "type", "CRAFT_ITEM");
-        NpcQuestStep.Type type = NpcQuestStep.Type.valueOf(typeStr);
+        NpcQuestStep.Type type;
+        try {
+            type = NpcQuestStep.Type.valueOf(typeStr);
+        } catch (Exception e) {
+            type = NpcQuestStep.Type.CRAFT_ITEM;
+        }
         String matStr = getMapString(map, "material", null);
-        Material mat = matStr != null ? Material.valueOf(matStr) : null;
+        Material mat = null;
+        if (matStr != null) {
+            try { mat = Material.valueOf(matStr); } catch (Exception ignored) {}
+        }
         String entStr = getMapString(map, "entity-type", null);
-        EntityType ent = entStr != null ? EntityType.valueOf(entStr) : null;
+        EntityType ent = null;
+        if (entStr != null) {
+            try { ent = EntityType.valueOf(entStr); } catch (Exception ignored) {}
+        }
         int targetNpcId = Integer.parseInt(getMapString(map, "target-npc-id", "0"));
         String targetNpcName = getMapString(map, "target-npc-name", "");
         int count = Integer.parseInt(getMapString(map, "count", "1"));
@@ -148,7 +184,9 @@ public class NpcQuestManager implements Listener {
                     if (o instanceof Map<?, ?> om) {
                         String text = getMapString(om, "text", "");
                         String act = getMapString(om, "action", "COMPLETE_STEP");
-                        options.add(new NpcDialogueOption(text, NpcDialogueOption.Action.valueOf(act), null));
+                        NpcDialogueOption.Action action;
+                        try { action = NpcDialogueOption.Action.valueOf(act); } catch (Exception e) { action = NpcDialogueOption.Action.COMPLETE_STEP; }
+                        options.add(new NpcDialogueOption(text, action, null));
                     }
                 }
             }
@@ -174,9 +212,49 @@ public class NpcQuestManager implements Listener {
         return npcQuestMap.getOrDefault(npcId, List.of());
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoin(PlayerJoinEvent event) {
+        loadPlayerActiveQuestsFromDb(event.getPlayer().getUniqueId());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuit(PlayerQuitEvent event) {
+        cleanupPlayer(event.getPlayer().getUniqueId());
+    }
+
+    public void loadPlayerActiveQuestsFromDb(UUID uuid) {
+        if (uuid == null) return;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            Map<String, ActiveQuestProgress> map = new ConcurrentHashMap<>();
+            try (Connection conn = plugin.getDatabase().getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "SELECT quest_id, current_step, step_progress FROM player_npc_quests WHERE player_uuid = ? AND status = 'ACTIVE'")) {
+                ps.setString(1, uuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String questId = rs.getString(1);
+                        int currentStep = rs.getInt(2);
+                        int stepProgress = rs.getInt(3);
+                        map.put(questId, new ActiveQuestProgress(currentStep, stepProgress));
+                    }
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to load active NPC quests for " + uuid, e);
+            }
+            if (!map.isEmpty()) {
+                activePlayerQuests.put(uuid, map);
+            } else {
+                activePlayerQuests.remove(uuid);
+            }
+        });
+    }
+
     public void startQuest(Player player, NpcQuest quest) {
         if (player == null || quest == null) return;
         UUID uuid = player.getUniqueId();
+
+        activePlayerQuests.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>())
+                .put(quest.getId(), new ActiveQuestProgress(0, 0));
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try (Connection conn = plugin.getDatabase().getConnection();
@@ -207,27 +285,23 @@ public class NpcQuestManager implements Listener {
         if (player == null || quest == null) return;
         UUID uuid = player.getUniqueId();
 
+        Map<String, ActiveQuestProgress> userQuests = activePlayerQuests.get(uuid);
+        ActiveQuestProgress state = userQuests != null ? userQuests.get(quest.getId()) : null;
+        int currentStep = state != null ? state.getCurrentStep() : 0;
+
+        int nextStep = currentStep + 1;
+        if (nextStep >= quest.TotalSteps()) {
+            completeQuest(player, quest);
+            return;
+        }
+
+        if (state != null) {
+            state.setCurrentStep(nextStep);
+            state.setStepProgress(0);
+        }
+
+        int finalNextStep = nextStep;
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            int currentStep = 0;
-            try (Connection conn = plugin.getDatabase().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(
-                         "SELECT current_step FROM player_npc_quests WHERE player_uuid = ? AND quest_id = ? AND status = 'ACTIVE'")) {
-                ps.setString(1, uuid.toString());
-                ps.setString(2, quest.getId());
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) currentStep = rs.getInt(1);
-                }
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to fetch quest step", e);
-            }
-
-            int nextStep = currentStep + 1;
-            if (nextStep >= quest.TotalSteps()) {
-                completeQuest(player, quest);
-                return;
-            }
-
-            int finalNextStep = nextStep;
             try (Connection conn = plugin.getDatabase().getConnection();
                  PreparedStatement ps = conn.prepareStatement(
                          "UPDATE player_npc_quests SET current_step = ?, step_progress = 0 WHERE player_uuid = ? AND quest_id = ?")) {
@@ -250,24 +324,32 @@ public class NpcQuestManager implements Listener {
 
     private void completeQuest(Player player, NpcQuest quest) {
         UUID uuid = player.getUniqueId();
-        try (Connection conn = plugin.getDatabase().getConnection();
-             PreparedStatement ps = conn.prepareStatement("""
-                 UPDATE player_npc_quests SET status = 'COMPLETED', last_completed_at = CURRENT_TIMESTAMP
-                 WHERE player_uuid = ? AND quest_id = ?
-                 """)) {
-            ps.setString(1, uuid.toString());
-            ps.setString(2, quest.getId());
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to complete NPC quest", e);
+        Map<String, ActiveQuestProgress> userQuests = activePlayerQuests.get(uuid);
+        if (userQuests != null) {
+            userQuests.remove(quest.getId());
+            if (userQuests.isEmpty()) activePlayerQuests.remove(uuid);
         }
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            plugin.getRewardProcessor().giveRewards(player, new me.lovelace.lovecontracts.model.Contract(
-                    quest.getId(), quest.getDisplayName(), "", me.lovelace.lovecontracts.model.Difficulty.EASY,
-                    me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of()
-            ));
-            player.sendMessage(mm.deserialize("<green>Поздравляем! Контракт <gold>" + quest.getDisplayName() + "</gold> успешно выполнен!</green>"));
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try (Connection conn = plugin.getDatabase().getConnection();
+                 PreparedStatement ps = conn.prepareStatement("""
+                     UPDATE player_npc_quests SET status = 'COMPLETED', last_completed_at = CURRENT_TIMESTAMP
+                     WHERE player_uuid = ? AND quest_id = ?
+                     """)) {
+                ps.setString(1, uuid.toString());
+                ps.setString(2, quest.getId());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to complete NPC quest", e);
+            }
+
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                plugin.getRewardProcessor().giveRewards(player, new me.lovelace.lovecontracts.model.Contract(
+                        quest.getId(), quest.getDisplayName(), "", me.lovelace.lovecontracts.model.Difficulty.EASY,
+                        me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of()
+                ));
+                player.sendMessage(mm.deserialize("<green>Поздравляем! Контракт <gold>" + quest.getDisplayName() + "</gold> успешно выполнен!</green>"));
+            });
         });
     }
 
@@ -294,49 +376,44 @@ public class NpcQuestManager implements Listener {
 
     private void checkProgress(Player player, NpcQuestStep.Type stepType, Material mat, EntityType ent, int delta) {
         UUID uuid = player.getUniqueId();
-        for (NpcQuest quest : questMap.values()) {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                try (Connection conn = plugin.getDatabase().getConnection();
-                     PreparedStatement ps = conn.prepareStatement(
-                             "SELECT current_step, step_progress FROM player_npc_quests WHERE player_uuid = ? AND quest_id = ? AND status = 'ACTIVE'")) {
-                    ps.setString(1, uuid.toString());
-                    ps.setString(2, quest.getId());
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            int stepIdx = rs.getInt(1);
-                            int progress = rs.getInt(2);
-                            NpcQuestStep step = quest.getStep(stepIdx);
-                            if (step != null && step.getType() == stepType) {
-                                boolean matchMat = (mat == null || step.getMaterial() == mat);
-                                boolean matchEnt = (ent == null || step.getEntityType() == ent);
-                                if (matchMat && matchEnt) {
-                                    int newProg = progress + delta;
-                                    if (newProg >= step.getCount()) {
-                                        advanceStep(player, quest);
-                                    } else {
-                                        updateProgress(uuid, quest.getId(), newProg);
-                                    }
-                                }
-                            }
-                        }
+        Map<String, ActiveQuestProgress> userQuests = activePlayerQuests.get(uuid);
+        if (userQuests == null || userQuests.isEmpty()) return; // MHM! Fast zero-cost check!
+
+        for (Map.Entry<String, ActiveQuestProgress> entry : new HashMap<>(userQuests).entrySet()) {
+            String questId = entry.getKey();
+            ActiveQuestProgress progressState = entry.getValue();
+            NpcQuest quest = questMap.get(questId);
+            if (quest == null) continue;
+
+            NpcQuestStep step = quest.getStep(progressState.getCurrentStep());
+            if (step != null && step.getType() == stepType) {
+                boolean matchMat = (mat == null || step.getMaterial() == mat);
+                boolean matchEnt = (ent == null || step.getEntityType() == ent);
+                if (matchMat && matchEnt) {
+                    int newProg = progressState.getStepProgress() + delta;
+                    progressState.setStepProgress(newProg);
+                    if (newProg >= step.getCount()) {
+                        advanceStep(player, quest);
+                    } else {
+                        updateProgress(uuid, quest.getId(), newProg);
                     }
-                } catch (SQLException e) {
-                    plugin.getLogger().log(Level.WARNING, "checkProgress failed", e);
                 }
-            });
+            }
         }
     }
 
     private void updateProgress(UUID uuid, String questId, int progress) {
-        try (Connection conn = plugin.getDatabase().getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "UPDATE player_npc_quests SET step_progress = ? WHERE player_uuid = ? AND quest_id = ?")) {
-            ps.setInt(1, progress);
-            ps.setString(2, uuid.toString());
-            ps.setString(3, questId);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "updateProgress failed", e);
-        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try (Connection conn = plugin.getDatabase().getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "UPDATE player_npc_quests SET step_progress = ? WHERE player_uuid = ? AND quest_id = ?")) {
+                ps.setInt(1, progress);
+                ps.setString(2, uuid.toString());
+                ps.setString(3, questId);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "updateProgress failed", e);
+            }
+        });
     }
 }

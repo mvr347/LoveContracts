@@ -7,12 +7,17 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.logging.Level;
 
-public class NpcQuestDatabase {
+public class NpcQuestDatabase implements AutoCloseable {
 
     private final LoveContracts plugin;
 
     public NpcQuestDatabase(LoveContracts plugin) {
         this.plugin = plugin;
+    }
+
+    @Override
+    public void close() {
+        // Connection pool managed by ContractDatabase
     }
 
     public void initialize() {

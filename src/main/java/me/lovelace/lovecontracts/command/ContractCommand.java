@@ -40,7 +40,7 @@ public class ContractCommand implements CommandExecutor, TabCompleter {
         }
 
         switch (args[0].toLowerCase()) {
-            case "stats" -> plugin.getStatsGUI().open(player);
+            case "stats" -> plugin.getContractGUI().open(player);
             case "abandon" -> {
                 if (args.length < 2) {
                     player.sendMessage(mm.deserialize("<red>Использование: /contracts abandon <id></red>"));

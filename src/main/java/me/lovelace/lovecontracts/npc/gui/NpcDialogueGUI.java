@@ -39,6 +39,8 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
     private final Map<UUID, NpcQuest> activeQuests = new ConcurrentHashMap<>();
     private final Map<UUID, NpcDialogueNode> activeNodes = new ConcurrentHashMap<>();
 
+    private static final String CLOSE_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWZkMjQwMDAwMmFkOWZiYmJkMDA2Njk0MWViNWIxYTM4NGFiOWIwZTQ4YTE3OGVlOTZlNGQxMjlhNTIwODY1NCJ9fX0=";
+
     private static final ItemStack GLASS_PANE;
     private static final ItemStack CLOSE_BUTTON;
 
@@ -48,11 +50,11 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
 
-        CLOSE_BUTTON = new ItemStack(Material.BARRIER);
-        ItemMeta closeMeta = CLOSE_BUTTON.getItemMeta();
-        closeMeta.displayName(MiniMessage.miniMessage().deserialize("<red>Закрыть</red>"));
-        closeMeta.lore(List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть разговор</gray>")));
-        CLOSE_BUTTON.setItemMeta(closeMeta);
+        CLOSE_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
+                CLOSE_HEAD,
+                "<red>Закрыть</red>",
+                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть разговор</gray>"))
+        );
     }
 
     private static final int[] OPTION_SLOTS = { 29, 30, 31, 32, 33 };
@@ -71,8 +73,7 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         Inventory inv = Bukkit.createInventory(this, 54, mm.deserialize("<gold>" + quest.getDisplayName() + "</gold>"));
 
         // Header (0-8)
-        inv.setItem(0, npcHeadItem(quest));
-        for (int s = 1; s <= 8; s++) inv.setItem(s, GLASS_PANE);
+        for (int s = 0; s <= 8; s++) inv.setItem(s, GLASS_PANE);
 
         // Row 1 (9-17) - Pure glass divider
         for (int s = 9; s <= 17; s++) inv.setItem(s, GLASS_PANE);

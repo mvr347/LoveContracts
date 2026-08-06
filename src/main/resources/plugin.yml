@@ -8,28 +8,28 @@ website: https://github.com/mvr347/LoveContracts
 softdepend: [PlaceholderAPI, Citizens, LoveCore]
 
 commands:
-  contracts:
-    description: Open contract board / view stats
-    usage: /contracts [stats|abandon <id>]
-    aliases: [contract, lc]
-    permission: lovecontracts.use
   lovecontracts:
     description: Admin commands for LoveContracts
-    usage: /lovecontracts <reload|rotate|npc|sign|complete|fail|stats|reset|diag>
-    aliases: [lca, lcadmin]
+    usage: /lovecontracts <reload|rotate|npc|sign|complete|fail|stats|reset|diag|toggle>
+    aliases: [lc, lca, lcadmin]
+    permission: lovecontracts.admin
+  contracts:
+    description: Open contract board / view stats (Admin fallback)
+    usage: /contracts [stats|abandon <id>]
+    aliases: [contract]
     permission: lovecontracts.admin
   pcontract:
-    description: Player-to-player contracts — hire other players for gold and items
+    description: Player-to-player contracts
     usage: /pcontract <board|my|create|accept|turnin|submit|review|cancel|info|help>
     aliases: [pcontracts, playercontract]
-    permission: pcontracts.use
+    permission: lovecontracts.admin
 
 permissions:
-  lovecontracts.use:
-    description: Allows using /contracts
-    default: true
   lovecontracts.admin:
-    description: Admin access
+    description: Admin access to all LoveContracts commands
+    default: op
+  lovecontracts.use:
+    description: Allows using player /contracts command
     default: op
   lovecontracts.npc:
     description: Create/manage contract NPCs
@@ -39,4 +39,4 @@ permissions:
     default: op
   pcontracts.use:
     description: Allows using /pcontract
-    default: true
+    default: op

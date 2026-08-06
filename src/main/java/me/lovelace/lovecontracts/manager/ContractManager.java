@@ -33,11 +33,69 @@ public class ContractManager {
     private final MiniMessage mm = MiniMessage.miniMessage();
     private volatile List<String> activeIds = new ArrayList<>();
     private final Map<UUID, Set<String>> acceptedTodayCache = new ConcurrentHashMap<>();
+    private final Map<UUID, Set<String>> activeContractCache = new ConcurrentHashMap<>();
+    private final Map<UUID, Set<String>> completedTodayCache = new ConcurrentHashMap<>();
+    private final Map<UUID, Set<String>> failedCache = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> completedCountCache = new ConcurrentHashMap<>();
     private final Set<UUID> disabledPlayers = ConcurrentHashMap.newKeySet();
 
     public ContractManager(LoveContracts plugin) {
         this.plugin = plugin;
         loadActiveIdsFromDatabase();
+    }
+
+    public void cleanupPlayer(UUID uuid) {
+        if (uuid == null) return;
+        Contract activeContract = getActiveContract(uuid);
+        if (activeContract != null && activeContract.getCondition() != null) {
+            Player online = Bukkit.getPlayer(uuid);
+            if (online != null) {
+                activeContract.getCondition().unregister(online);
+            }
+        }
+        acceptedTodayCache.remove(uuid);
+        activeContractCache.remove(uuid);
+        completedTodayCache.remove(uuid);
+        failedCache.remove(uuid);
+        completedCountCache.remove(uuid);
+        disabledPlayers.remove(uuid);
+    }
+
+    public void loadActiveContractForPlayer(Player player) {
+        if (player == null) return;
+        UUID uuid = player.getUniqueId();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try (Connection conn = plugin.getDatabase().getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "SELECT contract_id, progress_data FROM player_contracts WHERE player_uuid = ? AND completed_at IS NULL AND failed_at IS NULL")) {
+                ps.setString(1, uuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String contractId = rs.getString(1);
+                        String progressData = rs.getString(2);
+                        int progress = 0;
+                        if (progressData != null && !progressData.isEmpty()) {
+                            try { progress = Integer.parseInt(progressData); } catch (NumberFormatException ignored) {}
+                        }
+                        Contract contract = plugin.getRegistry().getContract(contractId);
+                        if (contract != null) {
+                            activeContractCache.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).add(contractId);
+                            if (contract.getCondition() != null) {
+                                int finalProgress = progress;
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    if (player.isOnline()) {
+                                        contract.getCondition().loadProgress(uuid, finalProgress);
+                                        contract.getCondition().register(player);
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to load active contract on join for " + uuid, e);
+            }
+        });
     }
 
     private void loadActiveIdsFromDatabase() {
@@ -65,12 +123,44 @@ public class ContractManager {
 
     public void forceRotate() {
         acceptedTodayCache.clear();
+        activeContractCache.clear();
+        completedTodayCache.clear();
+        failedCache.clear();
+        completedCountCache.clear();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, new ContractRotationTask(plugin));
     }
 
     public void setCurrentActiveIds(List<String> ids) {
         this.activeIds = new ArrayList<>(ids);
         this.acceptedTodayCache.clear();
+        this.activeContractCache.clear();
+        this.completedTodayCache.clear();
+        this.failedCache.clear();
+        this.completedCountCache.clear();
+        if (plugin.getSignManager() != null) {
+            plugin.getSignManager().updateAllSigns();
+        }
+    }
+
+    public void addActiveContract(Contract contract) {
+        if (contract == null) return;
+        plugin.getRegistry().registerContract(contract);
+        if (!activeIds.contains(contract.getId())) {
+            activeIds.add(contract.getId());
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try (Connection conn = plugin.getDatabase().getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                         "INSERT OR REPLACE INTO active_contracts (contract_id, expires_at) VALUES (?, datetime('now', '+1 day'))")) {
+                ps.setString(1, contract.getId());
+                ps.executeUpdate();
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to persist new active contract", e);
+            }
+        });
+        if (plugin.getSignManager() != null) {
+            plugin.getSignManager().updateAllSigns();
+        }
     }
 
     public boolean isActive(String id) {
@@ -105,6 +195,10 @@ public class ContractManager {
 
     public int getCompletedContractsCount(UUID uuid) {
         if (uuid == null) return 0;
+        return completedCountCache.computeIfAbsent(uuid, this::fetchCompletedContractsCountFromDb);
+    }
+
+    private int fetchCompletedContractsCountFromDb(UUID uuid) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "SELECT COUNT(*) FROM player_contracts WHERE player_uuid = ? AND completed_at IS NOT NULL")) {
@@ -197,10 +291,11 @@ public class ContractManager {
                     contract.getCondition().reset(player);
                     contract.getCondition().register(player);
                 }
-                player.sendMessage(mm.deserialize("<green>Вы приняли контракт:</green> <gold>" +
-                        strip(contract.getDisplayName()) + "</gold>"));
+                plugin.getMessageManager().sendMessage(player, "messages.contract-accepted",
+                        "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>",
+                        java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
                 plugin.getSyncManager().broadcastAccept(player, contract);
-                plugin.getSyncManager().syncGUIForPlayer(player);
+                plugin.getContractGUI().open(player);
             });
         });
     }
@@ -255,6 +350,7 @@ public class ContractManager {
 
                 conn.commit();
                 acceptedTodayCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
+                activeContractCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
                 return true;
             } catch (SQLException e) {
                 conn.rollback();
@@ -272,33 +368,48 @@ public class ContractManager {
         }
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean success = false;
             try (Connection conn = plugin.getDatabase().getConnection()) {
                 conn.setAutoCommit(false);
+                int rows = 0;
                 try (PreparedStatement ps = conn.prepareStatement(
                         "UPDATE player_contracts SET completed_at = datetime('now') " +
                         "WHERE player_uuid = ? AND contract_id = ? AND completed_at IS NULL AND failed_at IS NULL")) {
                     ps.setString(1, player.getUniqueId().toString());
                     ps.setString(2, contract.getId());
-                    ps.executeUpdate();
+                    rows = ps.executeUpdate();
                 }
-                upsertStat(conn, player.getUniqueId(), "daily_completed", 1);
-                upsertStat(conn, player.getUniqueId(), "total_completed", 1);
-                bumpStreak(conn, player.getUniqueId(), true);
-                conn.commit();
+                if (rows > 0) {
+                    upsertStat(conn, player.getUniqueId(), "daily_completed", 1);
+                    upsertStat(conn, player.getUniqueId(), "total_completed", 1);
+                    bumpStreak(conn, player.getUniqueId(), true);
+                    conn.commit();
+                    success = true;
+
+                    Set<String> active = activeContractCache.get(player.getUniqueId());
+                    if (active != null) active.remove(contract.getId());
+                    completedTodayCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
+                    completedCountCache.compute(player.getUniqueId(), (k, v) -> v == null ? 1 : v + 1);
+                } else {
+                    conn.rollback();
+                }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Complete-contract update failed", e);
             }
 
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                plugin.getRewardProcessor().giveRewards(player, contract);
-                plugin.getStatBus().ifPresent(bus -> bus.record(player.getUniqueId(), Metrics.CONTRACTS_COMPLETED, 1.0));
-                if (player.isOnline()) {
-                    player.sendMessage(mm.deserialize("<green>Выполнено:</green> <gold>" +
-                            strip(contract.getDisplayName()) + "</gold>"));
-                }
-                plugin.getSyncManager().broadcastComplete(player, contract);
-                plugin.getSyncManager().syncGUIForPlayer(player);
-            });
+            if (success) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    plugin.getRewardProcessor().giveRewards(player, contract);
+                    plugin.getStatBus().ifPresent(bus -> bus.record(player.getUniqueId(), Metrics.CONTRACTS_COMPLETED, 1.0));
+                    if (player.isOnline()) {
+                        plugin.getMessageManager().sendMessage(player, "messages.contract-completed",
+                                "<green>Выполнено:</green> <gold>{CONTRACT}</gold>",
+                                java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
+                    }
+                    plugin.getSyncManager().broadcastComplete(player, contract);
+                    plugin.getSyncManager().syncGUIForPlayer(player);
+                });
+            }
         });
     }
 
@@ -335,6 +446,10 @@ public class ContractManager {
                 upsertStat(conn, uuid, "total_failed", 1);
                 bumpStreak(conn, uuid, false);
                 conn.commit();
+
+                Set<String> active = activeContractCache.get(uuid);
+                if (active != null) active.remove(contract.getId());
+                failedCache.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Fail-contract update failed", e);
             }
@@ -345,8 +460,9 @@ public class ContractManager {
                     if (!contract.isStarter()) {
                         plugin.getRewardProcessor().applyPenalties(player, contract);
                     }
-                    player.sendMessage(mm.deserialize("<red>Провал:</red> <gold>" +
-                            strip(contract.getDisplayName()) + "</gold>"));
+                    plugin.getMessageManager().sendMessage(player, "messages.contract-failed",
+                            "<red>Провал:</red> <gold>{CONTRACT}</gold>",
+                            java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
                     plugin.getSyncManager().syncGUIForPlayer(player);
                 }
                 plugin.getSyncManager().broadcastFail(player, contract);
@@ -354,22 +470,34 @@ public class ContractManager {
         });
     }
 
-    public boolean hasActiveContract(UUID uuid) {
-        try (Connection conn = plugin.getDatabase().getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "SELECT 1 FROM player_contracts WHERE player_uuid = ? AND completed_at IS NULL AND failed_at IS NULL LIMIT 1")) {
-            ps.setString(1, uuid.toString());
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "hasActiveContract query failed", e);
-            return false;
+    public Contract getActiveContract(UUID uuid) {
+        if (uuid == null) return null;
+        Set<String> activeIds = getActiveContractIds(uuid);
+        if (activeIds.isEmpty()) return null;
+        for (String id : activeIds) {
+            Contract c = plugin.getRegistry().getContract(id);
+            if (c != null) return c;
         }
+        return null;
+    }
+
+    public void cancelContract(Player player, Contract contract) {
+        if (player == null || contract == null) return;
+        failContract(player, contract);
+    }
+
+    public boolean hasActiveContract(UUID uuid) {
+        if (uuid == null) return false;
+        return !getActiveContractIds(uuid).isEmpty();
     }
 
     public Set<String> getCompletedTodayContractIds(UUID uuid) {
-        Set<String> set = new java.util.HashSet<>();
+        if (uuid == null) return java.util.Collections.emptySet();
+        return completedTodayCache.computeIfAbsent(uuid, this::loadCompletedTodayContractIdsFromDb);
+    }
+
+    private Set<String> loadCompletedTodayContractIdsFromDb(UUID uuid) {
+        Set<String> set = ConcurrentHashMap.newKeySet();
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "SELECT contract_id FROM player_contracts WHERE player_uuid = ? AND completed_at IS NOT NULL AND date(completed_at) = date('now')")) {
@@ -386,7 +514,12 @@ public class ContractManager {
     }
 
     public Set<String> getFailedContractIds(UUID uuid) {
-        Set<String> set = new java.util.HashSet<>();
+        if (uuid == null) return java.util.Collections.emptySet();
+        return failedCache.computeIfAbsent(uuid, this::loadFailedContractIdsFromDb);
+    }
+
+    private Set<String> loadFailedContractIdsFromDb(UUID uuid) {
+        Set<String> set = ConcurrentHashMap.newKeySet();
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "SELECT contract_id FROM player_contracts WHERE player_uuid = ? AND failed_at IS NOT NULL")) {
@@ -403,7 +536,12 @@ public class ContractManager {
     }
 
     public Set<String> getActiveContractIds(UUID uuid) {
-        Set<String> set = new java.util.HashSet<>();
+        if (uuid == null) return java.util.Collections.emptySet();
+        return activeContractCache.computeIfAbsent(uuid, this::loadActiveContractIdsFromDb);
+    }
+
+    private Set<String> loadActiveContractIdsFromDb(UUID uuid) {
+        Set<String> set = ConcurrentHashMap.newKeySet();
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "SELECT contract_id FROM player_contracts WHERE player_uuid = ? AND completed_at IS NULL AND failed_at IS NULL")) {

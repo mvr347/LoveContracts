@@ -1,61 +1,83 @@
 # ============================================
-# Сообщения LoveContracts (MiniMessage)
+# LoveContracts Локализация и Тексты
 # ============================================
-
-prefix: "<gradient:#55FF55:#55FFFF>[LoveContracts]</gradient> "
-
-contract:
-  accepted:
-    self: "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>"
-    broadcast: "<yellow>{PLAYER}</yellow> принял контракт <gold>{CONTRACT}</gold>"
-    actionbar: "<gold>Контракт принят: {CONTRACT}</gold>"
-  completed:
-    self: "<green>Выполнено:</green> <gold>{CONTRACT}</gold> <gray>→</gray> <green>{REWARDS}</green>"
-    broadcast: "<yellow>{PLAYER}</yellow> выполнил контракт <gold>{CONTRACT}</gold>"
-    actionbar: "<green>✓ Выполнено! +{REWARDS}</green>"
-  failed:
-    self: "<red>Провалено:</red> <gold>{CONTRACT}</gold> {PENALTIES}"
-    broadcast: "<yellow>{PLAYER}</yellow> провалил контракт <gold>{CONTRACT}</gold>"
-    actionbar: "<red>✗ Провалено</red>"
-  already-taken: "<red>Вы уже приняли этот контракт сегодня.</red>"
-  not-available: "<red>Этот контракт больше недоступен.</red>"
-  race-condition: "<red>Кто-то уже взял этот контракт прямо перед вами!</red>"
-  abandoned: "<yellow>Вы отказались от контракта:</yellow> <gold>{CONTRACT}</gold>"
-  not-accepted: "<red>У вас нет этого активного контракта.</red>"
-
-rotation:
-  announcement: "<green>✓ Появились новые ежедневные контракты! Используйте /contracts</green>"
-  warning: "<yellow>⚠ Срок действия контрактов истекает через {TIME} мин.!</yellow>"
 
 gui:
   title: "<gradient:#55FF55:#55FFFF>Доска контрактов</gradient>"
-  too-many: "<yellow>Слишком много контрактов для отображения ({COUNT} скрыто)</yellow>"
-  refresh: "<green>Доска обновлена</green>"
+  filter-button: "<gold>Фильтр:</gold> <yellow>{FILTER}</yellow>"
+  filter-current: "<gray>Текущий фильтр: <white>{FILTER}</white></gray>"
+  filter-click: "<gray>Нажмите для смены фильтра</gray>"
+  sort-button: "<gold>Сортировка:</gold> <yellow>{SORT}</yellow>"
+  sort-current: "<gray>Текущая сортировка: <white>{SORT}</white></gray>"
+  sort-click: "<gray>Нажмите для смены сортировки</gray>"
+  prev-page: "<yellow>← Предыдущая страница</yellow>"
+  next-page: "<yellow>Следующая страница →</yellow>"
+  page-info: "<gray>Страница {PAGE} из {MAX_PAGES}</gray>"
+  close-button: "<red>Закрыть</red>"
+  close-lore: "<gray>Закрыть меню</gray>"
 
-error:
-  database: "<red>Ошибка базы данных. Обратитесь к администратору.</red>"
-  invalid-contract: "<red>Некорректный контракт.</red>"
+  current-contract: "<gradient:#FFFF55:#FFAA00><b>Текущий контракт</b></gradient>"
+  inactive-create: "<gradient:#55FF55:#55FFFF><b>+ Создать контракт</b></gradient>"
+  inactive-create-disabled: "<red><b>Временно отключено</b></red>"
+  inactive-create-lore: "<gray>В ближайшее время</gray>"
+
+  contract-status-completed: "<green>✔ ВЫПОЛНЕН</green>"
+  contract-status-failed: "<red>✖ ПРОВАЛЕН</red>"
+  contract-status-active-done-lmb: "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"
+  contract-status-active-done-rmb: "<red><b>ПКМ: Отменить контракт (Провал и штраф)</b></red>"
+  contract-status-active-in-progress: "<yellow>✓ ВЗЯТЫЙ (В процессе)</yellow>"
+  contract-status-locked: "<red>🔒 КОНТРАКТ ЗАБЛОКИРОВАН</red>"
+  contract-status-locked-lore: "<red>У вас уже есть активный контракт!</red>"
+  contract-status-req-unmet: "<red>✗ ТРЕБОВАНИЯ НЕ ВЫПОЛНЕНЫ</red>"
+  contract-status-click-to-accept: "<yellow>Нажмите, чтобы принять</yellow>"
+
+  confirm-title: "<gradient:#55FF55:#55FFFF>Подтверждение контракта</gradient>"
+  confirm-yes: "<green>✓ Принять контракт</green>"
+  confirm-yes-lore: "<gray>Нажмите, чтобы подтвердить принятие</gray>"
+  confirm-no: "<red>✗ Отмена</red>"
+  confirm-no-lore: "<gray>Нажмите, чтобы вернуться на доску</gray>"
+
+  player-board-title: "<gradient:#55FF55:#55FFFF>Заказы игроков</gradient>"
+
+filters:
+  all: "Все"
+  easy: "Легкие"
+  medium: "Средние"
+  hard: "Сложные"
+  available: "Доступные"
+  accepted: "Взятые"
+  completed: "Выполненные"
+  failed: "Проваленные"
+
+sorts:
+  all: "Все"
+  reward-high: "От Б до М"
+  reward-low: "От М до Б"
+  difficulty: "Сложность"
+
+difficulties:
+  starter: "Новичок"
+  easy: "Легкий"
+  medium: "Средний"
+  hard: "Сложный"
+
+messages:
+  contract-accepted: "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>"
+  contract-completed: "<green>Выполнено:</green> <gold>{CONTRACT}</gold>"
+  contract-failed: "<red>Провал:</red> <gold>{CONTRACT}</gold>"
+  contract-already-taken: "<red>Вы уже приняли этот контракт сегодня или свободные слоты закончились.</red>"
+  contract-already-active: "<red>Вы уже выполняете контракт! Одновременно можно взять только один контракт.</red>"
+  contract-not-met: "<red>Вы не соответствуете требованиям этого контракта!</red>"
   contract-not-found: "<red>Контракт не найден.</red>"
-  reward-failed: "<red>Не удалось выдать награды. Ошибка записана в лог.</red>"
-  no-permission: "<red>Недостаточно прав.</red>"
-  player-only: "<red>Команда только для игроков.</red>"
-  player-not-found: "<red>Игрок не найден.</red>"
+  contract-disabled: "<red>Для вас доступ к контрактам отключен администратором.</red>"
+  contract-create-unavailable: "<red>Создание контрактов временно недоступно (\"В ближайшее время\").</red>"
+  contract-not-completed-yet: "<yellow>Контракт еще не выполнен. Прогресс: {PROGRESS}</yellow>"
 
-player-contract:
-  created: "<green>Заказ создан:</green> <gold>{DESCRIPTION}</gold>"
-  accepted: "<green>Заказ принят:</green> <gold>{DESCRIPTION}</gold>"
-  completed: "<green>Заказ выполнен!</green> Награда: {GOLD} {CURRENCY}."
-  cancelled: "<yellow>Заказ отменен.</yellow>"
-  abandoned: "<yellow>Вы отказались от заказа. Он снова вернулся на доску.</yellow>"
-  expired: "<yellow>Срок заказа истек.</yellow>"
-  not-found: "<red>Заказ не найден.</red>"
-  not-yours: "<red>Это не ваш заказ.</red>"
-  race-condition: "<red>Кто-то принял этот заказ прямо перед вами!</red>"
+  fine-deducted: "<red>Списан штраф за провал контракта:</red> <gold>{AMOUNT} монет</gold>"
+  fine-partial: "<yellow>Списано {PAID} монет. Остаток долга: {REMAINING} монет.</yellow>"
+  fine-collected: "<green>Списано {AMOUNT} монет в счет погашения долга по штрафу.</green>"
+  fine-cleared: "<green>Поздравляем! Ваш долг по штрафам полностью погашен!</green>"
 
-admin:
-  reloaded: "<green>Конфигурация перезагружена.</green>"
-  rotated: "<green>Контракты обновлены вручную.</green>"
-  completed-for: "<green>Контракт {CONTRACT} принудительно выполнен для {PLAYER}</green>"
-  failed-for: "<green>Контракт {CONTRACT} принудительно провален для {PLAYER}</green>"
-  reset: "<green>Ежедневная статистика сброшена для {PLAYER}</green>"
-  diag-header: "<gold>=== Диагностика LoveContracts ===</gold>"
+  broadcast-accept: "<yellow>{PLAYER}</yellow> принял(а) контракт <gold>{CONTRACT}</gold>"
+  broadcast-complete: "<yellow>{PLAYER}</yellow> выполнил(а) контракт <gold>{CONTRACT}</gold>"
+  broadcast-fail: "<yellow>{PLAYER}</yellow> провалил(а) контракт <gold>{CONTRACT}</gold>"

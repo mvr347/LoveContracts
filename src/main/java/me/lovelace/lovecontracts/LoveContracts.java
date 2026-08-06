@@ -4,12 +4,12 @@ import me.lovelace.lovecontracts.command.ContractCommand;
 import me.lovelace.lovecontracts.command.LoveContractsAdminCommand;
 import me.lovelace.lovecontracts.gui.ContractConfirmGUI;
 import me.lovelace.lovecontracts.gui.ContractGUI;
-import me.lovelace.lovecontracts.gui.ContractStatsGUI;
 import me.lovelace.lovecontracts.integration.CitizensIntegration;
 import me.lovelace.lovecontracts.listener.ContractNpcListener;
 import me.lovelace.lovecontracts.listener.ContractSignListener;
 import me.lovelace.lovecontracts.manager.ContractManager;
 import me.lovelace.lovecontracts.manager.ContractRegistry;
+import me.lovelace.lovecontracts.manager.MessageManager;
 import me.lovelace.lovecontracts.manager.RewardProcessor;
 import me.lovelace.lovecontracts.manager.SyncManager;
 import me.lovelace.lovecontracts.player.PlayerContractCommand;
@@ -39,13 +39,16 @@ public final class LoveContracts extends JavaPlugin {
     private ContractDatabase database;
     private ContractRegistry registry;
     private ContractManager contractManager;
+    private me.lovelace.lovecontracts.manager.ContractSignManager signManager;
     private RewardProcessor rewardProcessor;
     private SyncManager syncManager;
     private ContractGUI contractGUI;
     private ContractConfirmGUI confirmGUI;
-    private ContractStatsGUI statsGUI;
+    private me.lovelace.lovecontracts.gui.ContractCreateGUI contractCreateGUI;
     private ContractRotationTask rotationTask;
     private ContractExpirationTask expirationTask;
+    private me.lovelace.lovecontracts.manager.FineManager fineManager;
+    private MessageManager messageManager;
     private Optional<StatBus> statBus = Optional.empty();
 
     private PlayerContractDatabase playerContractDatabase;
@@ -66,6 +69,8 @@ public final class LoveContracts extends JavaPlugin {
         saveResource("contracts.yml", false);
         saveResource("messages.yml", false);
         saveResource("npc_quests.yml", false);
+        saveResource("heads.yml", false);
+        loadHeadsConfig();
 
         try {
             database = new ContractDatabase(this);
@@ -94,6 +99,7 @@ public final class LoveContracts extends JavaPlugin {
         npcQuestManager.loadFromConfig();
         npcDialogueGUI = new me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI(this);
 
+        messageManager = new MessageManager(this);
         registry = new ContractRegistry(this);
         registry.loadFromConfig();
 
@@ -102,12 +108,14 @@ public final class LoveContracts extends JavaPlugin {
             getLogger().info("LoveCore StatBus hooked for metric reporting");
         }
 
+        fineManager = new me.lovelace.lovecontracts.manager.FineManager(this);
         rewardProcessor = new RewardProcessor(this);
         syncManager = new SyncManager(this);
         contractManager = new ContractManager(this);
+        signManager = new me.lovelace.lovecontracts.manager.ContractSignManager(this);
         contractGUI = new ContractGUI(this);
         confirmGUI = new ContractConfirmGUI(this);
-        statsGUI = new ContractStatsGUI(this);
+        contractCreateGUI = new me.lovelace.lovecontracts.gui.ContractCreateGUI(this);
 
         PluginCommand contractsCmd = getCommand("contracts");
         if (contractsCmd != null) {
@@ -131,16 +139,20 @@ public final class LoveContracts extends JavaPlugin {
             pcontractCmd.setTabCompleter(executor);
         }
 
+        Bukkit.getPluginManager().registerEvents(new me.lovelace.lovecontracts.listener.PlayerQuitListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new me.lovelace.lovecontracts.listener.FineCollectionListener(this), this);
         Bukkit.getPluginManager().registerEvents(new ContractSignListener(this), this);
         Bukkit.getPluginManager().registerEvents(new ContractNpcListener(this, new CitizensIntegration()), this);
         Bukkit.getPluginManager().registerEvents(contractGUI, this);
         Bukkit.getPluginManager().registerEvents(confirmGUI, this);
-        Bukkit.getPluginManager().registerEvents(statsGUI, this);
+        Bukkit.getPluginManager().registerEvents(contractCreateGUI, this);
         Bukkit.getPluginManager().registerEvents(playerContractBoardGUI, this);
         Bukkit.getPluginManager().registerEvents(playerContractMyGUI, this);
         Bukkit.getPluginManager().registerEvents(npcDialogueGUI, this);
         Bukkit.getPluginManager().registerEvents(npcQuestManager, this);
         Bukkit.getPluginManager().registerEvents(new PlayerContractListener(playerContractManager), this);
+
+        signManager.updateAllSigns();
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new ContractPlaceholderExpansion(this).register();
@@ -195,24 +207,46 @@ public final class LoveContracts extends JavaPlugin {
     public void onDisable() {
         if (contractManager != null) contractManager.shutdown();
         if (registry != null) registry.shutdown();
+        if (playerContractDatabase != null) playerContractDatabase.close();
+        if (npcQuestDatabase != null) npcQuestDatabase.close();
         if (database != null) database.close();
         getLogger().info("LoveContracts disabled");
+    }
+
+    private org.bukkit.configuration.file.FileConfiguration headsConfig;
+
+    public void loadHeadsConfig() {
+        java.io.File headsFile = new java.io.File(getDataFolder(), "heads.yml");
+        if (!headsFile.exists()) {
+            saveResource("heads.yml", false);
+        }
+        headsConfig = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(headsFile);
+    }
+
+    public org.bukkit.configuration.file.FileConfiguration getHeadsConfig() {
+        if (headsConfig == null) {
+            loadHeadsConfig();
+        }
+        return headsConfig;
     }
 
     public static LoveContracts getInstance() { return instance; }
     public ContractDatabase getDatabase() { return database; }
     public ContractRegistry getRegistry() { return registry; }
     public ContractManager getContractManager() { return contractManager; }
+    public me.lovelace.lovecontracts.manager.ContractSignManager getSignManager() { return signManager; }
     public RewardProcessor getRewardProcessor() { return rewardProcessor; }
     public SyncManager getSyncManager() { return syncManager; }
     public ContractGUI getContractGUI() { return contractGUI; }
     public ContractConfirmGUI getConfirmGUI() { return confirmGUI; }
-    public ContractStatsGUI getStatsGUI() { return statsGUI; }
+    public me.lovelace.lovecontracts.gui.ContractCreateGUI getContractCreateGUI() { return contractCreateGUI; }
     public PlayerContractDatabase getPlayerContractDatabase() { return playerContractDatabase; }
     public PlayerContractManager getPlayerContractManager() { return playerContractManager; }
     public PlayerContractBoardGUI getPlayerContractBoardGUI() { return playerContractBoardGUI; }
     public PlayerContractMyGUI getPlayerContractMyGUI() { return playerContractMyGUI; }
     public me.lovelace.lovecontracts.npc.manager.NpcQuestManager getNpcQuestManager() { return npcQuestManager; }
     public me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI getNpcDialogueGUI() { return npcDialogueGUI; }
+    public me.lovelace.lovecontracts.manager.FineManager getFineManager() { return fineManager; }
+    public MessageManager getMessageManager() { return messageManager; }
     public Optional<StatBus> getStatBus() { return statBus; }
 }

@@ -79,25 +79,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleCreate(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage(mm.deserialize("<red>Использование: /pcontract create <deliver|kill|custom> ...</red>"));
-            return;
-        }
-
-        String kind = args[1].toLowerCase();
-        try {
-            switch (kind) {
-                case "deliver" -> createDeliverOrKill(player, args, PlayerContractObjectiveType.DELIVER_ITEM);
-                case "kill" -> createDeliverOrKill(player, args, PlayerContractObjectiveType.KILL_ENTITY);
-                case "custom" -> createCustom(player, args);
-                default -> player.sendMessage(mm.deserialize(
-                        "<red>Неизвестный тип. Используйте deliver, kill или custom.</red>"));
-            }
-        } catch (NumberFormatException e) {
-            player.sendMessage(mm.deserialize("<red>Неверное число в аргументах.</red>"));
-        } catch (IllegalArgumentException e) {
-            player.sendMessage(mm.deserialize("<red>" + e.getMessage() + "</red>"));
-        }
+        player.sendMessage(mm.deserialize("<red>Создание контрактов временно отключено (\"В ближайшее время\").</red>"));
     }
 
     // /pcontract create deliver <material> <amount> <gold> <hours> [flags...] <description...>

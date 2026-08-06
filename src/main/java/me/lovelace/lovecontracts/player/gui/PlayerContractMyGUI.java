@@ -42,6 +42,8 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
     private final Map<UUID, Long> lastClick = new ConcurrentHashMap<>();
     private final Set<UUID> openInventories = ConcurrentHashMap.newKeySet();
 
+    private static final String CLOSE_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWZkMjQwMDAwMmFkOWZiYmJkMDA2Njk0MWViNWIxYTM4NGFiOWIwZTQ4YTE3OGVlOTZlNGQxMjlhNTIwODY1NCJ9fX0=";
+
     private static final ItemStack GLASS_PANE;
     private static final ItemStack CLOSE_BUTTON;
 
@@ -51,11 +53,11 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
 
-        CLOSE_BUTTON = new ItemStack(Material.BARRIER);
-        ItemMeta closeMeta = CLOSE_BUTTON.getItemMeta();
-        closeMeta.displayName(MiniMessage.miniMessage().deserialize("<red>Закрыть</red>"));
-        closeMeta.lore(List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>")));
-        CLOSE_BUTTON.setItemMeta(closeMeta);
+        CLOSE_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
+                CLOSE_HEAD,
+                "<red>Закрыть</red>",
+                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>"))
+        );
     }
 
     private static final int[] CONTRACT_SLOTS = {
@@ -81,8 +83,7 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
                 mm.deserialize("<gradient:#55FF55:#55FFFF>Мои контракты</gradient>"));
 
         // Header (0-8)
-        inv.setItem(0, headItem(player));
-        for (int s = 1; s <= 8; s++) inv.setItem(s, GLASS_PANE);
+        for (int s = 0; s <= 8; s++) inv.setItem(s, GLASS_PANE);
 
         // Row 1 (9-17) - Pure glass divider
         for (int s = 9; s <= 17; s++) inv.setItem(s, GLASS_PANE);
@@ -140,9 +141,14 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
     public void onClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() instanceof PlayerContractMyGUI) {
             UUID uuid = event.getPlayer().getUniqueId();
-            openInventories.remove(uuid);
-            lastClick.remove(uuid);
+            cleanupPlayer(uuid);
         }
+    }
+
+    public void cleanupPlayer(UUID uuid) {
+        if (uuid == null) return;
+        openInventories.remove(uuid);
+        lastClick.remove(uuid);
     }
 
     private ItemStack contractItem(PlayerContract c, Player viewer) {

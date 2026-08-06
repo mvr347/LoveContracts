@@ -23,12 +23,17 @@ import java.util.UUID;
  * Хранилище player-to-player контрактов. Использует тот же SQLite-файл и пул соединений,
  * что и {@link me.lovelace.lovecontracts.storage.ContractDatabase} — отдельная БД тут не нужна.
  */
-public class PlayerContractDatabase {
+public class PlayerContractDatabase implements AutoCloseable {
 
     private final LoveContracts plugin;
 
     public PlayerContractDatabase(LoveContracts plugin) {
         this.plugin = plugin;
+    }
+
+    @Override
+    public void close() {
+        // Shared connection pool closed by ContractDatabase
     }
 
     public void initialize() throws SQLException {

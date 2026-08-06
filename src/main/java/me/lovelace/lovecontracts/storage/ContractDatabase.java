@@ -35,6 +35,9 @@ public class ContractDatabase implements AutoCloseable {
         config.setAutoCommit(true);
         config.setLeakDetectionThreshold(plugin.getConfig().getLong("database.leak-detection-threshold", 15000));
         config.setPoolName("LoveContracts-Pool");
+        config.addDataSourceProperty("journal_mode", "WAL");
+        config.addDataSourceProperty("busy_timeout", "5000");
+        config.addDataSourceProperty("synchronous", "NORMAL");
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -53,6 +56,9 @@ public class ContractDatabase implements AutoCloseable {
 
     private void createTables(Connection conn) throws SQLException {
         try (Statement st = conn.createStatement()) {
+            st.execute("PRAGMA journal_mode=WAL;");
+            st.execute("PRAGMA busy_timeout=5000;");
+            st.execute("PRAGMA synchronous=NORMAL;");
             st.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS contracts (
                     id TEXT PRIMARY KEY,
@@ -128,6 +134,31 @@ public class ContractDatabase implements AutoCloseable {
                     reputation_hard REAL DEFAULT 0.0
                 )
                 """);
+
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS disabled_players (
+                    player_uuid TEXT PRIMARY KEY,
+                    disabled_at TEXT DEFAULT (datetime('now'))
+                )
+                """);
+
+            st.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS pending_fines (
+                    player_uuid TEXT PRIMARY KEY,
+                    amount INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT DEFAULT (datetime('now'))
+                )
+                """);
+        }
+    }
+
+    public void resetDailyStats() {
+        try (Connection conn = getConnection();
+             Statement st = conn.createStatement()) {
+            st.executeUpdate("UPDATE contract_stats SET daily_completed = 0, daily_accepted = 0, daily_failed = 0, last_daily_reset = datetime('now')");
+            plugin.getLogger().info("Daily contract stats reset to 0");
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Failed to reset daily contract stats: " + e.getMessage());
         }
     }
 

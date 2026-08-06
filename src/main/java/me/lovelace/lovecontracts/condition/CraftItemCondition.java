@@ -51,7 +51,15 @@ public class CraftItemCondition extends ContractCondition {
 
         int amount = result.getAmount();
         if (event.isShiftClick()) {
-            amount = Math.max(1, amount);
+            int maxCrafts = Integer.MAX_VALUE;
+            for (ItemStack ingredient : event.getInventory().getMatrix()) {
+                if (ingredient != null && ingredient.getType() != Material.AIR) {
+                    maxCrafts = Math.min(maxCrafts, ingredient.getAmount());
+                }
+            }
+            if (maxCrafts != Integer.MAX_VALUE && maxCrafts > 0) {
+                amount = maxCrafts * amount;
+            }
         }
 
         incrementProgress(player, amount);

@@ -51,6 +51,10 @@ public class PlayerContractManager {
         this.bridge = bridge;
     }
 
+    public void cleanupPlayer(UUID uuid) {
+        // Reserved for per-player caching if added in future
+    }
+
     // ------------------------------------------------------------------
     // Создание
     // ------------------------------------------------------------------

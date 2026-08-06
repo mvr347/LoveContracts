@@ -58,15 +58,39 @@ public abstract class ContractCondition implements Listener {
     }
 
     public final void setProgress(Player player, int value) {
-        progress.put(player.getUniqueId(), Math.max(0, value));
+        int newVal = Math.max(0, value);
+        progress.put(player.getUniqueId(), newVal);
+        saveProgressAsync(player.getUniqueId(), newVal);
     }
 
     public final void incrementProgress(Player player) {
-        progress.merge(player.getUniqueId(), 1, Integer::sum);
+        incrementProgress(player, 1);
     }
 
     public final void incrementProgress(Player player, int amount) {
-        progress.merge(player.getUniqueId(), amount, Integer::sum);
+        int newVal = progress.merge(player.getUniqueId(), amount, Integer::sum);
+        saveProgressAsync(player.getUniqueId(), newVal);
+    }
+
+    public final void loadProgress(UUID uuid, int value) {
+        progress.put(uuid, Math.max(0, value));
+    }
+
+    private void saveProgressAsync(UUID uuid, int currentProgress) {
+        me.lovelace.lovecontracts.LoveContracts plugin = me.lovelace.lovecontracts.LoveContracts.getInstance();
+        if (plugin == null || contract == null) return;
+        org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try (java.sql.Connection conn = plugin.getDatabase().getConnection();
+                 java.sql.PreparedStatement ps = conn.prepareStatement(
+                         "UPDATE player_contracts SET progress_data = ? WHERE player_uuid = ? AND contract_id = ? AND completed_at IS NULL AND failed_at IS NULL")) {
+                ps.setString(1, String.valueOf(currentProgress));
+                ps.setString(2, uuid.toString());
+                ps.setString(3, contract.getId());
+                ps.executeUpdate();
+            } catch (Exception e) {
+                plugin.getLogger().log(java.util.logging.Level.WARNING, "Failed to save condition progress to DB", e);
+            }
+        });
     }
 
     public abstract boolean isCompleted(Player player);

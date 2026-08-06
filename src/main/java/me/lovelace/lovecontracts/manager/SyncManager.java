@@ -27,21 +27,27 @@ public class SyncManager {
     }
 
     public void broadcastAccept(Player player, Contract contract) {
-        String msg = "<yellow>" + (player != null ? player.getName() : "Игрок") + "</yellow> принял(а) контракт <gold>"
-                + strip(contract.getDisplayName()) + "</gold>";
-        broadcast(msg);
+        if (contract == null) return;
+        var comp = plugin.getMessageManager().getComponent("messages.broadcast-accept",
+                "<yellow>{PLAYER}</yellow> принял(а) контракт <gold>{CONTRACT}</gold>",
+                java.util.Map.of("PLAYER", player != null ? player.getName() : "Игрок", "CONTRACT", strip(contract.getDisplayName())));
+        Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(comp));
     }
 
     public void broadcastComplete(Player player, Contract contract) {
-        String msg = "<yellow>" + (player != null ? player.getName() : "Игрок") + "</yellow> выполнил(а) контракт <gold>"
-                + strip(contract.getDisplayName()) + "</gold>";
-        broadcast(msg);
+        if (contract == null) return;
+        var comp = plugin.getMessageManager().getComponent("messages.broadcast-complete",
+                "<yellow>{PLAYER}</yellow> выполнил(а) контракт <gold>{CONTRACT}</gold>",
+                java.util.Map.of("PLAYER", player != null ? player.getName() : "Игрок", "CONTRACT", strip(contract.getDisplayName())));
+        Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(comp));
     }
 
     public void broadcastFail(Player player, Contract contract) {
-        String msg = "<yellow>" + (player != null ? player.getName() : "Кто-то")
-                + "</yellow> провалил(а) контракт <gold>" + strip(contract.getDisplayName()) + "</gold>";
-        broadcast(msg);
+        if (contract == null) return;
+        var comp = plugin.getMessageManager().getComponent("messages.broadcast-fail",
+                "<yellow>{PLAYER}</yellow> провалил(а) контракт <gold>{CONTRACT}</gold>",
+                java.util.Map.of("PLAYER", player != null ? player.getName() : "Игрок", "CONTRACT", strip(contract.getDisplayName())));
+        Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(comp));
     }
 
     private void broadcast(String miniMessage) {

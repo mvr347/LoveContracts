@@ -76,29 +76,48 @@ public class RewardProcessor {
         if (player == null || contract == null) return;
         boolean moneyEnabled = plugin.getConfig().getBoolean("penalties.money.enabled", true);
 
-        for (Penalty penalty : contract.getPenalties()) {
-            if (penalty.getType() == Penalty.Type.NONE) continue;
-            try {
-                switch (penalty.getType()) {
-                    case MONEY -> {
-                        if (!moneyEnabled) break;
-                        long amount = Math.round(Math.abs(penalty.getAmount()));
-                        if (amount <= 0) break;
-                        // Physical currency has no debt — cap the charge at what the player actually has.
-                        LoveCore.service(LoveEconomy.class).ifPresent(economy -> {
-                            long charge = Math.min(amount, economy.balance(player));
-                            if (charge > 0) economy.charge(player, charge);
-                        });
-                    }
-                    case REPUTATION -> {
-                        // LoveBehavior integration point — no shared service exposed for it yet.
-                    }
-                    default -> {
-                    }
+        double explicitMoneyPenalty = 0.0;
+        if (contract.getPenalties() != null) {
+            for (Penalty penalty : contract.getPenalties()) {
+                if (penalty.getType() == Penalty.Type.MONEY) {
+                    explicitMoneyPenalty += Math.abs(penalty.getAmount());
                 }
-            } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to apply penalty", e);
             }
+        }
+
+        // Если у контракта не задан прямой штраф монетами — штрафуем на сумму денежной награды
+        if (explicitMoneyPenalty <= 0.0 && contract.getRewards() != null) {
+            for (Reward r : contract.getRewards()) {
+                if (r.getType() == Reward.Type.MONEY) {
+                    explicitMoneyPenalty += r.getAmount();
+                }
+            }
+        }
+
+        if (moneyEnabled && explicitMoneyPenalty > 0.0) {
+            long fullAmount = Math.round(explicitMoneyPenalty);
+            LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
+                long currentBalance = economy.balance(player);
+                long immediateCharge = Math.min(fullAmount, currentBalance);
+                if (immediateCharge > 0) {
+                    economy.charge(player, immediateCharge);
+                }
+                long remainingDebt = fullAmount - immediateCharge;
+                if (remainingDebt > 0 && plugin.getFineManager() != null) {
+                    plugin.getFineManager().addDebt(player.getUniqueId(), remainingDebt);
+                    plugin.getMessageManager().sendMessage(player, "messages.fine-partial",
+                            "<yellow>Списано {PAID} монет. Остаток долга: {REMAINING} монет.</yellow>",
+                            java.util.Map.of("PAID", String.valueOf(immediateCharge), "REMAINING", String.valueOf(remainingDebt)));
+                } else {
+                    plugin.getMessageManager().sendMessage(player, "messages.fine-deducted",
+                            "<red>Списан штраф за провал контракта:</red> <gold>{AMOUNT} монет</gold>",
+                            java.util.Map.of("AMOUNT", String.valueOf(immediateCharge)));
+                }
+            }, () -> {
+                if (plugin.getFineManager() != null) {
+                    plugin.getFineManager().addDebt(player.getUniqueId(), fullAmount);
+                }
+            });
         }
     }
 }

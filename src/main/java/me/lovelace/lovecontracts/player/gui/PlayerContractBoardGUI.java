@@ -1,6 +1,9 @@
 package me.lovelace.lovecontracts.player.gui;
 
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.player.event.PlayerContractAcceptedEvent;
+import me.lovelace.lovecontracts.player.event.PlayerContractCreatedEvent;
+import me.lovelace.lovecontracts.player.event.PlayerContractEndedEvent;
 import me.lovelace.lovecontracts.player.manager.PlayerContractManager;
 import me.lovelace.lovecontracts.player.model.PlayerContract;
 import me.lovelace.lovecontracts.player.model.PlayerContractObjectiveType;
@@ -41,6 +44,8 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
     private final Map<UUID, Long> lastClick = new ConcurrentHashMap<>();
     private final Set<UUID> openInventories = ConcurrentHashMap.newKeySet();
 
+    private static final String CLOSE_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWZkMjQwMDAwMmFkOWZiYmJkMDA2Njk0MWViNWIxYTM4NGFiOWIwZTQ4YTE3OGVlOTZlNGQxMjlhNTIwODY1NCJ9fX0=";
+
     private static final ItemStack GLASS_PANE;
     private static final ItemStack CLOSE_BUTTON;
 
@@ -50,11 +55,11 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
 
-        CLOSE_BUTTON = new ItemStack(Material.BARRIER);
-        ItemMeta closeMeta = CLOSE_BUTTON.getItemMeta();
-        closeMeta.displayName(MiniMessage.miniMessage().deserialize("<red>Закрыть</red>"));
-        closeMeta.lore(List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>")));
-        CLOSE_BUTTON.setItemMeta(closeMeta);
+        CLOSE_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
+                CLOSE_HEAD,
+                "<red>Закрыть</red>",
+                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>"))
+        );
     }
 
     private static final int[] CONTRACT_SLOTS = {
@@ -76,29 +81,38 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
     }
 
     private void render(Player player, List<PlayerContract> contracts) {
-        Inventory inv = Bukkit.createInventory(this, 54, mm.deserialize(
-                plugin.getConfig().getString("player-contracts.board.title",
-                        "<gradient:#55FF55:#55FFFF>Заказы игроков</gradient>")));
+        String titleStr = plugin.getConfig().getString("player-contracts.board.title",
+                "<gradient:#55FF55:#55FFFF>Заказы игроков</gradient>");
+        Component title = plugin.getMessageManager() != null ?
+                plugin.getMessageManager().getComponent("gui.player-board-title", titleStr) :
+                mm.deserialize(titleStr);
+        Inventory inv = Bukkit.createInventory(this, 54, title);
 
         // Header (0-8)
-        inv.setItem(0, headItem(player));
-        for (int s = 1; s <= 8; s++) inv.setItem(s, GLASS_PANE);
+        for (int s = 0; s <= 8; s++) inv.setItem(s, GLASS_PANE);
 
         // Row 1 (9-17) - Pure glass divider
         for (int s = 9; s <= 17; s++) inv.setItem(s, GLASS_PANE);
 
         int idx = 0;
-        List<PlayerContract> excludingOwn = contracts.stream()
+        List<PlayerContract> availableToAccept = contracts.stream()
                 .filter(c -> !c.getCreatorId().equals(player.getUniqueId()))
+                .filter(c -> c.getStatus() == me.lovelace.lovecontracts.player.model.PlayerContractStatus.OPEN)
+                .filter(c -> c.getExecutorId() == null)
                 .toList();
-        for (PlayerContract c : excludingOwn) {
+        for (PlayerContract c : availableToAccept) {
             if (idx >= CONTRACT_SLOTS.length) break;
             inv.setItem(CONTRACT_SLOTS[idx++], contractItem(c));
         }
 
         // Footer (45-53)
-        for (int s = 45; s <= 52; s++) inv.setItem(s, GLASS_PANE);
-        inv.setItem(SLOT_CLOSE, CLOSE_BUTTON);
+        for (int s = 45; s <= 51; s++) inv.setItem(s, GLASS_PANE);
+        ItemStack closeBtn = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
+                CLOSE_HEAD,
+                plugin.getMessageManager().getRaw("gui.close-button", "<red>Закрыть</red>"),
+                List.of(Component.empty(), plugin.getMessageManager().getComponent("gui.close-lore", "<gray>Закрыть меню</gray>"))
+        );
+        inv.setItem(SLOT_CLOSE, closeBtn);
 
         player.openInventory(inv);
         openInventories.add(player.getUniqueId());
@@ -142,12 +156,45 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
     }
 
     @EventHandler
+    public void onContractAccepted(PlayerContractAcceptedEvent event) {
+        refreshOpenBoardGUIs();
+    }
+
+    @EventHandler
+    public void onContractCreated(PlayerContractCreatedEvent event) {
+        refreshOpenBoardGUIs();
+    }
+
+    @EventHandler
+    public void onContractEnded(PlayerContractEndedEvent event) {
+        refreshOpenBoardGUIs();
+    }
+
+    private void refreshOpenBoardGUIs() {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            for (UUID uuid : new ArrayList<>(openInventories)) {
+                Player p = Bukkit.getPlayer(uuid);
+                if (p != null && p.isOnline() && p.getOpenInventory().getTopInventory().getHolder() instanceof PlayerContractBoardGUI) {
+                    open(p);
+                } else {
+                    openInventories.remove(uuid);
+                }
+            }
+        });
+    }
+
+    @EventHandler
     public void onClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() instanceof PlayerContractBoardGUI) {
             UUID uuid = event.getPlayer().getUniqueId();
-            openInventories.remove(uuid);
-            lastClick.remove(uuid);
+            cleanupPlayer(uuid);
         }
+    }
+
+    public void cleanupPlayer(UUID uuid) {
+        if (uuid == null) return;
+        openInventories.remove(uuid);
+        lastClick.remove(uuid);
     }
 
     private ItemStack contractItem(PlayerContract c) {
