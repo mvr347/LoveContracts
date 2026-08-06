@@ -132,7 +132,7 @@ public class PlayerContractManager {
                     PlayerContract contract = new PlayerContract(
                             UUID.randomUUID(), creatorId, creatorName,
                             null, null, req.description(), req.type(), req.target(), req.amount(), 0,
-                            req.goldReward(), req.itemRewards(), req.reputationHint(), req.visibility(),
+                            req.goldReward(), req.reputationHint(), req.visibility(),
                             PlayerContractStatus.OPEN, Instant.now(),
                             Instant.now().plus(req.deadlineHours(), ChronoUnit.HOURS), null, null
                     );
@@ -470,7 +470,7 @@ public class PlayerContractManager {
 
                     boolean refund = cfg().getBoolean("refund-on-abandon", true);
                     if (refund) {
-                        payout(c.getCreatorId(), c.getGoldReward(), c.getItemRewards(), "contract-cancel:" + c.getId());
+                        payout(c.getCreatorId(), c.getGoldReward(), "contract-cancel:" + c.getId());
                     }
 
                     runSync(() -> {
@@ -523,7 +523,7 @@ public class PlayerContractManager {
                     db.update(c);
 
                     if (refund) {
-                        payout(c.getCreatorId(), c.getGoldReward(), c.getItemRewards(), "contract-expire:" + c.getId());
+                        payout(c.getCreatorId(), c.getGoldReward(), "contract-expire:" + c.getId());
                     }
 
                     runSync(() -> {
@@ -558,17 +558,15 @@ public class PlayerContractManager {
                 if (payouts.isEmpty()) return;
 
                 long totalGold = 0;
-                List<ItemStack> allItems = new ArrayList<>();
                 for (PendingPayout p : payouts) {
                     totalGold += p.goldAmount();
-                    allItems.addAll(p.items());
                     db.deletePendingPayout(p.payoutId());
                 }
 
                 long finalGold = totalGold;
                 runSync(() -> {
                     if (!player.isOnline()) return;
-                    bridge.deliverToLivePlayer(player, finalGold, allItems);
+                    bridge.deliverToLivePlayer(player, finalGold);
                     player.sendMessage(mm.deserialize(
                             "<green>Вам доставлена отложенная выплата по контракту: " + finalGold + " "
                                     + bridge.currencyName() + ".</green>"));
@@ -668,7 +666,7 @@ public class PlayerContractManager {
         runAsync(() -> {
             try {
                 db.update(c);
-                payout(c.getExecutorId(), c.getGoldReward(), c.getItemRewards(), "contract-complete:" + c.getId());
+                payout(c.getExecutorId(), c.getGoldReward(), "contract-complete:" + c.getId());
 
                 runSync(() -> {
                     Bukkit.getPluginManager().callEvent(new PlayerContractCompletedEvent(c));
@@ -686,18 +684,18 @@ public class PlayerContractManager {
     }
 
     /**
-     * Выдаёт награду живому игроку, иначе кладёт её в очередь отложенных выплат — золото
-     * физическое (монеты в инвентаре), офлайн-выдачи не существует так же, как и для предметов.
+     * Выдаёт золото живому игроку, иначе кладёт его в очередь отложенных выплат — монеты
+     * физические (в инвентаре), офлайн-выдачи не существует.
      */
-    private void payout(UUID playerId, long gold, List<ItemStack> items, String reason) {
+    private void payout(UUID playerId, long gold, String reason) {
         Player online = bridge.onlinePlayer(playerId);
         if (online != null && online.isOnline()) {
-            runSync(() -> bridge.deliverToLivePlayer(online, gold, items));
+            runSync(() -> bridge.deliverToLivePlayer(online, gold));
             return;
         }
-        if (gold <= 0 && items.isEmpty()) return;
+        if (gold <= 0) return;
         try {
-            db.addPendingPayout(playerId, gold, items, reason);
+            db.addPendingPayout(playerId, gold, reason);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to queue pending payout for " + playerId, e);
         }

@@ -16,7 +16,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,8 +26,9 @@ import java.util.UUID;
 
 /**
  * {@code /pcontract} — весь player-to-player контрактный флоу. Гибкость закладывается
- * через свободные флаги в create (withitem, clanonly, rep:N) вместо жёсткого набора
- * обязательных параметров — админ настраивает лимиты в config.yml, а не в коде команды.
+ * через свободные флаги в create (clanonly, rep:N) вместо жёсткого набора обязательных
+ * параметров — админ настраивает лимиты в config.yml, а не в коде команды. Награда — только
+ * золото через LoveCore, как и у системных контрактов ({@code /contracts}).
  */
 public class PlayerContractCommand implements CommandExecutor, TabCompleter {
 
@@ -88,7 +88,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         if (args.length < 6) {
             player.sendMessage(mm.deserialize(
                     "<red>Использование: /pcontract create " + args[1].toLowerCase()
-                            + " <тип> <кол-во> <золото> <часы> [withitem] [clanonly] [rep:N] <описание></red>"));
+                            + " <тип> <кол-во> <золото> <часы> [clanonly] [rep:N] <описание></red>"));
             return;
         }
 
@@ -108,7 +108,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     private void createCustom(Player player, String[] args) {
         if (args.length < 5) {
             player.sendMessage(mm.deserialize(
-                    "<red>Использование: /pcontract create custom <золото> <часы> [withitem] [clanonly] [rep:N] <описание></red>"));
+                    "<red>Использование: /pcontract create custom <золото> <часы> [clanonly] [rep:N] <описание></red>"));
             return;
         }
         long gold = Long.parseLong(args[2]);
@@ -119,16 +119,12 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     private void submitCreate(Player player, String[] args, int fromIndex, PlayerContractObjectiveType type,
                                String target, int amount, long gold, int hours) {
         int i = fromIndex;
-        boolean withItem = false;
         PlayerContractVisibility visibility = PlayerContractVisibility.PUBLIC;
         int reputationHint = 0;
 
         while (i < args.length) {
             String tok = args[i];
-            if (tok.equalsIgnoreCase("withitem")) {
-                withItem = true;
-                i++;
-            } else if (tok.equalsIgnoreCase("clanonly")) {
+            if (tok.equalsIgnoreCase("clanonly")) {
                 visibility = PlayerContractVisibility.CLAN_ONLY;
                 i++;
             } else if (tok.toLowerCase().startsWith("rep:")) {
@@ -149,28 +145,11 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         }
         String description = String.join(" ", Arrays.copyOfRange(args, i, args.length));
 
-        List<ItemStack> itemRewards = List.of();
-        if (withItem) {
-            ItemStack hand = player.getInventory().getItemInMainHand();
-            if (hand == null || hand.getType() == Material.AIR) {
-                player.sendMessage(mm.deserialize("<red>Держите предмет в руке, чтобы прикрепить его наградой.</red>"));
-                return;
-            }
-            itemRewards = List.of(hand.clone());
-            player.getInventory().setItemInMainHand(null);
-        }
-
         CreateContractRequest req = new CreateContractRequest(
-                description, type, target, amount, gold, itemRewards, reputationHint, visibility, hours);
-        boolean tookItem = withItem;
+                description, type, target, amount, gold, reputationHint, visibility, hours);
 
-        manager.create(player, req).thenAccept(result -> Bukkit.getScheduler().runTask(plugin, () -> {
-            if (!result.success() && tookItem) {
-                // создание не удалось после списания предмета в руку — вернуть предмет
-                req.itemRewards().forEach(item -> player.getInventory().addItem(item));
-            }
-            player.sendMessage(mm.deserialize(result.message()));
-        }));
+        manager.create(player, req).thenAccept(result -> Bukkit.getScheduler().runTask(plugin,
+                () -> player.sendMessage(mm.deserialize(result.message()))));
     }
 
     private void handleReview(Player player, String[] args) {
@@ -263,7 +242,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
                 "<gold>== /pcontract ==</gold>",
                 "<yellow>/pcontract board</yellow> <gray>— доска открытых контрактов</gray>",
                 "<yellow>/pcontract my</yellow> <gray>— мои контракты</gray>",
-                "<yellow>/pcontract create deliver <материал> <кол-во> <золото> <часы> [withitem] [clanonly] [rep:N] <описание></yellow>",
+                "<yellow>/pcontract create deliver <материал> <кол-во> <золото> <часы> [clanonly] [rep:N] <описание></yellow>",
                 "<yellow>/pcontract create kill <существо> <кол-во> <золото> <часы> [флаги] <описание></yellow>",
                 "<yellow>/pcontract create custom <золото> <часы> [флаги] <описание></yellow>",
                 "<yellow>/pcontract accept <id></yellow>",
