@@ -55,9 +55,6 @@ npc_quests:
 
     rewards:
       money: 1500
-      items:
-        - "IRON_SWORD 1"
-        - "DIAMOND 2"
 
   guard_patrol:
     npc-id: 3
@@ -91,4 +88,3 @@ npc_quests:
 
     rewards:
       money: 2000
-      experience: 250
