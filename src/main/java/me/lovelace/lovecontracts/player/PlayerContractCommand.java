@@ -239,18 +239,20 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(Player player) {
         List<String> lines = List.of(
-                "<gold>== /pcontract ==</gold>",
-                "<yellow>/pcontract board</yellow> <gray>— доска открытых контрактов</gray>",
-                "<yellow>/pcontract my</yellow> <gray>— мои контракты</gray>",
-                "<yellow>/pcontract create deliver <материал> <кол-во> <золото> <часы> [clanonly] [rep:N] <описание></yellow>",
-                "<yellow>/pcontract create kill <существо> <кол-во> <золото> <часы> [флаги] <описание></yellow>",
-                "<yellow>/pcontract create custom <золото> <часы> [флаги] <описание></yellow>",
-                "<yellow>/pcontract accept <id></yellow>",
-                "<yellow>/pcontract turnin <id></yellow> <gray>— сдать предметы</gray>",
-                "<yellow>/pcontract submit <id></yellow> <gray>— сдать произвольную задачу на проверку</gray>",
-                "<yellow>/pcontract review <id> accept|reject</yellow>",
-                "<yellow>/pcontract cancel <id></yellow>",
-                "<yellow>/pcontract info <id></yellow>"
+                "<dark_gray>========== <aqua>LoveContracts</aqua> ==========</dark_gray>",
+                "<aqua>/pcontract board</aqua> <gray>- доска открытых контрактов</gray>",
+                "<aqua>/pcontract my</aqua> <gray>- мои контракты</gray>",
+                "<aqua>/pcontract create deliver <материал> <кол-во> <золото> <часы> [clanonly] [rep:N] <описание></aqua>",
+                "<aqua>/pcontract create kill <существо> <кол-во> <золото> <часы> [флаги] <описание></aqua>",
+                "<aqua>/pcontract create custom <золото> <часы> [флаги] <описание></aqua>",
+                "<aqua>/pcontract accept <id></aqua>",
+                "<aqua>/pcontract turnin <id></aqua> <gray>- сдать предметы</gray>",
+                "<aqua>/pcontract submit <id></aqua> <gray>- сдать произвольную задачу на проверку</gray>",
+                "<aqua>/pcontract review <id> accept|reject</aqua>",
+                "<aqua>/pcontract cancel <id></aqua>",
+                "<aqua>/pcontract info <id></aqua>",
+                "<dark_gray>(алиас: /контракт)</dark_gray>",
+                "<dark_gray>=========================================</dark_gray>"
         );
         lines.forEach(l -> player.sendMessage(mm.deserialize(l)));
     }
