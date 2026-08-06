@@ -10,6 +10,7 @@ import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.ContractType;
 import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.model.Reward;
+import me.lovelace.lovecontracts.textures.HeadTextures;
 import me.lovelace.lovecontracts.util.HeadUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -72,13 +73,13 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
     private final Map<UUID, CreationState> playerStates = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastClick = new ConcurrentHashMap<>();
 
-    private static final String PRESET_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmFkYzA0OGE3Y2U3OGY3ZGFkNzJhMDdkYTI3ZDg1YzA5MTY4ODFlNTUyMmVlZWQxZTNkYWYyMTdhMzhjMWEifX19";
-    private static final String COUNT_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzFiYzJiY2ZiMmJkMzc1OWU2YjFlODZmYzdhNzk1ODVlMTEyN2RkMzU3ZmMyMDI4OTNmOWRlMjQxYmM5ZTUzMCJ9fX0=";
-    private static final String REWARD_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTVmZDY3ZDU2ZmZjNTNmYjM2MGExNzg3OWQ5YjUzMzhkNzMzMmQ4ZjEyOTQ5MWE1ZTE3ZThkNmU4YWVhNmMzYSJ9fX0=";
-    private static final String CREATE_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkZDIwYmU5MzUyMDk0OWU2Y2U3ODlkYzRmNDNlZmFlYjI4YzcxN2VlNmJmY2JiZTAyNzgwMTQyZjcxNiJ9fX0=";
+    private static final String PRESET_HEAD = HeadTextures.PRESET;
+    private static final String COUNT_HEAD = HeadTextures.COUNT;
+    private static final String REWARD_HEAD = HeadTextures.REWARD;
+    private static final String CREATE_HEAD = HeadTextures.CREATE;
 
-    private static final String BACK_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmUyYjkzNmNhODAyNmJkMjg2NTFkN2M5ZjI4MTlkMmU5MjM2OTc3MzRkMThkZmRiMTM1NTBmOGZkYWQ1ZiJ9fX0=";
-    private static final String CLOSE_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWZkMjQwMDAwMmFkOWZiYmJkMDA2Njk0MWViNWIxYTM4NGFiOWIwZTQ4YTE3OGVlOTZlNGQxMjlhNTIwODY1NCJ9fX0=";
+    private static final String BACK_HEAD = HeadTextures.PAGINATION_PREVIOUS;
+    private static final String CLOSE_HEAD = HeadTextures.CLOSE;
 
     private static final ItemStack GLASS_PANE;
 

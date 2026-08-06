@@ -2,6 +2,7 @@ package me.lovelace.lovecontracts.gui;
 
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.model.Contract;
+import me.lovelace.lovecontracts.textures.HeadTextures;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -33,8 +34,8 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
     private final Map<UUID, Contract> pendingContracts = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastClick = new ConcurrentHashMap<>();
 
-    private static final String YES_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTMwZjQ1MzdkMjE0ZDM4NjY2ZTYzMDRlOWM4NTFjZDZmN2U0MWEwZWI3YzI1MDQ5YzlkMjJjOGM1ZjY1NDVkZiJ9fX0=";
-    private static final String NO_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWE2Nzg3YmEzMjU2NGU3YzJmM2EwY2U2NDQ5OGVjYmIyM2I4OTg0NWU1YTY2YjVjZWM3NzM2ZjcyOWVkMzcifX19";
+    private static final String YES_HEAD = HeadTextures.CONFIRM;
+    private static final String NO_HEAD = HeadTextures.CANCEL;
 
     private static final ItemStack GLASS_PANE;
     private static final ItemStack CONFIRM_BUTTON;

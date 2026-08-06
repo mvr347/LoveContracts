@@ -4,6 +4,7 @@ import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.npc.model.NpcDialogueNode;
 import me.lovelace.lovecontracts.npc.model.NpcDialogueOption;
 import me.lovelace.lovecontracts.npc.model.NpcQuest;
+import me.lovelace.lovecontracts.textures.HeadTextures;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -39,7 +40,7 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
     private final Map<UUID, NpcQuest> activeQuests = new ConcurrentHashMap<>();
     private final Map<UUID, NpcDialogueNode> activeNodes = new ConcurrentHashMap<>();
 
-    private static final String CLOSE_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWZkMjQwMDAwMmFkOWZiYmJkMDA2Njk0MWViNWIxYTM4NGFiOWIwZTQ4YTE3OGVlOTZlNGQxMjlhNTIwODY1NCJ9fX0=";
+    private static final String CLOSE_HEAD = HeadTextures.CLOSE;
 
     private static final ItemStack GLASS_PANE;
     private static final ItemStack CLOSE_BUTTON;

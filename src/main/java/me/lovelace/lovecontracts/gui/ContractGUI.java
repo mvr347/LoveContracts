@@ -3,6 +3,7 @@ package me.lovelace.lovecontracts.gui;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.Difficulty;
+import me.lovelace.lovecontracts.textures.HeadTextures;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -77,20 +78,20 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
     private final Map<UUID, SortMode> playerSorts = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> playerPages = new ConcurrentHashMap<>();
 
-    private static final String CLOSE_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYWZkMjQwMDAwMmFkOWZiYmJkMDA2Njk0MWViNWIxYTM4NGFiOWIwZTQ4YTE3OGVlOTZlNGQxMjlhNTIwODY1NCJ9fX0=";
-    private static final String SORT_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM3MzZWQ3In19fQ==";
-    private static final String TYPE_FILTER_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOGViODFlZjg5MDIzNzk2NTBiYTc5ZjQ1NzIzZDZiOWM4ODgzODhhMDBmYzRlMTkyZjM0NTRmZTE5Mzg4MmVlMSJ9fX0=";
-    private static final String LOCKED_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMmM1MGUzZTYxNTBkMDdjY2EwOWVkNzA3YjI0NDA0M2M5NDM3ZGJkMWJlOThlZTA4YWUwMzQwY2NiNmQ1OGM4OSJ9fX0=";
+    private static final String CLOSE_HEAD_DEFAULT = HeadTextures.CLOSE;
+    private static final String SORT_HEAD_DEFAULT = HeadTextures.SORT;
+    private static final String TYPE_FILTER_HEAD_DEFAULT = HeadTextures.FILTER;
+    private static final String LOCKED_HEAD_DEFAULT = HeadTextures.LOCKED;
 
-    private static final String STARTER_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjA2MGZmMmZlOTM2Y2Q5YTdmNDJkMWQ3MDMyNjgxYzYwOGE2MTRkMmU0MGQ0ZDE5NGRlZTk5NTQ1OTA0ZSJ9fX0=";
-    private static final String EASY_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWYyM2YxMTVjYjk1MjBkZDRkNGNiMjkxMjRkYWJhYzVlNjg0NGY5NmNjZTI0MWEzZWM5Y2E2ZjdhMjk2MjQ3In19fQ==";
-    private static final String MEDIUM_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjM3Y2FlNWM1MWViMTU1OGVhODI4ZjU4ZTBkZmY4ZTZiN2IwYjFhMTgzZDczN2VlY2Y3MTQ2NjE3NjEifX19";
-    private static final String HARD_HEAD_DEFAULT = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmRhOTExNDM3YjRlY2ZhYTNjMTg5NDE2MjIxN2MwMWI6OGE1NWM4OWJiMmY0ZDQ5MjczNDVjZTVjNzk0In19fQ==";
+    private static final String STARTER_HEAD_DEFAULT = HeadTextures.STARTER_QUEST;
+    private static final String EASY_HEAD_DEFAULT = HeadTextures.DIFFICULTY_EASY;
+    private static final String MEDIUM_HEAD_DEFAULT = HeadTextures.DIFFICULTY_MEDIUM;
+    private static final String HARD_HEAD_DEFAULT = HeadTextures.DIFFICULTY_HARD;
 
-    private static final String CREATE_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM3VkZDIwYmU5MzUyMDk0OWU2Y2U3ODlkYzRmNDNlZmFlYjI4YzcxN2VlNmJmY2JiZTAyNzgwMTQyZjcxNiJ9fX0=";
-    private static final String PREV_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmUyYjkzNmNhODAyNmJkMjg2NTFkN2M5ZjI4MTlkMmU5MjM2OTc3MzRkMThkZmRiMTM1NTBmOGZkYWQ1ZiJ9fX0=";
-    private static final String NEXT_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTEyODVjZDRlZDRlYWIwOGVjN2QyN2IxYTA4M2FiMjVjOTMwZDg0MGIwNDM2MDhhZTc5MzFkOTc2Njg1NmQ3ZSJ9fX0=";
-    private static final String ACTIVE_QUEST_HEAD = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjA2MGZmMmZlOTM2Y2Q5YTdmNDJkMWQ3MDMyNjgxYzYwOGE2MTRkMmU0MGQ0ZDE5NGRlZTk5NTQ1OTA0ZSJ9fX0=";
+    private static final String CREATE_HEAD = HeadTextures.CREATE_LEGACY_FALLBACK;
+    private static final String PREV_HEAD = HeadTextures.PAGINATION_PREVIOUS;
+    private static final String NEXT_HEAD = HeadTextures.PAGINATION_NEXT;
+    private static final String ACTIVE_QUEST_HEAD = HeadTextures.STARTER_QUEST;
 
     private static final ItemStack GLASS_PANE;
     private static final ItemStack CLOSE_BUTTON;
@@ -535,7 +536,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
         if (completedToday) {
             String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("completed",
                     me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("completed-contract",
-                    "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWY5M2VkM2YxOTY4NzYxMTNiMmU3NDYwOTMzNDkzYjgxZGE5MWI4ZjM0ZGIzYzUyODhhNjllZWI5NmRlNDBmYiJ9fX0="));
+                    HeadTextures.CONTRACT_STATUS_DEFAULT));
 
             List<Component> lore = new ArrayList<>();
             lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
@@ -557,7 +558,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
         if (failed) {
             String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("failed",
                     me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("failed-contract",
-                    "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWY5M2VkM2YxOTY4NzYxMTNiMmU3NDYwOTMzNDkzYjgxZGE5MWI4ZjM0ZGIzYzUyODhhNjllZWI5NmRlNDBmYiJ9fX0="));
+                    HeadTextures.CONTRACT_STATUS_DEFAULT));
 
             List<Component> lore = new ArrayList<>();
             lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
