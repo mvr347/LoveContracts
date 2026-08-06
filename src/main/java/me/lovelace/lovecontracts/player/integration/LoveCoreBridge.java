@@ -7,17 +7,15 @@ import dev.lovelace.lovecore.api.social.ReputationOracle;
 import dev.lovelace.lovecore.api.stats.StatBus;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
  * Единственная точка соприкосновения с LoveCore. {@link LoveEconomy} тут — физические монеты
  * в инвентаре игрока (тот же кошелёк, что уже использует {@code /contracts}), а не виртуальный
  * счёт, поэтому все денежные операции требуют живого онлайн-игрока — офлайн эскроу-выплаты
- * (как и предметные) ждут в очереди {@code pcontract_payouts} до следующего входа.
+ * ждут в очереди {@code pcontract_payouts} до следующего входа. Награда — исключительно
+ * физическая валюта LoveCore, предметы наградой не выдаются.
  */
 public class LoveCoreBridge {
 
@@ -70,14 +68,9 @@ public class LoveCoreBridge {
                 .orElse(a.equals(b));
     }
 
-    /** Выдаёт золото и предметы живому игроку либо роняет под ноги, если инвентарь полон. */
-    public void deliverToLivePlayer(Player player, long gold, List<ItemStack> items) {
+    /** Выдаёт золото живому игроку через LoveEconomy. */
+    public void deliverToLivePlayer(Player player, long gold) {
         give(player, gold);
-        for (ItemStack item : items) {
-            if (item == null) continue;
-            Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
-            leftover.values().forEach(drop -> player.getWorld().dropItemNaturally(player.getLocation(), drop));
-        }
     }
 
     public Player onlinePlayer(UUID playerId) {

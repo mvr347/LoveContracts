@@ -5,8 +5,6 @@ import me.lovelace.lovecontracts.player.model.PlayerContract;
 import me.lovelace.lovecontracts.player.model.PlayerContractObjectiveType;
 import me.lovelace.lovecontracts.player.model.PlayerContractStatus;
 import me.lovelace.lovecontracts.player.model.PlayerContractVisibility;
-import me.lovelace.lovecontracts.player.util.ItemStackSerializer;
-import org.bukkit.inventory.ItemStack;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -40,6 +38,11 @@ public class PlayerContractDatabase implements AutoCloseable {
         try (Connection conn = plugin.getDatabase().getConnection();
              Statement st = conn.createStatement()) {
 
+            // item_rewards и pcontract_payouts.items остаются в схеме, но код их больше не
+            // заполняет — награда теперь только золото через LoveCore (см. LoveCoreBridge).
+            // Колонки не дропаются: этот проект не использует ALTER TABLE/миграции, только
+            // CREATE TABLE IF NOT EXISTS, поэтому старые строки со значением в item_rewards
+            // просто тихо игнорируются при чтении (см. #map), а не приводят к ошибке.
             st.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS pcontracts (
                     id TEXT PRIMARY KEY,
@@ -69,6 +72,7 @@ public class PlayerContractDatabase implements AutoCloseable {
                 ON pcontracts(status)
                 """);
 
+            // items тоже больше не заполняется — см. комментарий над pcontracts выше.
             st.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS pcontract_payouts (
                     payout_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,12 +94,13 @@ public class PlayerContractDatabase implements AutoCloseable {
     }
 
     public void insert(PlayerContract c) throws SQLException {
+        // item_rewards намеренно не заполняется — награда только золотом (см. bindAll).
         String sql = """
             INSERT INTO pcontracts
             (id, creator_id, creator_name, executor_id, executor_name, description, objective_type,
-             objective_target, objective_amount, objective_progress, gold_reward, item_rewards,
+             objective_target, objective_amount, objective_progress, gold_reward,
              reputation_hint, visibility, status, created_at, deadline, accepted_at, completed_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """;
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -235,15 +240,15 @@ public class PlayerContractDatabase implements AutoCloseable {
         }
     }
 
-    public void addPendingPayout(UUID playerId, long goldAmount, List<ItemStack> items, String reason) throws SQLException {
-        String sql = "INSERT INTO pcontract_payouts (player_id, gold_amount, items, reason, created_at) VALUES (?,?,?,?,?)";
+    public void addPendingPayout(UUID playerId, long goldAmount, String reason) throws SQLException {
+        // items не заполняется — отложенная выплата теперь только золотом (см. класс-javadoc).
+        String sql = "INSERT INTO pcontract_payouts (player_id, gold_amount, reason, created_at) VALUES (?,?,?,?)";
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, playerId.toString());
             ps.setLong(2, goldAmount);
-            ps.setString(3, ItemStackSerializer.serialize(items, plugin.getLogger()));
-            ps.setString(4, reason);
-            ps.setLong(5, Instant.now().toEpochMilli());
+            ps.setString(3, reason);
+            ps.setLong(4, Instant.now().toEpochMilli());
             ps.executeUpdate();
         }
     }
@@ -256,11 +261,12 @@ public class PlayerContractDatabase implements AutoCloseable {
             ps.setString(1, playerId.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
+                    // items из старых строк (до отказа от предметных наград) намеренно
+                    // игнорируется — колонка остаётся в схеме, но больше не читается.
                     result.add(new PendingPayout(
                             rs.getLong("payout_id"),
                             UUID.fromString(rs.getString("player_id")),
                             rs.getLong("gold_amount"),
-                            ItemStackSerializer.deserialize(rs.getString("items"), plugin.getLogger()),
                             rs.getString("reason")
                     ));
                 }
@@ -306,20 +312,22 @@ public class PlayerContractDatabase implements AutoCloseable {
         ps.setInt(9, c.getObjectiveAmount());
         ps.setInt(10, c.getObjectiveProgress());
         ps.setLong(11, c.getGoldReward());
-        ps.setString(12, ItemStackSerializer.serialize(c.getItemRewards(), plugin.getLogger()));
-        ps.setInt(13, c.getReputationHint());
-        ps.setString(14, c.getVisibility().name());
-        ps.setString(15, c.getStatus().name());
-        ps.setLong(16, c.getCreatedAt().toEpochMilli());
-        ps.setLong(17, c.getDeadline().toEpochMilli());
-        ps.setObject(18, c.getAcceptedAt() != null ? c.getAcceptedAt().toEpochMilli() : null);
-        ps.setObject(19, c.getCompletedAt() != null ? c.getCompletedAt().toEpochMilli() : null);
+        ps.setInt(12, c.getReputationHint());
+        ps.setString(13, c.getVisibility().name());
+        ps.setString(14, c.getStatus().name());
+        ps.setLong(15, c.getCreatedAt().toEpochMilli());
+        ps.setLong(16, c.getDeadline().toEpochMilli());
+        ps.setObject(17, c.getAcceptedAt() != null ? c.getAcceptedAt().toEpochMilli() : null);
+        ps.setObject(18, c.getCompletedAt() != null ? c.getCompletedAt().toEpochMilli() : null);
     }
 
     private PlayerContract map(ResultSet rs) throws SQLException {
         String executorIdStr = rs.getString("executor_id");
         Long acceptedAtMillis = (Long) rs.getObject("accepted_at");
         Long completedAtMillis = (Long) rs.getObject("completed_at");
+        // item_rewards может содержать данные из старой версии плагина (до отказа от
+        // предметных наград) — колонка намеренно не читается и не удаляется из схемы, так
+        // как проект не использует ALTER TABLE. Значение просто игнорируется, без падений.
 
         return new PlayerContract(
                 UUID.fromString(rs.getString("id")),
@@ -333,7 +341,6 @@ public class PlayerContractDatabase implements AutoCloseable {
                 rs.getInt("objective_amount"),
                 rs.getInt("objective_progress"),
                 rs.getLong("gold_reward"),
-                ItemStackSerializer.deserialize(rs.getString("item_rewards"), plugin.getLogger()),
                 rs.getInt("reputation_hint"),
                 PlayerContractVisibility.valueOf(rs.getString("visibility")),
                 PlayerContractStatus.valueOf(rs.getString("status")),

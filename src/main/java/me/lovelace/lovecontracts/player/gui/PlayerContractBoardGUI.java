@@ -213,9 +213,6 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         lore.add(mm.deserialize("<gray>Задача:</gray> <white>" + objectiveLabel(c) + "</white>"));
         lore.add(Component.empty());
         lore.add(mm.deserialize("<green>Награда:</green> <gold>" + c.getGoldReward() + " монет</gold>"));
-        if (!c.getItemRewards().isEmpty()) {
-            lore.add(mm.deserialize("<green>+ " + c.getItemRewards().size() + " предмет(ов)</green>"));
-        }
         lore.add(Component.empty());
         lore.add(mm.deserialize("<yellow>Срок:</yellow> <white>" + hoursLeft(c) + "</white>"));
         lore.add(Component.empty());

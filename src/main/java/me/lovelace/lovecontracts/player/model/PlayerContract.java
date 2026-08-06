@@ -1,16 +1,12 @@
 package me.lovelace.lovecontracts.player.model;
 
-import org.bukkit.inventory.ItemStack;
-
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Контракт "игрок нанимает игрока". Награда (золото + предметы) удерживается в эскроу
- * LoveContracts с момента создания — физически списывается у создателя сразу, чтобы
+ * Контракт "игрок нанимает игрока". Награда (золото, физическая валюта LoveCore) удерживается
+ * в эскроу LoveContracts с момента создания — физически списывается у создателя сразу, чтобы
  * исполнитель гарантированно получил оплату независимо от того, останется ли у создателя
  * достаточно денег к моменту завершения.
  *
@@ -32,7 +28,6 @@ public class PlayerContract {
     private int objectiveProgress;
 
     private final long goldReward;
-    private final List<ItemStack> itemRewards;
     private final int reputationHint;
 
     private final PlayerContractVisibility visibility;
@@ -45,7 +40,7 @@ public class PlayerContract {
 
     public PlayerContract(UUID id, UUID creatorId, String creatorName, UUID executorId, String executorName,
                            String description, PlayerContractObjectiveType objectiveType, String objectiveTarget,
-                           int objectiveAmount, int objectiveProgress, long goldReward, List<ItemStack> itemRewards,
+                           int objectiveAmount, int objectiveProgress, long goldReward,
                            int reputationHint, PlayerContractVisibility visibility, PlayerContractStatus status,
                            Instant createdAt, Instant deadline, Instant acceptedAt, Instant completedAt) {
         this.id = Objects.requireNonNull(id);
@@ -59,7 +54,6 @@ public class PlayerContract {
         this.objectiveAmount = Math.max(1, objectiveAmount);
         this.objectiveProgress = objectiveProgress;
         this.goldReward = Math.max(0, goldReward);
-        this.itemRewards = itemRewards != null ? new ArrayList<>(itemRewards) : new ArrayList<>();
         this.reputationHint = reputationHint;
         this.visibility = visibility != null ? visibility : PlayerContractVisibility.PUBLIC;
         this.status = status != null ? status : PlayerContractStatus.OPEN;
@@ -80,7 +74,6 @@ public class PlayerContract {
     public int getObjectiveAmount() { return objectiveAmount; }
     public int getObjectiveProgress() { return objectiveProgress; }
     public long getGoldReward() { return goldReward; }
-    public List<ItemStack> getItemRewards() { return List.copyOf(itemRewards); }
     public int getReputationHint() { return reputationHint; }
     public PlayerContractVisibility getVisibility() { return visibility; }
     public PlayerContractStatus getStatus() { return status; }
