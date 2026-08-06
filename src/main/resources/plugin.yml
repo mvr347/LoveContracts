@@ -8,20 +8,23 @@ website: https://github.com/mvr347/LoveContracts
 softdepend: [PlaceholderAPI, Citizens, LoveCore]
 
 commands:
-  lovecontracts:
+  lovecontractsadmin:
     description: Admin commands for LoveContracts
-    usage: /lovecontracts <reload|rotate|npc|sign|complete|fail|stats|reset|diag|toggle>
-    aliases: [lc, lca, lcadmin]
+    usage: /lovecontractsadmin <reload|rotate|create|npc|sign|complete|fail|stats|reset|toggle|help>
+    # Старое имя команды (lovecontracts) и его прежние короткие алиасы остаются здесь же,
+    # чтобы никто не потерял доступ по привычке — эта команда уже была чисто admin-scoped,
+    # так что переименование не требует отдельного redirect-сообщения.
+    aliases: [lovecontracts, lc, lca, lcadmin]
     permission: lovecontracts.admin
   contracts:
     description: Open contract board / view stats (Admin fallback)
     usage: /contracts [stats|abandon <id>]
-    aliases: [contract]
+    aliases: [contract, контракты]
     permission: lovecontracts.admin
   pcontract:
     description: Player-to-player contracts
     usage: /pcontract <board|my|create|accept|turnin|submit|review|cancel|info|help>
-    aliases: [pcontracts, playercontract]
+    aliases: [pcontracts, playercontract, контракт]
     permission: lovecontracts.admin
 
 permissions:

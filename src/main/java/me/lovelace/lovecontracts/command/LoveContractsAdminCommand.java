@@ -23,10 +23,20 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
+/**
+ * Единая административная команда плагина: {@code /lovecontractsadmin <subcommand>}.
+ * <p>
+ * Раньше это была команда {@code /lovecontracts} — она уже была чисто admin-командой (никогда
+ * не имела отдельного player-facing назначения), поэтому переименование сюда является простым
+ * ребрендингом под единый для экосистемы Love* стиль имени admin-команды, без переноса какой-либо
+ * новой логики. Старое имя {@code lovecontracts} (и его короткие алиасы {@code lc}/{@code lca}/
+ * {@code lcadmin}) остаётся рабочим алиасом в plugin.yml — команды, привязанные к нему по
+ * привычке, продолжают работать один в один, без отдельного redirect-сообщения.
+ */
 public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "reload", "rotate", "create", "npc", "sign", "complete", "fail", "stats", "reset", "toggle");
+            "reload", "rotate", "create", "npc", "sign", "complete", "fail", "stats", "reset", "toggle", "help");
     private static final List<String> SIGN_SUBCOMMANDS = List.of("bind", "unbind", "list");
     private static final List<String> PLAYER_ARG_SUBCOMMANDS = List.of("complete", "fail", "stats", "reset", "toggle");
 
@@ -41,6 +51,11 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
             @NotNull String label, @NotNull String[] args) {
+        if (!sender.hasPermission("lovecontracts.admin")) {
+            sender.sendMessage(mm.deserialize("<red>✖ Недостаточно прав.</red>"));
+            return true;
+        }
+
         if (args.length == 0) {
             sendHelp(sender);
             return true;
@@ -57,6 +72,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             case "stats" -> stats(sender, args);
             case "reset" -> reset(sender, args);
             case "toggle" -> toggle(sender, args);
+            case "help" -> sendHelp(sender);
             default -> {
                 sender.sendMessage(mm.deserialize("<red>✖ Неизвестная подкоманда.</red>"));
                 sendHelp(sender);
@@ -66,31 +82,34 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage(mm.deserialize("<gradient:#55FF55:#55FFFF><b>⚡ LoveContracts Admin Control</b></gradient>"));
+        sender.sendMessage(mm.deserialize("<dark_gray>========== <aqua>LoveContracts Admin</aqua> ==========</dark_gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin create</gold> <dark_gray>- Открыть меню создания контракта</dark_gray>"));
+                "<aqua>/lovecontractsadmin create</aqua> <gray>- Открыть меню создания контракта</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin sign bind [слот]</gold> <dark_gray>- Привязать целевую табличку</dark_gray>"));
+                "<aqua>/lovecontractsadmin sign bind [слот]</aqua> <gray>- Привязать целевую табличку</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin sign unbind</gold> <dark_gray>- Отвязать целевую табличку</dark_gray>"));
+                "<aqua>/lovecontractsadmin sign unbind</aqua> <gray>- Отвязать целевую табличку</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin sign list</gold> <dark_gray>- Список привязанных табличек</dark_gray>"));
+                "<aqua>/lovecontractsadmin sign list</aqua> <gray>- Список привязанных табличек</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin reload</gold> <dark_gray>- Перезагрузить конфигурацию</dark_gray>"));
+                "<aqua>/lovecontractsadmin reload</aqua> <gray>- Перезагрузить конфигурацию и heads.yml</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin rotate</gold> <dark_gray>- Принудительно ротировать контракты</dark_gray>"));
+                "<aqua>/lovecontractsadmin rotate</aqua> <gray>- Принудительно ротировать контракты</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin npc</gold> <dark_gray>- Привязать NPC Citizens (по взгляду)</dark_gray>"));
+                "<aqua>/lovecontractsadmin npc</aqua> <gray>- Привязать NPC Citizens (по взгляду)</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin complete <игрок> <id></gold> <dark_gray>- Выполнить контракт</dark_gray>"));
+                "<aqua>/lovecontractsadmin complete <игрок> <id></aqua> <gray>- Выполнить контракт</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin fail <игрок> <id></gold> <dark_gray>- Провалить контракт</dark_gray>"));
+                "<aqua>/lovecontractsadmin fail <игрок> <id></aqua> <gray>- Провалить контракт</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin stats <игрок></gold> <dark_gray>- Открыть статистику игрока</dark_gray>"));
+                "<aqua>/lovecontractsadmin stats <игрок></aqua> <gray>- Открыть статистику игрока</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin reset <игрок></gold> <dark_gray>- Сбросить статистику игрока</dark_gray>"));
+                "<aqua>/lovecontractsadmin reset <игрок></aqua> <gray>- Сбросить статистику игрока</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<gray>• <gold>/lcadmin toggle <игрок></gold> <dark_gray>- Вкл/Выкл доступ игроку</dark_gray>"));
+                "<aqua>/lovecontractsadmin toggle <игрок></aqua> <gray>- Вкл/Выкл доступ игроку</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<dark_gray>(алиасы: /lovecontracts, /lc, /lca, /lcadmin)</dark_gray>"));
+        sender.sendMessage(mm.deserialize("<dark_gray>=========================================</dark_gray>"));
     }
 
     private void create(CommandSender sender) {
@@ -103,7 +122,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
     private void toggle(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lcadmin toggle <игрок></red>"));
+            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin toggle <игрок></red>"));
             return;
         }
         Player target = org.bukkit.Bukkit.getPlayer(args[1]);
@@ -177,7 +196,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
         }
 
         if (args.length < 2) {
-            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lcadmin sign <bind|unbind|list> [слот]</red>"));
+            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin sign <bind|unbind|list> [слот]</red>"));
             return;
         }
 
@@ -236,14 +255,14 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                 }
             }
             default ->
-                player.sendMessage(mm.deserialize("<red>✖ Использование: /lcadmin sign <bind|unbind|list></red>"));
+                player.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin sign <bind|unbind|list></red>"));
         }
     }
 
     private void completeOrFail(CommandSender sender, String[] args, boolean complete) {
         if (args.length < 3) {
             sender.sendMessage(
-                    mm.deserialize("<red>✖ Использование: /lcadmin " + args[0] + " <игрок> <idКонтракта></red>"));
+                    mm.deserialize("<red>✖ Использование: /lovecontractsadmin " + args[0] + " <игрок> <idКонтракта></red>"));
             return;
         }
         Player target = plugin.getServer().getPlayerExact(args[1]);
@@ -269,7 +288,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
     private void stats(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lcadmin stats <игрок></red>"));
+            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin stats <игрок></red>"));
             return;
         }
         Player target = plugin.getServer().getPlayerExact(args[1]);
@@ -283,7 +302,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
     private void reset(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lcadmin reset <игрок></red>"));
+            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin reset <игрок></red>"));
             return;
         }
         Player target = plugin.getServer().getPlayerExact(args[1]);

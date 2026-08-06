@@ -124,7 +124,7 @@ public final class LoveContracts extends JavaPlugin {
             contractsCmd.setTabCompleter(executor);
         }
 
-        PluginCommand adminCmd = getCommand("lovecontracts");
+        PluginCommand adminCmd = getCommand("lovecontractsadmin");
         if (adminCmd != null) {
             LoveContractsAdminCommand admin = new LoveContractsAdminCommand(this);
             adminCmd.setExecutor(admin);

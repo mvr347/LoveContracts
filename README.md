@@ -14,12 +14,12 @@
 
 | Команда | Алиасы | Описание | Пермишин |
 |---|---|---|---|
-| `/contracts` | `contract`, `lc` | Открыть доску контрактов | `lovecontracts.use` |
+| `/contracts` | `contract`, `контракты` | Открыть доску контрактов | `lovecontracts.use` |
 | `/contracts stats` | — | Открыть статистику игрока | `lovecontracts.use` |
 | `/contracts abandon <id>` | — | Отказаться от контракта | `lovecontracts.use` |
-| `/lovecontracts` | `lca`, `lcadmin` | Администраторские команды | `lovecontracts.admin` |
+| `/lovecontractsadmin` | `lovecontracts`, `lc`, `lca`, `lcadmin` | Администраторские команды | `lovecontracts.admin` |
 
-### Подкоманды `/lovecontracts`
+### Подкоманды `/lovecontractsadmin`
 
 - `reload` — перезагрузить config.yml и contracts.yml
 - `rotate` — принудительно запустить ротацию контрактов
@@ -36,7 +36,7 @@
 | Пермишин | Описание | Default |
 |---|---|---|
 | `lovecontracts.use` | Доступ к `/contracts` | true |
-| `lovecontracts.admin` | Доступ ко всем `/lovecontracts` командам | op |
+| `lovecontracts.admin` | Доступ ко всем `/lovecontractsadmin` командам | op |
 | `lovecontracts.npc` | Привязка NPC доски контрактов | op |
 | `lovecontracts.sign` | Создание табличек-контрактов | op |
 
@@ -146,7 +146,7 @@ gui:
 npc:
   enabled: true
   info-update-interval: 10
-  # Привязывается через /lovecontracts npc (посмотреть на NPC перед командой).
+  # Привязывается через /lovecontractsadmin npc (посмотреть на NPC перед командой).
   # -1 = NPC не привязан, доска всё равно доступна через /contracts и таблички.
   id: -1
 ```
@@ -194,7 +194,7 @@ database:
 - Денежные штрафы применяются только к онлайн-игрокам — списать физические монеты из инвентаря офлайн-игрока невозможно, поэтому провал контракта по истечении срока для офлайн-игрока не штрафуется деньгами (статистика провала всё равно фиксируется).
 - Репутация (LoveBehavior) — точка интеграции обозначена в конфиге и модели наград/штрафов, но общий сервис ещё не подключён.
 
-## 2. Player-to-player контракты (`/pcontract`)
+## 2. Player-to-player контракты (`/pcontract`, алиасы `pcontracts`, `playercontract`, `контракт`)
 
 Игроки нанимают друг друга, а не только берут задания с доски: разместить заказ (принести
 предметы, убить цель или произвольную задачу текстом) с наградой золотом, кто-то
@@ -252,7 +252,7 @@ Java 21, Paper 1.21.4+. Использует HikariCP + SQLite (шейдится
 ### Мягкие зависимости (плагин работает и без них)
 
 - **LoveCore** — денежные награды/штрафы `/contracts` и эскроу `/pcontract` через `LoveEconomy`; без него эти операции с золотом молча пропускаются или недоступны (контракты без золота — работают)
-- **Citizens** — NPC доски контрактов (`/lovecontracts npc`)
+- **Citizens** — NPC доски контрактов (`/lovecontractsadmin npc`)
 - **PlaceholderAPI** — плейсхолдеры статистики
 
 ## Лицензия
