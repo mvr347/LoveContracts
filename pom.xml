@@ -13,9 +13,9 @@
     <description>Daily contract system for Paper 1.21 (Witcher 3 style)</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <paper.version>1.21.11-R0.1-SNAPSHOT</paper.version>
+        <paper.version>26.2.build.100-stable</paper.version>
     </properties>
 
     <repositories>
@@ -87,6 +87,7 @@
     </dependencies>
 
     <build>
+        <finalName>LoveContracts</finalName>
         <defaultGoal>clean package</defaultGoal>
         <plugins>
             <plugin>
@@ -100,7 +101,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>3.6.2</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
