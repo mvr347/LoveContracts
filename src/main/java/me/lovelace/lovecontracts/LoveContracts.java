@@ -27,6 +27,7 @@ import me.lovelace.lovecontracts.task.ContractRotationTask;
 import dev.lovelace.lovecore.api.stats.StatBus;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Calendar;
@@ -205,6 +206,7 @@ public final class LoveContracts extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        HandlerList.unregisterAll(this);
         if (contractManager != null) contractManager.shutdown();
         if (registry != null) registry.shutdown();
         if (playerContractDatabase != null) playerContractDatabase.close();
