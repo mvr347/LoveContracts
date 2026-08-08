@@ -67,11 +67,10 @@ public final class LoveContracts extends JavaPlugin {
         instance = this;
 
         saveDefaultConfig();
-        saveResource("contracts.yml", false);
-        saveResource("messages.yml", false);
-        saveResource("npc_quests.yml", false);
-        saveResource("heads.yml", false);
-        loadHeadsConfig();
+        saveResourceIfMissing("contracts.yml");
+        saveResourceIfMissing("messages.yml");
+        saveResourceIfMissing("npc_quests.yml");
+        loadHeadsConfig(); // сам сохраняет heads.yml при первом запуске, см. ниже
 
         try {
             database = new ContractDatabase(this);
@@ -174,6 +173,18 @@ public final class LoveContracts extends JavaPlugin {
 
         getLogger().info("LoveContracts v" + getPluginMeta().getVersion() + " enabled — "
                 + registry.size() + " contracts loaded");
+    }
+
+    /**
+     * {@link #saveResource(String, boolean)} с {@code replace=false} логирует WARNING
+     * на каждый рестарт сервера, если файл уже существует — это штатное поведение
+     * Bukkit, а не ошибка, но оно засоряет консоль. Извлекаем ресурс только один раз,
+     * при первом запуске.
+     */
+    private void saveResourceIfMissing(String name) {
+        if (!new java.io.File(getDataFolder(), name).exists()) {
+            saveResource(name, false);
+        }
     }
 
     private void scheduleRotationTask() {
