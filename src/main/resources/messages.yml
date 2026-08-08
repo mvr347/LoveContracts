@@ -61,6 +61,20 @@ difficulties:
   medium: "Средний"
   hard: "Сложный"
 
+commands:
+  no-permission: "<red>У вас нет прав для выполнения этой команды.</red>"
+  help-header: "<dark_gray>========== <aqua>LoveContracts Помощь</aqua> ==========</dark_gray>"
+  help-contracts: "<aqua>/contracts</aqua> <gray>- открыть доску контрактов</gray>"
+  help-pcontract: "<aqua>/pcontract</aqua> <gray>- личные контракты между игроками</gray>"
+  help-admin: "<aqua>/lovecontractsadmin</aqua> <gray>- административные команды</gray>"
+  help-footer: "<dark_gray>=========================================</dark_gray>"
+  admin-help-header: "<dark_gray>========== <aqua>LoveContracts Admin</aqua> ==========</dark_gray>"
+  admin-help-reload: "<aqua>/lovecontractsadmin reload</aqua> <gray>- перезагрузить конфигурацию</gray>"
+  admin-help-rotate: "<aqua>/lovecontractsadmin rotate</aqua> <gray>- ротация контрактов</gray>"
+  admin-help-create: "<aqua>/lovecontractsadmin create</aqua> <gray>- создать контракт</gray>"
+  admin-help-npc: "<aqua>/lovecontractsadmin npc</aqua> <gray>- управление NPC</gray>"
+  admin-help-footer: "<dark_gray>=========================================</dark_gray>"
+
 messages:
   contract-accepted: "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>"
   contract-completed: "<green>Выполнено:</green> <gold>{CONTRACT}</gold>"
