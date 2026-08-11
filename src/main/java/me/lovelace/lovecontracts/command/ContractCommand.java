@@ -56,6 +56,8 @@ public class ContractCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                 @NotNull String alias, @NotNull String[] args) {
+        if (!sender.hasPermission("lovecontracts.use")) return List.of();
+
         if (args.length == 1) {
             return List.of("stats", "abandon").stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
