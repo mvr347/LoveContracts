@@ -260,6 +260,8 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
+        if (!sender.hasPermission("pcontracts.use")) return List.of();
+
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
             options.addAll(List.of("board", "my", "create", "accept", "turnin", "submit",
