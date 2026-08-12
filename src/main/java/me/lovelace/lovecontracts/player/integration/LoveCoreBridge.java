@@ -78,6 +78,16 @@ public class LoveCoreBridge {
         return playstyleLevel(playerId) == BehaviorLevels.MAX_LEVEL;
     }
 
+    /**
+     * Ступень вежливости (0..6, из LoveBehavior), либо {@code -1} если LoveBehavior недоступен
+     * (гейт по ступени в этом случае не применяется — как и со стилем игры выше).
+     */
+    public int politenessLevel(UUID playerId) {
+        return LoveCore.service(BehaviorLevels.class)
+                .map(levels -> levels.politenessLevel(playerId))
+                .orElse(-1);
+    }
+
     public boolean areClanmates(UUID a, UUID b) {
         return LoveCore.service(ProfileOracle.class)
                 .map(oracle -> oracle.areClanmates(a, b))
