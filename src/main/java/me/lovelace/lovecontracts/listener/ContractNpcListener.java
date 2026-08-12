@@ -87,7 +87,9 @@ public class ContractNpcListener implements Listener {
     /**
      * "Живая" реакция на реальные вежливость/стиль игры (LoveBehavior): ужасная вежливость
      * или агрессивный стиль игры может отказать в открытии доски новых контрактов. Возвращает
-     * true, если отказано (доску открывать не надо). Без LoveBehavior/выключенной секции —
+     * true, если отказано (доску открывать не надо) — только если реально нашлась фраза для
+     * показа игроку: пустой список (например, старый config.yml без новых ключей) не должен
+     * молча блокировать доску без объяснения причины. Без LoveBehavior/выключенной секции —
      * всегда false.
      */
     private boolean tryReject(Player player) {
@@ -104,8 +106,7 @@ public class ContractNpcListener implements Listener {
         } else {
             return false;
         }
-        say(player, key);
-        return true;
+        return say(player, key);
     }
 
     /** С настроенным шансом говорит фразу под настроение, не блокируя взаимодействие. */
@@ -132,10 +133,13 @@ public class ContractNpcListener implements Listener {
         say(player, key);
     }
 
-    private void say(Player player, String configPath) {
+    /** @return true, если фраза реально была отправлена (список в конфиге не пуст). */
+    private boolean say(Player player, String configPath) {
         List<String> messages = plugin.getConfig().getStringList(configPath);
-        if (!messages.isEmpty()) {
-            player.sendMessage(mm.deserialize(messages.get(random.nextInt(messages.size()))));
+        if (messages.isEmpty()) {
+            return false;
         }
+        player.sendMessage(mm.deserialize(messages.get(random.nextInt(messages.size()))));
+        return true;
     }
 }
