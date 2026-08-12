@@ -178,6 +178,12 @@ public class PlayerContractManager {
             return future;
         }
 
+        if (plugin.getConfig().getBoolean("playstyle.block-kind-from-accepting", true) && bridge.isKindPlaystyle(executor.getUniqueId())) {
+            future.complete(ContractActionResult.fail(
+                    "<red>Добрые игроки предпочитают сотрудничество, а не контракты на выполнение.</red>"));
+            return future;
+        }
+
         boolean allowSelf = cfg().getBoolean("allow-self-accept", false);
         int maxAccepted = cfg().getInt("max-accepted-per-executor", 3);
 

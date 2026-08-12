@@ -2,6 +2,7 @@ package me.lovelace.lovecontracts.player.integration;
 
 import dev.lovelace.lovecore.api.LoveCore;
 import dev.lovelace.lovecore.api.economy.LoveEconomy;
+import dev.lovelace.lovecore.api.social.BehaviorLevels;
 import dev.lovelace.lovecore.api.social.ProfileOracle;
 import dev.lovelace.lovecore.api.social.ReputationOracle;
 import dev.lovelace.lovecore.api.stats.StatBus;
@@ -60,6 +61,21 @@ public class LoveCoreBridge {
         int rep = reputation(playerId);
         // Оракул недоступен — не блокируем геймплей из-за отсутствующей интеграции.
         return rep == Integer.MIN_VALUE || rep >= minRequired;
+    }
+
+    /**
+     * Ступень стиля игры (0..6, из LoveBehavior), либо {@code -1} если LoveBehavior недоступен
+     * (гейт по ступени в этом случае не применяется — как и с репутацией выше).
+     */
+    public int playstyleLevel(UUID playerId) {
+        return LoveCore.service(BehaviorLevels.class)
+                .map(levels -> levels.playstyleLevel(playerId))
+                .orElse(-1);
+    }
+
+    /** Ступень стиля игры "Добрый" (максимальная, {@link BehaviorLevels#MAX_LEVEL}). */
+    public boolean isKindPlaystyle(UUID playerId) {
+        return playstyleLevel(playerId) == BehaviorLevels.MAX_LEVEL;
     }
 
     public boolean areClanmates(UUID a, UUID b) {

@@ -1,5 +1,7 @@
 package me.lovelace.lovecontracts.manager;
 
+import dev.lovelace.lovecore.api.LoveCore;
+import dev.lovelace.lovecore.api.social.BehaviorLevels;
 import dev.lovelace.lovecore.api.stats.Metrics;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.model.Contract;
@@ -267,6 +269,15 @@ public class ContractManager {
         Contract contract = plugin.getRegistry().getContract(id);
         if (contract == null || !contract.isEnabled() || !isActive(id)) {
             player.sendMessage(mm.deserialize("<red>Этот контракт больше недоступен.</red>"));
+            return;
+        }
+
+        if (plugin.getConfig().getBoolean("playstyle.block-kind-from-accepting", true)
+                && LoveCore.service(BehaviorLevels.class)
+                        .map(levels -> levels.playstyleLevel(player.getUniqueId()) == BehaviorLevels.MAX_LEVEL)
+                        .orElse(false)) {
+            player.sendMessage(mm.deserialize(
+                    "<red>Добрые игроки предпочитают сотрудничество, а не контракты на выполнение.</red>"));
             return;
         }
 
