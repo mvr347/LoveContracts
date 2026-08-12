@@ -30,6 +30,24 @@ public class PlayerContractListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        manager.deliverPendingPayouts(event.getPlayer());
+        if (isAuthenticated(event.getPlayer())) {
+            manager.deliverPendingPayouts(event.getPlayer());
+        }
+    }
+
+    @EventHandler
+    public void onAuthenticated(dev.lovelace.lovecore.api.auth.PlayerAuthenticatedEvent event) {
+        manager.deliverPendingPayouts(event.player());
+    }
+
+    /**
+     * Не кэшируем Optional<AuthOracle> — сосед может зарегистрировать реализацию позже,
+     * см. LoveCore.service(...) javadoc в LoveCore. Если LoveAuth не установлен, выплаты
+     * доставляются сразу на join, как и раньше.
+     */
+    private boolean isAuthenticated(Player player) {
+        return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.auth.AuthOracle.class)
+                .map(oracle -> oracle.isAuthenticated(player.getUniqueId()))
+                .orElse(true);
     }
 }
