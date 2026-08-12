@@ -3,6 +3,7 @@ package me.lovelace.lovecontracts.listener;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.integration.CitizensIntegration;
 import me.lovelace.lovecontracts.model.Contract;
+import me.lovelace.lovecontracts.player.integration.LoveCoreBridge;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -11,11 +12,16 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 
+import java.util.List;
+import java.util.Random;
+
 public class ContractNpcListener implements Listener {
 
     private final LoveContracts plugin;
     private final CitizensIntegration citizens;
+    private final LoveCoreBridge bridge = new LoveCoreBridge();
     private final MiniMessage mm = MiniMessage.miniMessage();
+    private final Random random = new Random();
 
     public ContractNpcListener(LoveContracts plugin, CitizensIntegration citizens) {
         this.plugin = plugin;
@@ -49,7 +55,8 @@ public class ContractNpcListener implements Listener {
                 plugin.getContractManager().cancelContract(player, active);
                 player.sendMessage(mm.deserialize("<yellow>Контракт отменен по вашему запросу у NPC.</yellow>"));
             }
-        } else {
+        } else if (!tryReject(player)) {
+            maybeSayAmbient(player);
             plugin.getContractGUI().open(player);
         }
     }
@@ -71,6 +78,64 @@ public class ContractNpcListener implements Listener {
 
         event.setCancelled(true);
         // Left Click -> Open main contracts board
-        plugin.getContractGUI().open(player);
+        if (!tryReject(player)) {
+            maybeSayAmbient(player);
+            plugin.getContractGUI().open(player);
+        }
+    }
+
+    /**
+     * "Живая" реакция на реальные вежливость/стиль игры (LoveBehavior): ужасная вежливость
+     * или агрессивный стиль игры может отказать в открытии доски новых контрактов. Возвращает
+     * true, если отказано (доску открывать не надо). Без LoveBehavior/выключенной секции —
+     * всегда false.
+     */
+    private boolean tryReject(Player player) {
+        if (!plugin.getConfig().getBoolean("npc.npc-dialogue.reject.enabled", true)) {
+            return false;
+        }
+        int politeness = bridge.politenessLevel(player.getUniqueId());
+        int playstyle = bridge.playstyleLevel(player.getUniqueId());
+        String key;
+        if (politeness == 0) {
+            key = "npc.npc-dialogue.reject.terrible-politeness";
+        } else if (playstyle == 0) {
+            key = "npc.npc-dialogue.reject.aggressive-playstyle";
+        } else {
+            return false;
+        }
+        say(player, key);
+        return true;
+    }
+
+    /** С настроенным шансом говорит фразу под настроение, не блокируя взаимодействие. */
+    private void maybeSayAmbient(Player player) {
+        if (!plugin.getConfig().getBoolean("npc.npc-dialogue.ambient.enabled", true)) {
+            return;
+        }
+        double chance = plugin.getConfig().getDouble("npc.npc-dialogue.ambient.chance", 0.35);
+        if (random.nextDouble() >= chance) {
+            return;
+        }
+        int politeness = bridge.politenessLevel(player.getUniqueId());
+        int playstyle = bridge.playstyleLevel(player.getUniqueId());
+        String key;
+        if (politeness == 0) {
+            key = "npc.npc-dialogue.ambient.terrible-politeness";
+        } else if (playstyle == 0) {
+            key = "npc.npc-dialogue.ambient.aggressive-playstyle";
+        } else if (politeness >= 5 || bridge.isKindPlaystyle(player.getUniqueId())) {
+            key = "npc.npc-dialogue.ambient.friendly";
+        } else {
+            return;
+        }
+        say(player, key);
+    }
+
+    private void say(Player player, String configPath) {
+        List<String> messages = plugin.getConfig().getStringList(configPath);
+        if (!messages.isEmpty()) {
+            player.sendMessage(mm.deserialize(messages.get(random.nextInt(messages.size()))));
+        }
     }
 }
