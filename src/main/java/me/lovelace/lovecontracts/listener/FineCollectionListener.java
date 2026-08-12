@@ -46,12 +46,32 @@ public class FineCollectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        checkAndCollect(event.getPlayer());
+        if (isAuthenticated(event.getPlayer())) {
+            checkAndCollect(event.getPlayer());
+        }
+    }
+
+    @EventHandler
+    public void onAuthenticated(dev.lovelace.lovecore.api.auth.PlayerAuthenticatedEvent event) {
+        checkAndCollect(event.player());
     }
 
     private void checkAndCollect(Player player) {
         if (player == null || plugin.getFineManager() == null) return;
         if (!plugin.getFineManager().hasDebt(player.getUniqueId())) return;
         plugin.getFineManager().collectDebt(player);
+    }
+
+    /**
+     * Не кэшируем Optional<AuthOracle> — сосед может зарегистрировать реализацию позже,
+     * см. LoveCore.service(...) javadoc в LoveCore. Если LoveAuth не установлен, штраф
+     * взыскивается сразу на join, как и раньше. onPickup/onClick/onDrag не нуждаются в этой
+     * проверке отдельно — соответствующие события LoveAuth и так отменяет для незалогиненных
+     * (ignoreCancelled=true на этих хендлерах), только PlayerJoinEvent он не трогает.
+     */
+    private boolean isAuthenticated(Player player) {
+        return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.auth.AuthOracle.class)
+                .map(oracle -> oracle.isAuthenticated(player.getUniqueId()))
+                .orElse(true);
     }
 }
