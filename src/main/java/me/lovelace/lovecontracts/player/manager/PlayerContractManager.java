@@ -472,7 +472,13 @@ public class PlayerContractManager {
                     }
                     PlayerContractStatus prev = c.getStatus();
                     c.setStatus(PlayerContractStatus.CANCELLED);
-                    db.update(c);
+                    // Guard against racing a concurrent completion (e.g. the executor's turn-in
+                    // lands right as the creator cancels) - only refund if this is really the
+                    // transition that closed the contract, not a stale double-cancel.
+                    if (!db.tryUpdate(c, prev)) {
+                        runSync(() -> future.complete(ContractActionResult.fail("<red>Контракт уже закрыт.</red>")));
+                        return;
+                    }
 
                     boolean refund = cfg().getBoolean("refund-on-abandon", true);
                     if (refund) {
@@ -494,7 +500,10 @@ public class PlayerContractManager {
                     c.setObjectiveProgress(0);
                     c.setStatus(PlayerContractStatus.OPEN);
                     c.setAcceptedAt(null);
-                    db.update(c);
+                    if (!db.tryUpdate(c, prev)) {
+                        runSync(() -> future.complete(ContractActionResult.fail("<red>У вас нет активного этого контракта.</red>")));
+                        return;
+                    }
 
                     runSync(() -> {
                         Bukkit.getPluginManager().callEvent(new PlayerContractEndedEvent(c, prev));
@@ -526,7 +535,12 @@ public class PlayerContractManager {
                 for (PlayerContract c : overdue) {
                     PlayerContractStatus prev = c.getStatus();
                     c.setStatus(PlayerContractStatus.EXPIRED);
-                    db.update(c);
+                    // Guard against racing a completion/abandon that lands between findOverdue()
+                    // reading this row and this loop iteration reaching it - only refund if this
+                    // expiry is really what closed the contract.
+                    if (!db.tryUpdate(c, prev)) {
+                        continue;
+                    }
 
                     if (refund) {
                         payout(c.getCreatorId(), c.getGoldReward(), "contract-expire:" + c.getId());
@@ -666,12 +680,23 @@ public class PlayerContractManager {
     private CompletableFuture<ContractActionResult> completeInternal(PlayerContract c) {
         CompletableFuture<ContractActionResult> future = new CompletableFuture<>();
 
+        // completeInternal is the one choke point every completion path (turn-in delivery, kill
+        // progress, review-accept) funnels through. Two of those can race for the same contract
+        // (e.g. a double turn-in click, or a kill landing right as a review is accepted) - both
+        // would otherwise read the pre-completion status, both pass their own check, and both pay
+        // out. tryUpdate only applies if the row is still in the status this caller observed;
+        // whichever race loser gets there second sees 0 rows affected and must not pay out again.
+        PlayerContractStatus priorStatus = c.getStatus();
         c.setStatus(PlayerContractStatus.COMPLETED);
         c.setCompletedAt(Instant.now());
 
         runAsync(() -> {
             try {
-                db.update(c);
+                if (!db.tryUpdate(c, priorStatus)) {
+                    runSync(() -> future.complete(ContractActionResult.fail(
+                            "<yellow>Контракт уже был завершён или изменён.</yellow>")));
+                    return;
+                }
                 payout(c.getExecutorId(), c.getGoldReward(), "contract-complete:" + c.getId());
 
                 runSync(() -> {

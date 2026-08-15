@@ -129,6 +129,40 @@ public class PlayerContractDatabase implements AutoCloseable {
         }
     }
 
+    /**
+     * Как {@link #update(PlayerContract)}, но пишет только если статус строки в БД прямо сейчас
+     * всё ещё входит в {@code expectedCurrentStatuses} — атомарный guard на уровне SQL против
+     * гонок двойного turnin/submit/review-accept/cancel/abandon/expire (которые иначе могли бы
+     * привести к повторной выплате награды или повторному возврату эскроу — см. вызывающий код
+     * в {@link me.lovelace.lovecontracts.player.manager.PlayerContractManager}). Возвращает
+     * false, если кто-то другой уже сменил статус первым: в этом случае вызывающий код обязан
+     * ничего не выплачивать/возвращать повторно.
+     */
+    public boolean tryUpdate(PlayerContract c, PlayerContractStatus... expectedCurrentStatuses) throws SQLException {
+        if (expectedCurrentStatuses == null || expectedCurrentStatuses.length == 0) {
+            throw new IllegalArgumentException("expectedCurrentStatuses must not be empty");
+        }
+        String placeholders = String.join(",", java.util.Collections.nCopies(expectedCurrentStatuses.length, "?"));
+        String sql = "UPDATE pcontracts SET " +
+                "executor_id=?, executor_name=?, objective_progress=?, status=?, accepted_at=?, completed_at=? " +
+                "WHERE id=? AND status IN (" + placeholders + ")";
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, c.getExecutorId() != null ? c.getExecutorId().toString() : null);
+            ps.setString(2, c.getExecutorName());
+            ps.setInt(3, c.getObjectiveProgress());
+            ps.setString(4, c.getStatus().name());
+            ps.setObject(5, c.getAcceptedAt() != null ? c.getAcceptedAt().toEpochMilli() : null);
+            ps.setObject(6, c.getCompletedAt() != null ? c.getCompletedAt().toEpochMilli() : null);
+            ps.setString(7, c.getId().toString());
+            int idx = 8;
+            for (PlayerContractStatus s : expectedCurrentStatuses) {
+                ps.setString(idx++, s.name());
+            }
+            return ps.executeUpdate() > 0;
+        }
+    }
+
     public Optional<PlayerContract> findById(UUID id) throws SQLException {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement("SELECT * FROM pcontracts WHERE id = ?")) {
