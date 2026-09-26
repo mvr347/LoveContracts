@@ -79,6 +79,24 @@ public class LoveCoreBridge {
     }
 
     /**
+     * Высокая вежливость (&gt;= minPolitenessLevel) или добрый стиль игры (максимальная ступень).
+     * false, если LoveBehavior недоступен — гейт по этому статусу в этом случае не применяется.
+     */
+    public boolean isGoodStanding(UUID playerId, int minPolitenessLevel) {
+        int politeness = politenessLevel(playerId);
+        return (politeness >= 0 && politeness >= minPolitenessLevel) || isKindPlaystyle(playerId);
+    }
+
+    /**
+     * Низкая вежливость (&lt;= maxPolitenessLevel). false, если LoveBehavior недоступен — гейт
+     * по этому статусу в этом случае не применяется.
+     */
+    public boolean isLowStanding(UUID playerId, int maxPolitenessLevel) {
+        int politeness = politenessLevel(playerId);
+        return politeness >= 0 && politeness <= maxPolitenessLevel;
+    }
+
+    /**
      * Ступень вежливости (0..6, из LoveBehavior), либо {@code -1} если LoveBehavior недоступен
      * (гейт по ступени в этом случае не применяется — как и со стилем игры выше).
      */

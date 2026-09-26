@@ -142,6 +142,15 @@ player-contracts:
   max-gold-reward: 100000
   creation-tax-percent: 5
 
+  # Корректировка налога на создание контракта по вежливости/стилю игры создателя
+  # (LoveCore.BehaviorLevels, ставит LoveBehavior).
+  behavior-tax-adjustment:
+    enabled: true
+    discount-percent: 0.10       # вежливым/добрым — скидка от creation-tax-percent
+    surcharge-percent: 0.10      # токсичным — надбавка
+    politeness-good-threshold: 5 # ступень вежливости 0-6
+    politeness-bad-threshold: 1  # ступень вежливости 0-6 и ниже
+
   min-deadline-hours: 1
   max-deadline-hours: 168
   default-deadline-hours: 24

@@ -89,7 +89,8 @@ public class PlayerContractManager {
             return future;
         }
 
-        long tax = Math.round(req.goldReward() * (cfg().getDouble("creation-tax-percent", 0) / 100.0));
+        double taxPercent = cfg().getDouble("creation-tax-percent", 0) * behaviorTaxFactor(creator.getUniqueId());
+        long tax = Math.round(req.goldReward() * (taxPercent / 100.0));
         long totalCharge = req.goldReward() + tax;
 
         if (totalCharge > 0 && !bridge.hasEconomy()) {
@@ -163,6 +164,26 @@ public class PlayerContractManager {
         });
 
         return future;
+    }
+
+    /**
+     * Множитель к {@code creation-tax-percent} по вежливости/стилю игры создателя контракта
+     * (LoveCoreBridge, из LoveBehavior): вежливым/добрым — скидка, токсичным — надбавка. 1.0 без
+     * LoveBehavior или у нейтральных игроков.
+     */
+    private double behaviorTaxFactor(UUID creatorId) {
+        if (!cfg().getBoolean("behavior-tax-adjustment.enabled", true)) {
+            return 1.0;
+        }
+        int goodThreshold = cfg().getInt("behavior-tax-adjustment.politeness-good-threshold", 5);
+        int badThreshold = cfg().getInt("behavior-tax-adjustment.politeness-bad-threshold", 1);
+        if (bridge.isGoodStanding(creatorId, goodThreshold)) {
+            return 1.0 - cfg().getDouble("behavior-tax-adjustment.discount-percent", 0.10);
+        }
+        if (bridge.isLowStanding(creatorId, badThreshold)) {
+            return 1.0 + cfg().getDouble("behavior-tax-adjustment.surcharge-percent", 0.10);
+        }
+        return 1.0;
     }
 
     // ------------------------------------------------------------------
