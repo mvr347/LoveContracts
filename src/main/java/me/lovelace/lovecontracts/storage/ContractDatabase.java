@@ -49,9 +49,17 @@ public class ContractDatabase implements AutoCloseable {
                 throw new SQLException("Database connection invalid");
             }
             createTables(conn);
+            healExpiredActiveContracts(conn);
         }
 
         plugin.getLogger().info("Database initialized: " + dbFile.getName());
+    }
+
+    private void healExpiredActiveContracts(Connection conn) {
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate("UPDATE active_contracts SET expires_at = datetime('now', '+25 hours') WHERE expires_at <= datetime('now')");
+        } catch (SQLException ignored) {
+        }
     }
 
     private void createTables(Connection conn) throws SQLException {

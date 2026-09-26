@@ -67,13 +67,12 @@ public class ContractRotationTask implements Runnable {
 
                 String insert = """
                     INSERT INTO active_contracts (contract_id, expires_at)
-                    VALUES (?, datetime('now', '+' || ? || ' minutes'))
+                    VALUES (?, datetime('now', '+25 hours'))
                     """;
                 try (PreparedStatement ps = conn.prepareStatement(insert)) {
                     for (Contract c : selected) {
                         for (int i = 0; i < c.getDailySpawns(); i++) {
                             ps.setString(1, c.getId());
-                            ps.setInt(2, c.getExpirationMinutes());
                             ps.addBatch();
                         }
                     }

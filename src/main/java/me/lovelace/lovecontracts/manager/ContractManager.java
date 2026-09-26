@@ -282,9 +282,9 @@ public class ContractManager {
         }
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            boolean accepted;
+            AcceptResult result;
             try {
-                accepted = tryInsertAcceptance(player, contract);
+                result = tryInsertAcceptance(player, contract);
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Accept-contract failed", e);
                 Bukkit.getScheduler().runTask(plugin, () ->
@@ -294,8 +294,14 @@ public class ContractManager {
 
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!player.isOnline()) return;
-                if (!accepted) {
-                    player.sendMessage(mm.deserialize("<red>Вы уже приняли этот контракт сегодня или свободные слоты закончились.</red>"));
+                if (result == AcceptResult.ALREADY_ACCEPTED_TODAY) {
+                    plugin.getMessageManager().sendMessage(player, "messages.contract-already-taken",
+                            "<red>Вы уже выполняли этот контракт сегодня. Дождитесь следующей ротации.</red>");
+                    return;
+                }
+                if (result == AcceptResult.NO_SLOTS_OR_EXPIRED) {
+                    plugin.getMessageManager().sendMessage(player, "messages.contract-no-slots",
+                            "<red>Свободные слоты на этот контракт закончились или его срок на доске истёк.</red>");
                     return;
                 }
                 if (contract.getCondition() != null) {
@@ -311,7 +317,13 @@ public class ContractManager {
         });
     }
 
-    private boolean tryInsertAcceptance(Player player, Contract contract) throws SQLException {
+    public enum AcceptResult {
+        SUCCESS,
+        NO_SLOTS_OR_EXPIRED,
+        ALREADY_ACCEPTED_TODAY
+    }
+
+    private AcceptResult tryInsertAcceptance(Player player, Contract contract) throws SQLException {
         try (Connection conn = plugin.getDatabase().getConnection()) {
             conn.setAutoCommit(false);
             try {
@@ -333,7 +345,7 @@ public class ContractManager {
 
                 if (activeId == -1) {
                     conn.rollback();
-                    return false;
+                    return AcceptResult.NO_SLOTS_OR_EXPIRED;
                 }
 
                 try (PreparedStatement ps = conn.prepareStatement(
@@ -347,7 +359,7 @@ public class ContractManager {
                 } catch (SQLException e) {
                     // UNIQUE(player_uuid, contract_id, accepted_date) — already accepted today.
                     conn.rollback();
-                    return false;
+                    return AcceptResult.ALREADY_ACCEPTED_TODAY;
                 }
 
                 try (PreparedStatement ps = conn.prepareStatement(
@@ -362,7 +374,7 @@ public class ContractManager {
                 conn.commit();
                 acceptedTodayCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
                 activeContractCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
-                return true;
+                return AcceptResult.SUCCESS;
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
