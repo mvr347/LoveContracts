@@ -1,18 +1,13 @@
 # ============================================
-# Пул контрактов (40 заготовок: 25 легких, 15 средних)
-# Сбалансировано под экономику LoveShop
-# Время выполнения: 10 минут – 1 час
+# Пул контрактов — жёсткий баланс экономики
+# Награды сильно снижены (25–80), время 30–60 мин
 # ============================================
 
 contracts:
 
-  # --------------------------------------------
-  # ЛЕГКИЕ КОНТРАКТЫ (25 шт.)
-  # --------------------------------------------
-
   kill_sheep_easy:
     display-name: "<green>Охота на овец</green>"
-    description: "Убейте 15 овец в мирных пастбищах"
+    description: "Убейте 150 овец в мирных пастбищах"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
@@ -20,19 +15,19 @@ contracts:
     weight: 10
     daily-spawns: 1
     max-acceptances: -1
-    expiration-minutes: 20
+    expiration-minutes: 60
     condition:
       type: "KillEntity"
       entity-type: "SHEEP"
-      count: 15
+      count: 150
     rewards:
-      money: 8
+      money: 30
     penalties:
       none: true
 
   craft_stairs_easy:
     display-name: "<green>Мастер ступеней</green>"
-    description: "Скрафтите 32 дубовых ступенек"
+    description: "Скрафтите 300 дубовых ступенек"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
@@ -40,775 +35,710 @@ contracts:
     weight: 10
     daily-spawns: 1
     max-acceptances: -1
-    expiration-minutes: 15
+    expiration-minutes: 45
     condition:
       type: "CraftItem"
       material: "OAK_STAIRS"
-      count: 32
+      count: 300
     rewards:
-      money: 8
+      money: 40
     penalties:
       none: true
 
-  mine_iron_easy:
-    display-name: "<green>Добытчик железа</green>"
-    description: "Добудьте 20 железной руды"
+  mine_coal_easy:
+    display-name: "<green>Угольный старатель</green>"
+    description: "Добудьте 200 угля"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
     starter: true
     weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "MineMaterial"
+      material: "COAL_ORE"
+      count: 200
+    rewards:
+      money: 35
+    penalties:
+      none: true
+
+  fish_cod_easy:
+    display-name: "<green>Рыбак у реки</green>"
+    description: "Поймайте 50 рыб (любых)"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "CatchFish"
+      count: 50
+    rewards:
+      money: 30
+    penalties:
+      none: true
+
+  kill_zombie_easy:
+    display-name: "<green>Охотник на зомби</green>"
+    description: "Убейте 80 зомби"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "KillEntity"
+      entity-type: "ZOMBIE"
+      count: 80
+    rewards:
+      money: 40
+    penalties:
+      none: true
+
+  mine_iron_easy:
+    display-name: "<green>Железный рудокоп</green>"
+    description: "Добудьте 100 железной руды"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "MineMaterial"
+      material: "IRON_ORE"
+      count: 100
+    rewards:
+      money: 45
+    penalties:
+      none: true
+
+  craft_bread_easy:
+    display-name: "<green>Пекарь</green>"
+    description: "Скрафтите 64 хлеба"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 30
+    condition:
+      type: "CraftItem"
+      material: "BREAD"
+      count: 64
+    rewards:
+      money: 25
+    penalties:
+      none: true
+
+  kill_skeleton_easy:
+    display-name: "<green>Костолом</green>"
+    description: "Убейте 60 скелетов"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "KillEntity"
+      entity-type: "SKELETON"
+      count: 60
+    rewards:
+      money: 40
+    penalties:
+      none: true
+
+  mine_stone_easy:
+    display-name: "<green>Каменотёс</green>"
+    description: "Добудьте 500 камня"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "MineMaterial"
+      material: "STONE"
+      count: 500
+    rewards:
+      money: 30
+    penalties:
+      none: true
+
+  kill_spider_easy:
+    display-name: "<green>Паучий истребитель</green>"
+    description: "Убейте 50 пауков"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "KillEntity"
+      entity-type: "SPIDER"
+      count: 50
+    rewards:
+      money: 35
+    penalties:
+      none: true
+
+  craft_torch_easy:
+    display-name: "<green>Светоносный</green>"
+    description: "Скрафтите 128 факелов"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 30
+    condition:
+      type: "CraftItem"
+      material: "TORCH"
+      count: 128
+    rewards:
+      money: 25
+    penalties:
+      none: true
+
+  kill_creeper_easy:
+    display-name: "<green>Осторожный боец</green>"
+    description: "Убейте 40 криперов"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "KillEntity"
+      entity-type: "CREEPER"
+      count: 40
+    rewards:
+      money: 45
+    penalties:
+      none: true
+
+  mine_copper_easy:
+    display-name: "<green>Медный старатель</green>"
+    description: "Добудьте 80 медной руды"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 10
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "MineMaterial"
+      material: "COPPER_ORE"
+      count: 80
+    rewards:
+      money: 35
+    penalties:
+      none: true
+
+  fish_salmon_easy:
+    display-name: "<green>Лососевый улов</green>"
+    description: "Поймайте 30 лососей"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "CatchFish"
+      count: 30
+    rewards:
+      money: 30
+    penalties:
+      none: true
+
+  kill_cow_easy:
+    display-name: "<green>Скотовод</green>"
+    description: "Убейте 40 коров"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "KillEntity"
+      entity-type: "COW"
+      count: 40
+    rewards:
+      money: 30
+    penalties:
+      none: true
+
+  craft_fence_easy:
+    display-name: "<green>Заборщик</green>"
+    description: "Скрафтите 64 дубовых забора"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 30
+    condition:
+      type: "CraftItem"
+      material: "OAK_FENCE"
+      count: 64
+    rewards:
+      money: 25
+    penalties:
+      none: true
+
+  mine_dirt_easy:
+    display-name: "<green>Землекоп</green>"
+    description: "Добудьте 256 блоков земли"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 6
     daily-spawns: 1
     max-acceptances: -1
     expiration-minutes: 30
     condition:
       type: "MineMaterial"
-      material: "IRON_ORE"
-      count: 20
+      material: "DIRT"
+      count: 256
     rewards:
-      money: 15
+      money: 20
     penalties:
       none: true
 
-  kill_cows_easy:
-    display-name: "<green>Пастух и мясник</green>"
-    description: "Убейте 15 коров для снабжения города"
+  kill_chicken_easy:
+    display-name: "<green>Птицелов</green>"
+    description: "Убейте 50 кур"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
-    starter: false
-    weight: 10
+    starter: true
+    weight: 8
     daily-spawns: 1
     max-acceptances: -1
-    expiration-minutes: 20
-    condition:
-      type: "KillEntity"
-      entity-type: "COW"
-      count: 15
-    rewards:
-      money: 8
-    penalties:
-      none: true
-
-  kill_pigs_easy:
-    display-name: "<green>Заготовка свинины</green>"
-    description: "Убейте 15 свиней на ферме"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 20
-    condition:
-      type: "KillEntity"
-      entity-type: "PIG"
-      count: 15
-    rewards:
-      money: 8
-    penalties:
-      none: true
-
-  kill_chickens_easy:
-    display-name: "<green>Птичий двор</green>"
-    description: "Убейте 20 кур для поваров"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 15
+    expiration-minutes: 30
     condition:
       type: "KillEntity"
       entity-type: "CHICKEN"
-      count: 20
+      count: 50
     rewards:
-      money: 6
+      money: 25
     penalties:
       none: true
 
-  kill_spiders_easy:
-    display-name: "<green>Зачистка паутины</green>"
-    description: "Уничтожьте 15 обычных пауков"
+  craft_chest_easy:
+    display-name: "<green>Сундучник</green>"
+    description: "Скрафтите 16 сундуков"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
-    starter: false
-    weight: 10
+    starter: true
+    weight: 8
     daily-spawns: 1
     max-acceptances: -1
-    expiration-minutes: 25
-    condition:
-      type: "KillEntity"
-      entity-type: "SPIDER"
-      count: 15
-    rewards:
-      money: 10
-    penalties:
-      none: true
-
-  kill_zombies_easy:
-    display-name: "<green>Ночная смена</green>"
-    description: "Убейте 20 зомби около поселения"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 25
-    condition:
-      type: "KillEntity"
-      entity-type: "ZOMBIE"
-      count: 20
-    rewards:
-      money: 10
-    penalties:
-      none: true
-
-  kill_skeletons_easy:
-    display-name: "<green>Тихая охота</green>"
-    description: "Уничтожьте 15 скелетов"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 25
-    condition:
-      type: "KillEntity"
-      entity-type: "SKELETON"
-      count: 15
-    rewards:
-      money: 12
-    penalties:
-      none: true
-
-  craft_fences_easy:
-    display-name: "<green>Забор для загона</green>"
-    description: "Скрафтите 32 березовых забора"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 15
-    condition:
-      type: "CraftItem"
-      material: "BIRCH_FENCE"
-      count: 32
-    rewards:
-      money: 6
-    penalties:
-      none: true
-
-  craft_bread_easy:
-    display-name: "<green>Пекарь спавна</green>"
-    description: "Скрафтите 24 буханки хлеба"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 20
-    condition:
-      type: "CraftItem"
-      material: "BREAD"
-      count: 24
-    rewards:
-      money: 8
-    penalties:
-      none: true
-
-  craft_torches_easy:
-    display-name: "<green>Освещение подземки</green>"
-    description: "Скрафтите 64 факела"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 15
-    condition:
-      type: "CraftItem"
-      material: "TORCH"
-      count: 64
-    rewards:
-      money: 6
-    penalties:
-      none: true
-
-  craft_pickaxes_easy:
-    display-name: "<green>Заказ кузнеца</green>"
-    description: "Скрафтите 5 каменных кирок"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 15
-    condition:
-      type: "CraftItem"
-      material: "STONE_PICKAXE"
-      count: 5
-    rewards:
-      money: 6
-    penalties:
-      none: true
-
-  craft_chests_easy:
-    display-name: "<green>Складские ящики</green>"
-    description: "Скрафтите 8 деревянных сундуков"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 15
+    expiration-minutes: 30
     condition:
       type: "CraftItem"
       material: "CHEST"
-      count: 8
+      count: 16
     rewards:
-      money: 8
-    penalties:
-      none: true
-
-  craft_paper_easy:
-    display-name: "<green>Заготовка бумаги</green>"
-    description: "Скрафтите 32 листа бумаги"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 20
-    condition:
-      type: "CraftItem"
-      material: "PAPER"
-      count: 32
-    rewards:
-      money: 8
-    penalties:
-      none: true
-
-  craft_ladders_easy:
-    display-name: "<green>Лестницы в шахту</green>"
-    description: "Скрафтите 32 деревянные лестницы"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 15
-    condition:
-      type: "CraftItem"
-      material: "LADDER"
-      count: 32
-    rewards:
-      money: 6
-    penalties:
-      none: true
-
-  mine_coal_easy:
-    display-name: "<green>Угольный запас</green>"
-    description: "Добудьте 32 угольной руды"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 25
-    condition:
-      type: "MineMaterial"
-      material: "COAL_ORE"
-      count: 32
-    rewards:
-      money: 8
-    penalties:
-      none: true
-
-  mine_copper_easy:
-    display-name: "<green>Медная жила</green>"
-    description: "Добудьте 32 медной руды"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 25
-    condition:
-      type: "MineMaterial"
-      material: "COPPER_ORE"
-      count: 32
-    rewards:
-      money: 10
-    penalties:
-      none: true
-
-  mine_oak_easy:
-    display-name: "<green>Лесоруб</green>"
-    description: "Срубите 48 дубовых бревен"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 20
-    condition:
-      type: "MineMaterial"
-      material: "OAK_LOG"
-      count: 48
-    rewards:
-      money: 8
-    penalties:
-      none: true
-
-  mine_stone_easy:
-    display-name: "<green>Каменоломня</green>"
-    description: "Добудьте 64 булыжника"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 20
-    condition:
-      type: "MineMaterial"
-      material: "COBBLESTONE"
-      count: 64
-    rewards:
-      money: 6
+      money: 30
     penalties:
       none: true
 
   mine_sand_easy:
-    display-name: "<green>Песчаный карьер</green>"
-    description: "Добудьте 48 блоков песка"
+    display-name: "<green>Песчаник</green>"
+    description: "Добудьте 128 песка"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
-    starter: false
-    weight: 10
+    starter: true
+    weight: 8
     daily-spawns: 1
     max-acceptances: -1
-    expiration-minutes: 15
+    expiration-minutes: 30
     condition:
       type: "MineMaterial"
       material: "SAND"
-      count: 48
+      count: 128
     rewards:
-      money: 6
+      money: 25
     penalties:
       none: true
 
-  catch_fish_easy:
-    display-name: "<green>Утренняя рыбалка</green>"
-    description: "Поймайте 12 рыб удочкой"
+  kill_pig_easy:
+    display-name: "<green>Свинопас</green>"
+    description: "Убейте 40 свиней"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
-    starter: false
-    weight: 10
+    starter: true
+    weight: 8
     daily-spawns: 1
     max-acceptances: -1
-    expiration-minutes: 25
-    condition:
-      type: "CatchFish"
-      count: 12
-    rewards:
-      money: 12
-    penalties:
-      none: true
-
-  craft_buttons_easy:
-    display-name: "<green>Механика</green>"
-    description: "Скрафтите 16 каменных кнопок"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 10
-    condition:
-      type: "CraftItem"
-      material: "STONE_BUTTON"
-      count: 16
-    rewards:
-      money: 5
-    penalties:
-      none: true
-
-  kill_drowned_easy:
-    display-name: "<green>Очистка водоема</green>"
-    description: "Убейте 12 утопленников"
-    difficulty: "EASY"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 10
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 25
+    expiration-minutes: 30
     condition:
       type: "KillEntity"
-      entity-type: "DROWNED"
-      count: 12
+      entity-type: "PIG"
+      count: 40
     rewards:
-      money: 12
+      money: 25
+    penalties:
+      none: true
+
+  craft_ladder_easy:
+    display-name: "<green>Лестничник</green>"
+    description: "Скрафтите 64 лестницы"
+    difficulty: "EASY"
+    type: "REPEATING"
+    enabled: true
+    starter: true
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 30
+    condition:
+      type: "CraftItem"
+      material: "LADDER"
+      count: 64
+    rewards:
+      money: 25
     penalties:
       none: true
 
   mine_gravel_easy:
-    display-name: "<green>Засыпка дороги</green>"
-    description: "Добудьте 32 блока гравия"
+    display-name: "<green>Гравийщик</green>"
+    description: "Добудьте 128 гравия"
     difficulty: "EASY"
     type: "REPEATING"
     enabled: true
-    starter: false
-    weight: 10
+    starter: true
+    weight: 6
     daily-spawns: 1
     max-acceptances: -1
-    expiration-minutes: 15
+    expiration-minutes: 30
     condition:
       type: "MineMaterial"
       material: "GRAVEL"
-      count: 32
+      count: 128
     rewards:
-      money: 6
+      money: 25
     penalties:
       none: true
 
-
-  # --------------------------------------------
-  # СРЕДНИЕ КОНТРАКТЫ (15 шт.)
-  # --------------------------------------------
-
-  medium_monster_slayer:
-    display-name: "<yellow>Мастер зачистки</yellow>"
-    description: "Убейте 40 зомби в окрестностях города"
+  kill_enderman_med:
+    display-name: "<yellow>Охотник на эндерменов</yellow>"
+    description: "Убейте 25 эндерменов"
     difficulty: "MEDIUM"
     type: "REPEATING"
     enabled: true
     starter: false
-    weight: 5
+    weight: 8
     daily-spawns: 1
     max-acceptances: -1
     expiration-minutes: 45
     condition:
       type: "KillEntity"
-      entity-type: "ZOMBIE"
-      count: 40
-    rewards:
-      money: 30
-    penalties:
-      money: 5
-
-  medium_skeleton_archer:
-    display-name: "<yellow>Истребитель стрелков</yellow>"
-    description: "Уничтожьте 35 скелетов"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 45
-    condition:
-      type: "KillEntity"
-      entity-type: "SKELETON"
-      count: 35
-    rewards:
-      money: 35
-    penalties:
-      money: 5
-
-  medium_creeper_hunter:
-    display-name: "<yellow>Охотник на подрывников</yellow>"
-    description: "Убейте 25 криперов"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 50
-    condition:
-      type: "KillEntity"
-      entity-type: "CREEPER"
+      entity-type: "ENDERMAN"
       count: 25
-    rewards:
-      money: 45
-    penalties:
-      money: 8
-
-  medium_spider_nest:
-    display-name: "<yellow>Гнездо пауков</yellow>"
-    description: "Уничтожьте 30 пещерных пауков"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 45
-    condition:
-      type: "KillEntity"
-      entity-type: "CAVE_SPIDER"
-      count: 30
-    rewards:
-      money: 35
-    penalties:
-      money: 6
-
-  medium_iron_industrial:
-    display-name: "<yellow>Промышленное железо</yellow>"
-    description: "Добудьте 64 железной руды"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 60
-    condition:
-      type: "MineMaterial"
-      material: "IRON_ORE"
-      count: 64
-    rewards:
-      money: 40
-    penalties:
-      money: 8
-
-  medium_gold_digger:
-    display-name: "<yellow>Золотая жила</yellow>"
-    description: "Добудьте 32 золотой руды"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 60
-    condition:
-      type: "MineMaterial"
-      material: "GOLD_ORE"
-      count: 32
-    rewards:
-      money: 50
-    penalties:
-      money: 10
-
-  medium_coal_supplier:
-    display-name: "<yellow>Главный поставщик угля</yellow>"
-    description: "Добудьте 128 угольной руды"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 45
-    condition:
-      type: "MineMaterial"
-      material: "COAL_ORE"
-      count: 128
-    rewards:
-      money: 25
-    penalties:
-      money: 5
-
-  medium_lumberjack_pro:
-    display-name: "<yellow>Главный лесозаготовитель</yellow>"
-    description: "Добудьте 96 березовых бревен"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 40
-    condition:
-      type: "MineMaterial"
-      material: "BIRCH_LOG"
-      count: 96
-    rewards:
-      money: 25
-    penalties:
-      money: 5
-
-  medium_deepslate_miner:
-    display-name: "<yellow>Подземный проходчик</yellow>"
-    description: "Добудьте 128 блоков глубинного сланца"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 45
-    condition:
-      type: "MineMaterial"
-      material: "DEEPSLATE"
-      count: 128
-    rewards:
-      money: 25
-    penalties:
-      money: 5
-
-  medium_master_baker:
-    display-name: "<yellow>Королевская пекарня</yellow>"
-    description: "Скрафтите 96 буханок хлеба"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 45
-    condition:
-      type: "CraftItem"
-      material: "BREAD"
-      count: 96
-    rewards:
-      money: 25
-    penalties:
-      money: 5
-
-  medium_iron_smith:
-    display-name: "<yellow>Кузнечный цех</yellow>"
-    description: "Скрафтите 12 железных кирок"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 45
-    condition:
-      type: "CraftItem"
-      material: "IRON_PICKAXE"
-      count: 12
-    rewards:
-      money: 35
-    penalties:
-      money: 6
-
-  medium_stone_mason:
-    display-name: "<yellow>Каменные кирпичи</yellow>"
-    description: "Скрафтите 128 каменных кирпичей"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 40
-    condition:
-      type: "CraftItem"
-      material: "STONE_BRICKS"
-      count: 128
-    rewards:
-      money: 25
-    penalties:
-      money: 5
-
-  medium_barrel_craft:
-    display-name: "<yellow>Бочки для портовых складов</yellow>"
-    description: "Скрафтите 32 деревянные бочки"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 40
-    condition:
-      type: "CraftItem"
-      material: "BARREL"
-      count: 32
-    rewards:
-      money: 25
-    penalties:
-      money: 5
-
-  medium_storm_fisherman:
-    display-name: "<yellow>Штормовой улов</yellow>"
-    description: "Поймайте 30 рыб в открытом море"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 50
-    condition:
-      type: "CatchFish"
-      count: 30
-    rewards:
-      money: 35
-    penalties:
-      money: 6
-
-  medium_nether_warrior:
-    display-name: "<yellow>Охотник Незера</yellow>"
-    description: "Убейте 35 пиглинов"
-    difficulty: "MEDIUM"
-    type: "REPEATING"
-    enabled: true
-    starter: false
-    weight: 5
-    daily-spawns: 1
-    max-acceptances: -1
-    expiration-minutes: 60
-    condition:
-      type: "KillEntity"
-      entity-type: "PIGLIN"
-      count: 35
     rewards:
       money: 55
     penalties:
-      money: 10
+      money: 15
+
+  mine_diamond_med:
+    display-name: "<yellow>Алмазный старатель</yellow>"
+    description: "Добудьте 16 алмазной руды"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 6
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "MineMaterial"
+      material: "DIAMOND_ORE"
+      count: 16
+    rewards:
+      money: 70
+    penalties:
+      money: 20
+
+  kill_blaze_med:
+    display-name: "<yellow>Истребитель ифритов</yellow>"
+    description: "Убейте 30 ифритов"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 6
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "KillEntity"
+      entity-type: "BLAZE"
+      count: 30
+    rewards:
+      money: 65
+    penalties:
+      money: 20
+
+  mine_gold_med:
+    display-name: "<yellow>Золотоискатель</yellow>"
+    description: "Добудьте 40 золотой руды"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 8
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "MineMaterial"
+      material: "GOLD_ORE"
+      count: 40
+    rewards:
+      money: 50
+    penalties:
+      money: 15
+
+  kill_witch_med:
+    display-name: "<yellow>Охотник на ведьм</yellow>"
+    description: "Убейте 15 ведьм"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 6
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "KillEntity"
+      entity-type: "WITCH"
+      count: 15
+    rewards:
+      money: 55
+    penalties:
+      money: 15
+
+  craft_piston_med:
+    display-name: "<yellow>Инженер</yellow>"
+    description: "Скрафтите 16 поршней"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 6
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "CraftItem"
+      material: "PISTON"
+      count: 16
+    rewards:
+      money: 50
+    penalties:
+      money: 12
+
+  kill_pillager_med:
+    display-name: "<yellow>Защитник деревни</yellow>"
+    description: "Убейте 20 разбойников"
+    difficulty: "MEDIUM"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 6
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 45
+    condition:
+      type: "KillEntity"
+      entity-type: "PILLAGER"
+      count: 20
+    rewards:
+      money: 55
+    penalties:
+      money: 15
+
+  mine_ancient_debris_hard:
+    display-name: "<red>Добытчик незерита</red>"
+    description: "Добудьте 8 древних обломков"
+    difficulty: "HARD"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 4
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "MineMaterial"
+      material: "ANCIENT_DEBRIS"
+      count: 8
+    rewards:
+      money: 80
+    penalties:
+      money: 25
+
+  kill_wither_skeleton_hard:
+    display-name: "<red>Охотник на визер-скелетов</red>"
+    description: "Убейте 20 визер-скелетов"
+    difficulty: "HARD"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 4
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "KillEntity"
+      entity-type: "WITHER_SKELETON"
+      count: 20
+    rewards:
+      money: 75
+    penalties:
+      money: 25
+
+  kill_ghast_hard:
+    display-name: "<red>Убийца гастов</red>"
+    description: "Убейте 12 гастов"
+    difficulty: "HARD"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 4
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "KillEntity"
+      entity-type: "GHAST"
+      count: 12
+    rewards:
+      money: 70
+    penalties:
+      money: 20
+
+  mine_emerald_hard:
+    display-name: "<red>Изумрудный магнат</red>"
+    description: "Добудьте 20 изумрудной руды"
+    difficulty: "HARD"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 3
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "MineMaterial"
+      material: "EMERALD_ORE"
+      count: 20
+    rewards:
+      money: 80
+    penalties:
+      money: 25
+
+  kill_ravager_hard:
+    display-name: "<red>Укротитель разорителей</red>"
+    description: "Убейте 5 разорителей"
+    difficulty: "HARD"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 3
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "KillEntity"
+      entity-type: "RAVAGER"
+      count: 5
+    rewards:
+      money: 75
+    penalties:
+      money: 25
+
+  craft_beacon_hard:
+    display-name: "<red>Зодчий маяка</red>"
+    description: "Скрафтите 1 маяк"
+    difficulty: "HARD"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 2
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "CraftItem"
+      material: "BEACON"
+      count: 1
+    rewards:
+      money: 80
+    penalties:
+      money: 30
+
+  kill_elder_guardian_hard:
+    display-name: "<red>Покоритель океана</red>"
+    description: "Убейте 3 древних стража"
+    difficulty: "HARD"
+    type: "REPEATING"
+    enabled: true
+    starter: false
+    weight: 2
+    daily-spawns: 1
+    max-acceptances: -1
+    expiration-minutes: 60
+    condition:
+      type: "KillEntity"
+      entity-type: "ELDER_GUARDIAN"
+      count: 3
+    rewards:
+      money: 80
+    penalties:
+      money: 30
