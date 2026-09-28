@@ -25,7 +25,8 @@ rotation:
     hard: 10
 
   notify-rotation: true
-  rotation-announcement: "<green>✓ Появились новые контракты! Используйте /contracts</green>"
+  rotation-announcement: "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений! Ознакомьтесь через <gold>/contracts</gold></yellow>"
+  rotation-sound: "BLOCK_BELL_USE"
 
   warning-before-expiration-minutes: 5
   expiration-warning: "<yellow>⚠ Срок действия контрактов истекает через {TIME} мин.!</yellow>"
