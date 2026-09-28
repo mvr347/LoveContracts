@@ -8,7 +8,7 @@ npc_quests:
     npc-id: 1
     display-name: "<gold>Кузнечный заказ</gold>"
     repeatable: true
-    cooldown-minutes: 60
+    cooldown-minutes: 30
     initial-dialogue: "greeting"
 
     dialogues:
@@ -54,13 +54,13 @@ npc_quests:
               action: "COMPLETE_STEP"
 
     rewards:
-      money: 1500
+      money: 35
 
   guard_patrol:
     npc-id: 3
     display-name: "<red>Зачистка периметра</red>"
     repeatable: true
-    cooldown-minutes: 120
+    cooldown-minutes: 45
     initial-dialogue: "start"
 
     dialogues:
@@ -87,4 +87,4 @@ npc_quests:
         description: "Уничтожьте 10 скелетов"
 
     rewards:
-      money: 2000
+      money: 45

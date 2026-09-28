@@ -89,10 +89,25 @@ public class ContractRotationTask implements Runnable {
 
             if (plugin.getConfig().getBoolean("rotation.notify-rotation", true)) {
                 String msg = plugin.getConfig().getString("rotation.rotation-announcement",
-                        "<green>✓ New contracts are available! Use /contracts</green>");
-                Bukkit.getScheduler().runTask(plugin, () ->
-                        Bukkit.broadcast(mm.deserialize(msg))
-                );
+                        "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений! Ознакомьтесь через <gold>/contracts</gold></yellow>");
+                String soundName = plugin.getConfig().getString("rotation.rotation-sound", "BLOCK_BELL_USE");
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    Bukkit.broadcast(mm.deserialize(msg));
+                    if (soundName != null && !soundName.isBlank()) {
+                        try {
+                            String key = soundName.trim().toLowerCase().replace('_', '.');
+                            net.kyori.adventure.sound.Sound snd = net.kyori.adventure.sound.Sound.sound(
+                                    net.kyori.adventure.key.Key.key(key),
+                                    net.kyori.adventure.sound.Sound.Source.MASTER,
+                                    1.0f,
+                                    1.0f
+                            );
+                            for (org.bukkit.entity.Player p : Bukkit.getOnlinePlayers()) {
+                                p.playSound(snd);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                });
             }
 
             SyncManager sync = plugin.getSyncManager();
