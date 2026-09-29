@@ -74,6 +74,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             case "stats" -> stats(sender, args);
             case "reset" -> reset(sender, args);
             case "toggle" -> toggle(sender, args);
+            case "gui" -> gui(sender, args);
             case "help" -> sendHelp(sender);
             default -> {
                 sender.sendMessage(mm.deserialize("<red>✖ Неизвестная подкоманда.</red>"));
@@ -111,6 +112,8 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                 "<aqua>/lovecontractsadmin reset <игрок></aqua> <gray>- Сбросить статистику игрока</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin toggle <игрок></aqua> <gray>- Вкл/Выкл доступ игроку</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin gui open <игрок></aqua> <gray>- Открыть игроку главное меню контрактов</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<dark_gray>(алиасы: /lovecontracts, /lc, /lca, /lcadmin)</dark_gray>"));
         sender.sendMessage(mm.deserialize("<dark_gray>=========================================</dark_gray>"));
@@ -319,6 +322,21 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
         sender.sendMessage(mm.deserialize("<green>✔ Открыто меню контрактов для " + target.getName() + "</green>"));
     }
 
+    /** {@code gui open <игрок>} — то же главное меню, что открывает NPC контрактов (доступно и из консоли). */
+    private void gui(CommandSender sender, String[] args) {
+        if (args.length < 3 || !args[1].equalsIgnoreCase("open")) {
+            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin gui open <игрок></red>"));
+            return;
+        }
+        Player target = plugin.getServer().getPlayerExact(args[2]);
+        if (target == null) {
+            sender.sendMessage(mm.deserialize("<red>✖ Игрок не найден (должен быть в сети).</red>"));
+            return;
+        }
+        plugin.getContractGUI().open(target);
+        sender.sendMessage(mm.deserialize("<green>✔ Открыто главное меню контрактов для " + target.getName() + "</green>"));
+    }
+
     private void reset(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin reset <игрок></red>"));
@@ -366,6 +384,13 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
         if (args.length == 2 && PLAYER_ARG_SUBCOMMANDS.contains(args[0].toLowerCase())) {
             return plugin.getServer().getOnlinePlayers().stream().map(Player::getName)
                     .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase())).toList();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("gui")) {
+            return GUI_SUBCOMMANDS.stream().filter(s -> s.startsWith(args[1].toLowerCase())).toList();
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("gui") && args[1].equalsIgnoreCase("open")) {
+            return plugin.getServer().getOnlinePlayers().stream().map(Player::getName)
+                    .filter(n -> n.toLowerCase().startsWith(args[2].toLowerCase())).toList();
         }
         if (args.length == 3 && (args[0].equalsIgnoreCase("complete") || args[0].equalsIgnoreCase("fail"))) {
             return plugin.getRegistry().getAll().stream().map(Contract::getId)
