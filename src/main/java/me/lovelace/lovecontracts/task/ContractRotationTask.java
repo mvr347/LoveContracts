@@ -89,10 +89,14 @@ public class ContractRotationTask implements Runnable {
 
             if (plugin.getConfig().getBoolean("rotation.notify-rotation", true)) {
                 String msg = plugin.getConfig().getString("rotation.rotation-announcement",
-                        "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений! Ознакомьтесь через <gold>/contracts</gold></yellow>");
+                        "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений!</yellow>");
                 String soundName = plugin.getConfig().getString("rotation.rotation-sound", "BLOCK_BELL_USE");
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    Bukkit.broadcast(mm.deserialize(msg));
+                    // The Herald (LoveTweaks) announces; the plain broadcast is only a fallback
+                    // for servers running without it.
+                    if (!announceViaHerald()) {
+                        Bukkit.broadcast(mm.deserialize(msg));
+                    }
                     if (soundName != null && !soundName.isBlank()) {
                         try {
                             String key = soundName.trim().toLowerCase().replace('_', '.');
@@ -120,6 +124,32 @@ public class ContractRotationTask implements Runnable {
 
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "[Rotation] Failed", e);
+        }
+    }
+
+    /**
+     * Asks LoveTweaks' Herald to announce the new contracts. LoveTweaks does not register a
+     * service, so this reflects on LoveTweaks#getHeraldManager() ->
+     * HeraldManager#announceContractsRotation(), same as LoveBehavior's hunt announcement.
+     * Must run on the main thread. Returns false if the Herald is unavailable.
+     */
+    private boolean announceViaHerald() {
+        org.bukkit.plugin.Plugin loveTweaks = Bukkit.getPluginManager().getPlugin("LoveTweaks");
+        if (loveTweaks == null || !loveTweaks.isEnabled()) {
+            return false;
+        }
+        try {
+            Object herald = loveTweaks.getClass().getMethod("getHeraldManager").invoke(loveTweaks);
+            if (herald == null) {
+                return false;
+            }
+            herald.getClass().getMethod("announceContractsRotation").invoke(herald);
+            return true;
+        } catch (NoSuchMethodException e) {
+            return false; // older LoveTweaks without this announcement
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "[Rotation] Herald announcement failed, using plain broadcast", e);
+            return false;
         }
     }
 

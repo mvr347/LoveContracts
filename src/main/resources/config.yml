@@ -25,7 +25,9 @@ rotation:
     hard: 10
 
   notify-rotation: true
-  rotation-announcement: "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений! Ознакомьтесь через <gold>/contracts</gold></yellow>"
+  # Смену контрактов объявляет Глашатай (LoveTweaks; текст — herald.gui.messages.contracts-announcement-format
+  # в его конфиге). Этот текст — запасной, только если LoveTweaks не установлен.
+  rotation-announcement: "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений!</yellow>"
   rotation-sound: "BLOCK_BELL_USE"
 
   warning-before-expiration-minutes: 5
