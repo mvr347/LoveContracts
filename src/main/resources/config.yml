@@ -25,9 +25,10 @@ rotation:
     hard: 10
 
   notify-rotation: true
-  # Смену контрактов объявляет Глашатай (LoveTweaks; текст — herald.gui.messages.contracts-announcement-format
-  # в его конфиге). Этот текст — запасной, только если LoveTweaks не установлен.
-  rotation-announcement: "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений!</yellow>"
+  # 2026-09-29: текст объявления о смене контрактов теперь задаёт глашатай LoveTweaks
+  # (herald.gui.messages.contracts-rotation-format в его config.yml) — в общий чат от этого
+  # плагина ничего не пишется и команда /contracts не упоминается. notify-rotation по-прежнему
+  # включает/выключает само объявление; старый ключ rotation-announcement больше не читается.
   rotation-sound: "BLOCK_BELL_USE"
 
   warning-before-expiration-minutes: 5

@@ -1,10 +1,10 @@
 package me.lovelace.lovecontracts.task;
 
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.integration.HeraldBridge;
 import me.lovelace.lovecontracts.manager.SyncManager;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.Difficulty;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 
 import java.sql.Connection;
@@ -20,10 +20,11 @@ import java.util.stream.Collectors;
 public class ContractRotationTask implements Runnable {
 
     private final LoveContracts plugin;
-    private final MiniMessage mm = MiniMessage.miniMessage();
+    private final HeraldBridge heraldBridge;
 
     public ContractRotationTask(LoveContracts plugin) {
         this.plugin = plugin;
+        this.heraldBridge = new HeraldBridge(plugin);
     }
 
     @Override
@@ -88,15 +89,10 @@ public class ContractRotationTask implements Runnable {
             );
 
             if (plugin.getConfig().getBoolean("rotation.notify-rotation", true)) {
-                String msg = plugin.getConfig().getString("rotation.rotation-announcement",
-                        "<gold>[Глашатай]</gold> <yellow>Внимание! Новые контракты доступны на доске объявлений!</yellow>");
+                // The Herald (LoveTweaks) announces the rotation; nothing is written to public chat.
                 String soundName = plugin.getConfig().getString("rotation.rotation-sound", "BLOCK_BELL_USE");
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    // The Herald (LoveTweaks) announces; the plain broadcast is only a fallback
-                    // for servers running without it.
-                    if (!announceViaHerald()) {
-                        Bukkit.broadcast(mm.deserialize(msg));
-                    }
+                    heraldBridge.announceContractsRotation();
                     if (soundName != null && !soundName.isBlank()) {
                         try {
                             String key = soundName.trim().toLowerCase().replace('_', '.');
