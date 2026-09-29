@@ -606,7 +606,11 @@ public class PlayerContractManager {
 
                 long finalGold = totalGold;
                 runSync(() -> {
-                    if (!player.isOnline()) return;
+                    if (!player.isOnline()) {
+                        // The rows are already deleted above - put the gold back instead of dropping it.
+                        queuePayout(player.getUniqueId(), finalGold, "redelivery");
+                        return;
+                    }
                     bridge.deliverToLivePlayer(player, finalGold);
                     player.sendMessage(mm.deserialize(
                             "<green>Вам доставлена отложенная выплата по контракту: " + finalGold + " "
@@ -740,17 +744,28 @@ public class PlayerContractManager {
      * физические (в инвентаре), офлайн-выдачи не существует.
      */
     private void payout(UUID playerId, long gold, String reason) {
-        Player online = bridge.onlinePlayer(playerId);
-        if (online != null && online.isOnline()) {
-            runSync(() -> bridge.deliverToLivePlayer(online, gold));
-            return;
-        }
         if (gold <= 0) return;
-        try {
-            db.addPendingPayout(playerId, gold, reason);
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to queue pending payout for " + playerId, e);
-        }
+        // The online check must happen on the main thread, in the same task that gives the coins:
+        // checking on the async thread and giving one tick later let a player quit in between,
+        // and their reward then went to a disconnected Player and was neither paid nor queued.
+        runSync(() -> {
+            Player live = bridge.onlinePlayer(playerId);
+            if (live != null && live.isOnline()) {
+                bridge.deliverToLivePlayer(live, gold);
+            } else {
+                queuePayout(playerId, gold, reason);
+            }
+        });
+    }
+
+    private void queuePayout(UUID playerId, long gold, String reason) {
+        runAsync(() -> {
+            try {
+                db.addPendingPayout(playerId, gold, reason);
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to queue pending payout of " + gold + " for " + playerId, e);
+            }
+        });
     }
 
     private int countMaterial(Player player, Material material) {
