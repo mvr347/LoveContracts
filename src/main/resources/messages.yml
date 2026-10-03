@@ -88,9 +88,9 @@ messages:
   contract-create-unavailable: "<red>Создание контрактов временно недоступно (\"В ближайшее время\").</red>"
   contract-not-completed-yet: "<yellow>Контракт еще не выполнен. Прогресс: {PROGRESS}</yellow>"
 
-  fine-deducted: "<red>Списан штраф за провал контракта:</red> <gold>{AMOUNT} монет</gold>"
-  fine-partial: "<yellow>Списано {PAID} монет. Остаток долга: {REMAINING} монет.</yellow>"
-  fine-collected: "<green>Списано {AMOUNT} монет в счет погашения долга по штрафу.</green>"
+  fine-deducted: "<red>Списан штраф за провал контракта:</red> {AMOUNT}"
+  fine-partial: "<yellow>Списано {PAID}. Остаток долга: {REMAINING}</yellow>"
+  fine-collected: "<green>Списано {AMOUNT} в счет погашения долга по штрафу.</green>"
   fine-cleared: "<green>Поздравляем! Ваш долг по штрафам полностью погашен!</green>"
 
   broadcast-accept: "<yellow>{PLAYER}</yellow> принял(а) контракт <gold>{CONTRACT}</gold>"

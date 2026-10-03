@@ -1,5 +1,7 @@
 package me.lovelace.lovecontracts.gui;
 
+import me.lovelace.lovecontracts.util.CoinFormat;
+import me.lovelace.lovecontracts.util.EconomyConfig;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.condition.CatchFishCondition;
 import me.lovelace.lovecontracts.condition.ContractCondition;
@@ -65,7 +67,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
     private static class CreationState {
         PresetType preset = PresetType.KILL_ZOMBIE;
         int count = 25;
-        int moneyReward = 500;
+        long moneyReward = 500;
     }
 
     private final LoveContracts plugin;
@@ -126,16 +128,22 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
         );
     }
 
-    private ItemStack rewardItem(int reward) {
+    private ItemStack rewardItem(Player viewer, long reward) {
+        List<Long> steps = EconomyConfig.rewardSteps(plugin);
+        StringBuilder stepsText = new StringBuilder();
+        for (long step : steps) {
+            if (stepsText.length() > 0) stepsText.append(" → ");
+            stepsText.append(CoinFormat.format(step));
+        }
         List<Component> lore = new ArrayList<>();
         lore.add(mm.deserialize("<gray>Выставить награду в виде монет</gray>"));
         lore.add(mm.deserialize("<gray>Игрок может переставить размер награды</gray>"));
         lore.add(Component.empty());
-        lore.add(mm.deserialize("<yellow>Клик: 250$ → 500$ → 1000$ → 2500$</yellow>"));
+        lore.add(CoinFormat.component(viewer, "<yellow>Клик:</yellow> " + stepsText));
 
         return HeadUtil.createBase64Head(
                 REWARD_HEAD,
-                "<gold>Награда:</gold> <yellow>" + reward + "$</yellow>",
+                CoinFormat.resolveGlyphs(viewer, "<gold>Награда:</gold> " + CoinFormat.format(reward)),
                 lore
         );
     }
@@ -183,12 +191,10 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
         }
 
         if (slot == 14) { // Reward toggle (coins)
-            state.moneyReward = switch (state.moneyReward) {
-                case 250 -> 500;
-                case 500 -> 1000;
-                case 1000 -> 2500;
-                default -> 250;
-            };
+            // Cycle through the configured steps (economy.creation-reward-steps); unknown value → first step.
+            List<Long> steps = EconomyConfig.rewardSteps(plugin);
+            int at = steps.indexOf(state.moneyReward);
+            state.moneyReward = steps.get((at + 1) % steps.size());
             open(player);
             return;
         }
@@ -222,7 +228,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
             Contract contract = new Contract(
                     id, displayName, description, Difficulty.EASY,
                     ContractType.REPEATING, -1, 1, 10,
-                    1440, false, true, List.of(Reward.money(state.moneyReward)), List.of()
+                    1440, false, true, List.of(Reward.money((double) state.moneyReward)), List.of()
             );
 
             ContractCondition condition = switch (state.preset) {

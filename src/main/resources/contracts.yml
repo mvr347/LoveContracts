@@ -1,6 +1,11 @@
 # ============================================
-# Пул контрактов — жёсткий баланс экономики
-# Награды сильно снижены (25–80), время 30–60 мин
+# Пул контрактов. Суммы — в медных единицах (1 медная = 1; железная 100, золотая 2 000, алмазная 20 000).
+# Можно писать и строкой: money: "2i 50c" (i = железная, g = золотая, d = алмазная, c = медная).
+# 2026-10-03: пересчёт под новые номиналы LoveCore. Награда за контракт — «час работы» новичка:
+#   лёгкие 150–400 (медные/железные), средние 500–900 (до 9 железных), тяжёлые 1 200–2 200
+#   (золотая монета — редкая добавка за самые трудоёмкие). Штраф ≈ 35 % награды (на округление
+#   до 50): провал должен ощущаться, но не обнулять заработок. Все суммы разом меняются в
+#   config.yml: economy.reward-scale / economy.penalty-scale.
 # ============================================
 
 contracts:
@@ -21,7 +26,7 @@ contracts:
       entity-type: "SHEEP"
       count: 150
     rewards:
-      money: 30
+      money: 250
     penalties:
       none: true
 
@@ -41,7 +46,7 @@ contracts:
       material: "OAK_STAIRS"
       count: 300
     rewards:
-      money: 40
+      money: 350
     penalties:
       none: true
 
@@ -61,7 +66,7 @@ contracts:
       material: "COAL_ORE"
       count: 200
     rewards:
-      money: 35
+      money: 300
     penalties:
       none: true
 
@@ -80,7 +85,7 @@ contracts:
       type: "CatchFish"
       count: 50
     rewards:
-      money: 30
+      money: 250
     penalties:
       none: true
 
@@ -100,7 +105,7 @@ contracts:
       entity-type: "ZOMBIE"
       count: 80
     rewards:
-      money: 40
+      money: 350
     penalties:
       none: true
 
@@ -120,7 +125,7 @@ contracts:
       material: "IRON_ORE"
       count: 100
     rewards:
-      money: 45
+      money: 400
     penalties:
       none: true
 
@@ -140,7 +145,7 @@ contracts:
       material: "BREAD"
       count: 64
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -160,7 +165,7 @@ contracts:
       entity-type: "SKELETON"
       count: 60
     rewards:
-      money: 40
+      money: 350
     penalties:
       none: true
 
@@ -180,7 +185,7 @@ contracts:
       material: "STONE"
       count: 500
     rewards:
-      money: 30
+      money: 250
     penalties:
       none: true
 
@@ -200,7 +205,7 @@ contracts:
       entity-type: "SPIDER"
       count: 50
     rewards:
-      money: 35
+      money: 300
     penalties:
       none: true
 
@@ -220,7 +225,7 @@ contracts:
       material: "TORCH"
       count: 128
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -240,7 +245,7 @@ contracts:
       entity-type: "CREEPER"
       count: 40
     rewards:
-      money: 45
+      money: 400
     penalties:
       none: true
 
@@ -260,7 +265,7 @@ contracts:
       material: "COPPER_ORE"
       count: 80
     rewards:
-      money: 35
+      money: 300
     penalties:
       none: true
 
@@ -279,7 +284,7 @@ contracts:
       type: "CatchFish"
       count: 30
     rewards:
-      money: 30
+      money: 250
     penalties:
       none: true
 
@@ -299,7 +304,7 @@ contracts:
       entity-type: "COW"
       count: 40
     rewards:
-      money: 30
+      money: 250
     penalties:
       none: true
 
@@ -319,7 +324,7 @@ contracts:
       material: "OAK_FENCE"
       count: 64
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -339,7 +344,7 @@ contracts:
       material: "DIRT"
       count: 256
     rewards:
-      money: 20
+      money: 150
     penalties:
       none: true
 
@@ -359,7 +364,7 @@ contracts:
       entity-type: "CHICKEN"
       count: 50
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -379,7 +384,7 @@ contracts:
       material: "CHEST"
       count: 16
     rewards:
-      money: 30
+      money: 250
     penalties:
       none: true
 
@@ -399,7 +404,7 @@ contracts:
       material: "SAND"
       count: 128
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -419,7 +424,7 @@ contracts:
       entity-type: "PIG"
       count: 40
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -439,7 +444,7 @@ contracts:
       material: "LADDER"
       count: 64
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -459,7 +464,7 @@ contracts:
       material: "GRAVEL"
       count: 128
     rewards:
-      money: 25
+      money: 200
     penalties:
       none: true
 
@@ -479,9 +484,9 @@ contracts:
       entity-type: "ENDERMAN"
       count: 25
     rewards:
-      money: 55
+      money: 600
     penalties:
-      money: 15
+      money: 200
 
   mine_diamond_med:
     display-name: "<yellow>Алмазный старатель</yellow>"
@@ -499,9 +504,9 @@ contracts:
       material: "DIAMOND_ORE"
       count: 16
     rewards:
-      money: 70
+      money: 900
     penalties:
-      money: 20
+      money: 300
 
   kill_blaze_med:
     display-name: "<yellow>Истребитель ифритов</yellow>"
@@ -519,9 +524,9 @@ contracts:
       entity-type: "BLAZE"
       count: 30
     rewards:
-      money: 65
+      money: 800
     penalties:
-      money: 20
+      money: 300
 
   mine_gold_med:
     display-name: "<yellow>Золотоискатель</yellow>"
@@ -539,9 +544,9 @@ contracts:
       material: "GOLD_ORE"
       count: 40
     rewards:
-      money: 50
+      money: 500
     penalties:
-      money: 15
+      money: 200
 
   kill_witch_med:
     display-name: "<yellow>Охотник на ведьм</yellow>"
@@ -559,9 +564,9 @@ contracts:
       entity-type: "WITCH"
       count: 15
     rewards:
-      money: 55
+      money: 600
     penalties:
-      money: 15
+      money: 200
 
   craft_piston_med:
     display-name: "<yellow>Инженер</yellow>"
@@ -579,9 +584,9 @@ contracts:
       material: "PISTON"
       count: 16
     rewards:
-      money: 50
+      money: 500
     penalties:
-      money: 12
+      money: 200
 
   kill_pillager_med:
     display-name: "<yellow>Защитник деревни</yellow>"
@@ -599,9 +604,9 @@ contracts:
       entity-type: "PILLAGER"
       count: 20
     rewards:
-      money: 55
+      money: 600
     penalties:
-      money: 15
+      money: 200
 
   mine_ancient_debris_hard:
     display-name: "<red>Добытчик незерита</red>"
@@ -619,9 +624,9 @@ contracts:
       material: "ANCIENT_DEBRIS"
       count: 8
     rewards:
-      money: 80
+      money: 2200
     penalties:
-      money: 25
+      money: 750
 
   kill_wither_skeleton_hard:
     display-name: "<red>Охотник на визер-скелетов</red>"
@@ -639,9 +644,9 @@ contracts:
       entity-type: "WITHER_SKELETON"
       count: 20
     rewards:
-      money: 75
+      money: 1700
     penalties:
-      money: 25
+      money: 600
 
   kill_ghast_hard:
     display-name: "<red>Убийца гастов</red>"
@@ -659,9 +664,9 @@ contracts:
       entity-type: "GHAST"
       count: 12
     rewards:
-      money: 70
+      money: 1200
     penalties:
-      money: 20
+      money: 400
 
   mine_emerald_hard:
     display-name: "<red>Изумрудный магнат</red>"
@@ -679,9 +684,9 @@ contracts:
       material: "EMERALD_ORE"
       count: 20
     rewards:
-      money: 80
+      money: 2200
     penalties:
-      money: 25
+      money: 750
 
   kill_ravager_hard:
     display-name: "<red>Укротитель разорителей</red>"
@@ -699,9 +704,9 @@ contracts:
       entity-type: "RAVAGER"
       count: 5
     rewards:
-      money: 75
+      money: 1700
     penalties:
-      money: 25
+      money: 600
 
   craft_beacon_hard:
     display-name: "<red>Зодчий маяка</red>"
@@ -719,9 +724,9 @@ contracts:
       material: "BEACON"
       count: 1
     rewards:
-      money: 80
+      money: 2200
     penalties:
-      money: 30
+      money: 750
 
   kill_elder_guardian_hard:
     display-name: "<red>Покоритель океана</red>"
@@ -739,6 +744,6 @@ contracts:
       entity-type: "ELDER_GUARDIAN"
       count: 3
     rewards:
-      money: 80
+      money: 2200
     penalties:
-      money: 30
+      money: 750

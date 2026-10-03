@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.player.gui;
 
+import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.player.event.PlayerContractAcceptedEvent;
 import me.lovelace.lovecontracts.player.event.PlayerContractCreatedEvent;
@@ -103,7 +104,7 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
                 .toList();
         for (PlayerContract c : availableToAccept) {
             if (idx >= CONTRACT_SLOTS.length) break;
-            inv.setItem(CONTRACT_SLOTS[idx++], contractItem(c));
+            inv.setItem(CONTRACT_SLOTS[idx++], contractItem(player, c));
         }
 
         // Footer (45-53)
@@ -151,7 +152,7 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         UUID contractId = UUID.fromString(idStr);
         manager.accept(player, contractId).thenAccept(result ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    player.sendMessage(mm.deserialize(result.message()));
+                    player.sendMessage(CoinFormat.component(player, result.message()));
                     open(player);
                 }));
     }
@@ -198,7 +199,7 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         lastClick.remove(uuid);
     }
 
-    private ItemStack contractItem(PlayerContract c) {
+    private ItemStack contractItem(Player viewer, PlayerContract c) {
         Material mat = switch (c.getObjectiveType()) {
             case DELIVER_ITEM -> Material.CHEST;
             case KILL_ENTITY -> Material.IRON_SWORD;
@@ -213,7 +214,7 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         lore.add(mm.deserialize("<gray>Наниматель:</gray> <white>" + c.getCreatorName() + "</white>"));
         lore.add(mm.deserialize("<gray>Задача:</gray> <white>" + objectiveLabel(c) + "</white>"));
         lore.add(Component.empty());
-        lore.add(mm.deserialize("<green>Награда:</green> <gold>" + c.getGoldReward() + " монет</gold>"));
+        lore.add(CoinFormat.component(viewer, "<green>Награда:</green> " + CoinFormat.format(c.getGoldReward())));
         lore.add(Component.empty());
         lore.add(mm.deserialize("<yellow>Срок:</yellow> <white>" + hoursLeft(c) + "</white>"));
         lore.add(Component.empty());

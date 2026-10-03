@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.manager;
 
+import me.lovelace.lovecontracts.util.EconomyConfig;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.condition.CatchFishCondition;
 import me.lovelace.lovecontracts.condition.ContractCondition;
@@ -111,7 +112,7 @@ public class ContractRegistry {
         if (section == null) return rewards;
 
         if (section.contains("money")) {
-            rewards.add(Reward.money(section.getDouble("money")));
+            rewards.add(Reward.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.REWARD_SCALE)));
         }
         return rewards;
     }
@@ -122,7 +123,7 @@ public class ContractRegistry {
             return penalties;
         }
         if (section.contains("money")) {
-            penalties.add(Penalty.money(section.getDouble("money")));
+            penalties.add(Penalty.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.PENALTY_SCALE)));
         }
         ConfigurationSection rep = section.getConfigurationSection("reputation");
         if (rep != null) {

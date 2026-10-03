@@ -24,11 +24,8 @@ public class Reward {
 
     public double getAmount() { return amount; }
 
+    /** MiniMessage с глифами монет; перед показом прогнать через {@code CoinFormat.resolveGlyphs}. */
     public String getDisplay() {
-        return String.format("%.0f %s", amount, currencyName());
-    }
-
-    private static String currencyName() {
-        return LoveCore.service(LoveEconomy.class).map(LoveEconomy::currencyName).orElse("coins");
+        return me.lovelace.lovecontracts.util.CoinFormat.format(Math.round(amount));
     }
 }

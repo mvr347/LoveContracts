@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import me.lovelace.lovecontracts.util.CoinFormat;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -108,8 +109,8 @@ public class FineManager {
                     }
                 });
                 plugin.getMessageManager().sendMessage(player, "messages.fine-cleared",
-                        "<green>✔ Взыскано <gold>{AMOUNT} монет</gold> в счет штрафа. Ваш долг полностью погашен!</green>",
-                        java.util.Map.of("AMOUNT", String.valueOf(charge)));
+                        "<green>✔ Взыскано {AMOUNT} в счет штрафа. Ваш долг полностью погашен!</green>",
+                        java.util.Map.of("AMOUNT", CoinFormat.format(economy, charge)));
             } else {
                 playerDebts.put(uuid, remaining);
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -124,8 +125,9 @@ public class FineManager {
                     }
                 });
                 plugin.getMessageManager().sendMessage(player, "messages.fine-collected",
-                        "<red>⚠ Взыскано <gold>{AMOUNT} монет</gold> в счет штрафа. Остаток долга: <gold>{REMAINING} монет</gold>.</red>",
-                        java.util.Map.of("AMOUNT", String.valueOf(charge), "REMAINING", String.valueOf(remaining)));
+                        "<red>⚠ Взыскано {AMOUNT} в счет штрафа. Остаток долга: {REMAINING}</red>",
+                        java.util.Map.of("AMOUNT", CoinFormat.format(economy, charge),
+                                "REMAINING", CoinFormat.format(economy, remaining)));
             }
         });
     }

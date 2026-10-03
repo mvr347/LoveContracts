@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.player;
 
+import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.player.gui.PlayerContractBoardGUI;
 import me.lovelace.lovecontracts.player.gui.PlayerContractMyGUI;
@@ -149,7 +150,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
                 description, type, target, amount, gold, reputationHint, visibility, hours);
 
         manager.create(player, req).thenAccept(result -> Bukkit.getScheduler().runTask(plugin,
-                () -> player.sendMessage(mm.deserialize(result.message()))));
+                () -> player.sendMessage(CoinFormat.component(player, result.message()))));
     }
 
     private void handleReview(Player player, String[] args) {
@@ -196,7 +197,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
                     player.sendMessage(mm.deserialize("<gray>Исполнитель:</gray> "
                             + (c.getExecutorName() != null ? c.getExecutorName() : "—")));
                     player.sendMessage(mm.deserialize("<gray>Статус:</gray> " + c.getStatus()));
-                    player.sendMessage(mm.deserialize("<gray>Награда:</gray> " + c.getGoldReward() + " монет"));
+                    player.sendMessage(CoinFormat.component(player, "<gray>Награда:</gray> " + CoinFormat.format(c.getGoldReward())));
                     player.sendMessage(mm.deserialize("<gray>id:</gray> " + PlayerContractManager.shortId(c.getId())));
                 });
             });
@@ -218,7 +219,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     }
 
     private void reply(Player player, String message) {
-        Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(mm.deserialize(message)));
+        Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(CoinFormat.component(player, message)));
     }
 
     private Material requireMaterial(String name) {
