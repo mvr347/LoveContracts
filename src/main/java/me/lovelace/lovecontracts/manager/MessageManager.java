@@ -1,6 +1,7 @@
 package me.lovelace.lovecontracts.manager;
 
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.util.CoinFormat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
@@ -39,13 +40,17 @@ public class MessageManager {
     }
 
     public Component getComponent(String path, String defaultValue, Map<String, String> replacements) {
+        return mm.deserialize(applyReplacements(path, defaultValue, replacements));
+    }
+
+    private String applyReplacements(String path, String defaultValue, Map<String, String> replacements) {
         String text = getRaw(path, defaultValue);
         if (replacements != null) {
             for (Map.Entry<String, String> entry : replacements.entrySet()) {
                 text = text.replace("{" + entry.getKey() + "}", entry.getValue());
             }
         }
-        return mm.deserialize(text);
+        return text;
     }
 
     public void sendMessage(CommandSender sender, String path, String defaultValue) {
@@ -56,7 +61,12 @@ public class MessageManager {
 
     public void sendMessage(CommandSender sender, String path, String defaultValue, Map<String, String> replacements) {
         if (sender != null) {
-            sender.sendMessage(getComponent(path, defaultValue, replacements));
+            // Replacements may carry coin glyphs (%img_*%): resolve them for this player before parsing.
+            String text = applyReplacements(path, defaultValue, replacements);
+            if (sender instanceof org.bukkit.entity.Player player) {
+                text = CoinFormat.resolveGlyphs(player, text);
+            }
+            sender.sendMessage(mm.deserialize(text));
         }
     }
 }

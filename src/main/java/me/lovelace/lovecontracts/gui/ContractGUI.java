@@ -479,7 +479,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
         lore.add(Component.empty());
         lore.add(mm.deserialize("<green>Награды:</green>"));
         c.getRewards().forEach(r ->
-                lore.add(mm.deserialize("<gold>  + " + r.getDisplay() + "</gold>")));
+                lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
         lore.add(Component.empty());
         if (isDone) {
             lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"));
@@ -544,7 +544,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
             lore.add(Component.empty());
             lore.add(mm.deserialize("<green>Награды:</green>"));
             c.getRewards().forEach(r ->
-                    lore.add(mm.deserialize("<gold>  + " + r.getDisplay() + "</gold>")));
+                    lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
             lore.add(Component.empty());
             lore.add(plugin.getMessageManager().getComponent("gui.contract-status-completed", "<green>✔ ВЫПОЛНЕН</green>"));
 
@@ -588,7 +588,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
             lore.add(Component.empty());
             lore.add(mm.deserialize("<green>Награды:</green>"));
             c.getRewards().forEach(r ->
-                    lore.add(mm.deserialize("<gold>  + " + r.getDisplay() + "</gold>")));
+                    lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
             lore.add(Component.empty());
             if (isDone) {
                 lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"));
@@ -656,7 +656,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
         lore.add(Component.empty());
         lore.add(mm.deserialize("<green>Награды:</green>"));
         c.getRewards().forEach(r ->
-                lore.add(mm.deserialize("<gold>  + " + r.getDisplay() + "</gold>")));
+                lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
 
         if (!c.isStarter()) {
             boolean hasPenalty = c.getPenalties().stream()
@@ -665,7 +665,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
                 lore.add(mm.deserialize("<red>Штрафы:</red>"));
                 c.getPenalties().stream()
                         .filter(p -> p.getType() != me.lovelace.lovecontracts.model.Penalty.Type.NONE)
-                        .forEach(p -> lore.add(mm.deserialize("<red>  - " + p.getDisplay() + "</red>")));
+                        .forEach(p -> lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<red>  - " + p.getDisplay() + "</red>"))));
             }
         }
 

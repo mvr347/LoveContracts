@@ -1,5 +1,7 @@
 package me.lovelace.lovecontracts.player.manager;
 
+import dev.lovelace.lovecore.api.economy.MoneyConfig;
+import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.player.event.PlayerContractAcceptedEvent;
 import me.lovelace.lovecontracts.player.event.PlayerContractCompletedEvent;
@@ -67,11 +69,12 @@ public class PlayerContractManager {
             return future;
         }
 
-        long minGold = cfg().getLong("min-gold-reward", 10);
-        long maxGold = cfg().getLong("max-gold-reward", 100000);
+        long minGold = MoneyConfig.getScaled(cfg(), "min-gold-reward", 100);
+        long maxGold = MoneyConfig.getScaled(cfg(), "max-gold-reward", 1_000_000);
         if (req.goldReward() < minGold || req.goldReward() > maxGold) {
             future.complete(ContractActionResult.fail(
-                    "<red>Награда золотом должна быть от " + minGold + " до " + maxGold + ".</red>"));
+                    "<red>Награда должна быть от</red> " + CoinFormat.format(minGold)
+                            + " <red>до</red> " + CoinFormat.format(maxGold)));
             return future;
         }
 
@@ -100,7 +103,7 @@ public class PlayerContractManager {
 
         if (totalCharge > 0 && !bridge.hasBalance(creator, totalCharge)) {
             future.complete(ContractActionResult.fail(
-                    "<red>Не хватает " + bridge.currencyName() + " (нужно " + totalCharge + " с учётом налога).</red>"));
+                    "<red>Не хватает монет (нужно " + CoinFormat.format(totalCharge) + " с учётом налога).</red>"));
             return future;
         }
 
@@ -351,7 +354,7 @@ public class PlayerContractManager {
 
                     if (c.isObjectiveMet()) {
                         completeInternal(c).whenComplete((res, err) -> runSync(() -> {
-                            if (err == null && killer.isOnline()) killer.sendMessage(mm.deserialize(res.message()));
+                            if (err == null && killer.isOnline()) killer.sendMessage(CoinFormat.component(killer, res.message()));
                         }));
                     } else {
                         runSync(() -> {
@@ -612,9 +615,9 @@ public class PlayerContractManager {
                         return;
                     }
                     bridge.deliverToLivePlayer(player, finalGold);
-                    player.sendMessage(mm.deserialize(
-                            "<green>Вам доставлена отложенная выплата по контракту: " + finalGold + " "
-                                    + bridge.currencyName() + ".</green>"));
+                    player.sendMessage(CoinFormat.component(player,
+                            "<green>Вам доставлена отложенная выплата по контракту:</green> "
+                                    + CoinFormat.format(finalGold)));
                 });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to deliver pending contract payouts for " + player.getName(), e);
@@ -728,7 +731,7 @@ public class PlayerContractManager {
                     Bukkit.getPluginManager().callEvent(new PlayerContractCompletedEvent(c));
                     bridge.recordStat(c.getExecutorId(), "contracts.player.fulfilled");
                     future.complete(ContractActionResult.ok(
-                            "<green>Контракт выполнен!</green> Награда: " + c.getGoldReward() + " " + bridge.currencyName() + "."));
+                            "<green>Контракт выполнен!</green> Награда: " + CoinFormat.format(c.getGoldReward())));
                 });
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to complete player contract", e);

@@ -89,6 +89,7 @@ public final class LoveContracts extends JavaPlugin {
             getLogger().severe("Failed to initialize player contract tables: " + e.getMessage());
             e.printStackTrace();
         }
+        migrateEconomy();
         playerContractManager = new PlayerContractManager(this, playerContractDatabase, new LoveCoreBridge());
         playerContractBoardGUI = new PlayerContractBoardGUI(this, playerContractManager);
         playerContractMyGUI = new PlayerContractMyGUI(this, playerContractManager);
@@ -244,6 +245,35 @@ public final class LoveContracts extends JavaPlugin {
     }
 
     public static LoveContracts getInstance() { return instance; }
+    /**
+     * Rescales stored amounts (fines, open player contracts, pending payouts) once when LoveCore's
+     * {@code economy.scale-version} is higher than the one the database was written under.
+     * A copy of the database file is made first.
+     */
+    private void migrateEconomy() {
+        var economy = me.lovelace.lovecontracts.util.CoinFormat.tryEconomy();
+        if (economy.isEmpty()) return;
+        int target = economy.get().economyScaleVersion();
+        double factor = getConfig().getDouble("economy.migration.factor", 5.0);
+        try (java.sql.Connection conn = database.getConnection()) {
+            if (me.lovelace.lovecontracts.storage.EconomyMigration.needsRescale(conn, target)) {
+                try (java.sql.Statement st = conn.createStatement()) {
+                    st.execute("PRAGMA wal_checkpoint(TRUNCATE)");
+                }
+                java.io.File db = new java.io.File(getDataFolder(), getConfig().getString("database.file", "contracts.db"));
+                java.io.File backup = new java.io.File(getDataFolder(), db.getName() + ".pre-economy-v" + target);
+                if (!backup.exists()) {
+                    java.nio.file.Files.copy(db.toPath(), backup.toPath());
+                    getLogger().info("Economy migration: database copy saved to " + backup.getName());
+                }
+            }
+            me.lovelace.lovecontracts.storage.EconomyMigration.migrate(conn, target, factor, getLogger());
+        } catch (Exception e) {
+            getLogger().log(java.util.logging.Level.SEVERE,
+                    "Economy migration failed - amounts were NOT rescaled; restore from *.pre-economy-v* if needed", e);
+        }
+    }
+
     public ContractDatabase getDatabase() { return database; }
     public ContractRegistry getRegistry() { return registry; }
     public ContractManager getContractManager() { return contractManager; }

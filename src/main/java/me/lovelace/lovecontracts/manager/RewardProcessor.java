@@ -9,6 +9,7 @@ import me.lovelace.lovecontracts.model.Reward;
 import org.bukkit.entity.Player;
 
 import java.util.logging.Level;
+import me.lovelace.lovecontracts.util.CoinFormat;
 
 /**
  * Gives rewards and applies penalties. Every contract reward is physical LoveCore currency —
@@ -43,7 +44,8 @@ public class RewardProcessor {
             LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
                 economy.give(player, amount);
                 player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                        .deserialize("<green>Награды:</green> <gold>" + amount + " " + economy.currencyName() + "</gold>"));
+                        .deserialize(CoinFormat.resolveGlyphs(player,
+                                "<green>Награды:</green> " + CoinFormat.format(economy, amount))));
             }, () -> plugin.getLogger().fine("Skipping MONEY reward — LoveCore not present: " + amount));
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Failed to give reward", e);
@@ -83,12 +85,13 @@ public class RewardProcessor {
                 if (remainingDebt > 0 && plugin.getFineManager() != null) {
                     plugin.getFineManager().addDebt(player.getUniqueId(), remainingDebt);
                     plugin.getMessageManager().sendMessage(player, "messages.fine-partial",
-                            "<yellow>Списано {PAID} монет. Остаток долга: {REMAINING} монет.</yellow>",
-                            java.util.Map.of("PAID", String.valueOf(immediateCharge), "REMAINING", String.valueOf(remainingDebt)));
+                            "<yellow>Списано {PAID}. Остаток долга: {REMAINING}</yellow>",
+                            java.util.Map.of("PAID", CoinFormat.format(economy, immediateCharge),
+                                    "REMAINING", CoinFormat.format(economy, remainingDebt)));
                 } else {
                     plugin.getMessageManager().sendMessage(player, "messages.fine-deducted",
-                            "<red>Списан штраф за провал контракта:</red> <gold>{AMOUNT} монет</gold>",
-                            java.util.Map.of("AMOUNT", String.valueOf(immediateCharge)));
+                            "<red>Списан штраф за провал контракта:</red> {AMOUNT}",
+                            java.util.Map.of("AMOUNT", CoinFormat.format(economy, immediateCharge)));
                 }
             }, () -> {
                 if (plugin.getFineManager() != null) {

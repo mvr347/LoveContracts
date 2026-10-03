@@ -201,7 +201,9 @@ public class NpcQuestManager implements Listener {
         List<me.lovelace.lovecontracts.model.Reward> rewards = new ArrayList<>();
         if (sec == null) return rewards;
         if (sec.contains("money")) {
-            rewards.add(me.lovelace.lovecontracts.model.Reward.money(sec.getDouble("money")));
+            rewards.add(me.lovelace.lovecontracts.model.Reward.money(
+                    me.lovelace.lovecontracts.util.EconomyConfig.read(plugin, sec, "money",
+                            me.lovelace.lovecontracts.util.EconomyConfig.REWARD_SCALE)));
         }
         return rewards;
     }

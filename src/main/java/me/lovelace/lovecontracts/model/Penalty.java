@@ -1,7 +1,5 @@
 package me.lovelace.lovecontracts.model;
 
-import dev.lovelace.lovecore.api.LoveCore;
-import dev.lovelace.lovecore.api.economy.LoveEconomy;
 
 public class Penalty {
 
@@ -31,13 +29,9 @@ public class Penalty {
 
     public String getDisplay() {
         return switch (type) {
-            case MONEY -> String.format("-%.0f %s", Math.abs(amount), currencyName());
+            case MONEY -> "-" + me.lovelace.lovecontracts.util.CoinFormat.format(Math.round(Math.abs(amount)));
             case REPUTATION -> (int) amount + " reputation (" + reputationType + ")";
             case NONE -> "none";
         };
-    }
-
-    private static String currencyName() {
-        return LoveCore.service(LoveEconomy.class).map(LoveEconomy::currencyName).orElse("coins");
     }
 }
