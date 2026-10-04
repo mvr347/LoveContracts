@@ -8,9 +8,14 @@
 #   config.yml: economy.reward-scale / economy.penalty-scale.
 # ============================================
 
+# 2026-10-04: награды массовой добычи дешёвых блоков (песок, гравий, земля) приведены к модели цен LoveCore:
+# модель × количество × 0,5 (песок и гравий по 2 меди, земля 1 → 128 меди за 128 блоков; было 150–200). Причина:
+# 128 песка за несколько минут давали столько же, сколько часть настоящей работы; крупные добычи (уголь, железо,
+# алмаз и т.д.) уже соответствуют модели и не менялись. Если игроки видят «алмазные монеты» за такую награду —
+# на сервере старые economy.denominations в config.yml LoveCore (см. /lovecoreadmin economy status).
 # Версия набора. Если на сервере лежит файл с меньшей версией, при старте он сохраняется как
 # contracts.yml.bak-<время> и заменяется этим (иначе правки баланса из jar никогда не доходят до серверов).
-data-version: 2
+data-version: 3
 
 contracts:
 
@@ -348,7 +353,7 @@ contracts:
       material: "DIRT"
       count: 256
     rewards:
-      money: 150
+      money: 130
     penalties:
       none: true
 
@@ -408,7 +413,7 @@ contracts:
       material: "SAND"
       count: 128
     rewards:
-      money: 200
+      money: 130
     penalties:
       none: true
 
@@ -468,7 +473,7 @@ contracts:
       material: "GRAVEL"
       count: 128
     rewards:
-      money: 200
+      money: 130
     penalties:
       none: true
 

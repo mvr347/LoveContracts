@@ -36,7 +36,8 @@ class RewardConfigTest {
             long reward = money(c, "rewards.money");
             String diff = c.getString("difficulty");
             switch (diff) {
-                case "EASY" -> assertTrue(reward >= 150 && reward <= 400, id + " easy reward " + reward);
+                // 2026-10-04: floor 150 -> 100: bulk mining of 1-2 copper blocks (sand, gravel, dirt) is worth ~128 by the price model
+                case "EASY" -> assertTrue(reward >= 100 && reward <= 400, id + " easy reward " + reward);
                 case "MEDIUM" -> assertTrue(reward >= 500 && reward <= 900, id + " medium reward " + reward);
                 case "HARD" -> assertTrue(reward >= 1200 && reward <= 2200, id + " hard reward " + reward);
                 default -> fail(id + ": unknown difficulty " + diff);
