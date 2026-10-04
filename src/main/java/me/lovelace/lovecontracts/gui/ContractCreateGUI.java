@@ -130,20 +130,29 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
 
     private ItemStack rewardItem(Player viewer, long reward) {
         List<Long> steps = EconomyConfig.rewardSteps(plugin);
-        StringBuilder stepsText = new StringBuilder();
-        for (long step : steps) {
-            if (stepsText.length() > 0) stepsText.append(" → ");
-            stepsText.append(CoinFormat.format(step));
-        }
         List<Component> lore = new ArrayList<>();
         lore.add(mm.deserialize("<gray>Выставить награду в виде монет</gray>"));
         lore.add(mm.deserialize("<gray>Игрок может переставить размер награды</gray>"));
         lore.add(Component.empty());
-        lore.add(CoinFormat.component(viewer, "<yellow>Клик:</yellow> " + stepsText));
+        lore.add(mm.deserialize("<yellow>Клик по кругу:</yellow>"));
+        for (long step : steps) {
+            for (String line : CoinFormat.formatLines(step)) {
+                lore.add(CoinFormat.component(viewer, "<dark_gray>  </dark_gray>" + line));
+            }
+            if (step != steps.get(steps.size() - 1)) lore.add(mm.deserialize("<dark_gray>  ─</dark_gray>"));
+        }
+
+        List<Component> head = new ArrayList<>();
+        head.add(mm.deserialize("<gold>Награда:</gold>"));
+        for (String line : CoinFormat.formatLines(reward)) {
+            head.add(CoinFormat.component(viewer, "<dark_gray>  </dark_gray>" + line));
+        }
+        head.add(Component.empty());
+        lore.addAll(0, head);
 
         return HeadUtil.createBase64Head(
                 REWARD_HEAD,
-                CoinFormat.resolveGlyphs(viewer, "<gold>Награда:</gold> " + CoinFormat.format(reward)),
+                "<gold>Награда</gold>",
                 lore
         );
     }

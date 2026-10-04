@@ -70,6 +70,8 @@ public final class LoveContracts extends JavaPlugin {
         saveResourceIfMissing("contracts.yml");
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("npc_quests.yml");
+        refreshOutdatedData("contracts.yml");
+        refreshOutdatedData("npc_quests.yml");
         loadHeadsConfig(); // сам сохраняет heads.yml при первом запуске, см. ниже
 
         try {
@@ -182,6 +184,29 @@ public final class LoveContracts extends JavaPlugin {
      * Bukkit, а не ошибка, но оно засоряет консоль. Извлекаем ресурс только один раз,
      * при первом запуске.
      */
+    /**
+     * Replaces a data file whose {@code data-version} is older than the one in the jar. The old file is kept as
+     * {@code <name>.bak-<millis>}: saveResourceIfMissing never touched existing files, so balance fixes in the jar
+     * (for example the economy v2 rewards) silently never reached a server that already had the file.
+     */
+    private void refreshOutdatedData(String name) {
+        java.io.File file = new java.io.File(getDataFolder(), name);
+        try (java.io.InputStream bundled = getResource(name)) {
+            if (bundled == null || !file.exists()) return;
+            int jarVersion = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                    new java.io.InputStreamReader(bundled, java.nio.charset.StandardCharsets.UTF_8)).getInt("data-version", 0);
+            int diskVersion = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file).getInt("data-version", 0);
+            if (diskVersion >= jarVersion) return;
+            java.io.File backup = new java.io.File(getDataFolder(), name + ".bak-" + System.currentTimeMillis());
+            java.nio.file.Files.copy(file.toPath(), backup.toPath());
+            saveResource(name, true);
+            getLogger().warning(name + ": data-version " + diskVersion + " -> " + jarVersion
+                    + ", file replaced by the bundled one (old copy: " + backup.getName() + "). Re-apply custom edits if any.");
+        } catch (java.io.IOException e) {
+            getLogger().warning("Could not refresh " + name + ": " + e.getMessage());
+        }
+    }
+
     private void saveResourceIfMissing(String name) {
         if (!new java.io.File(getDataFolder(), name).exists()) {
             saveResource(name, false);

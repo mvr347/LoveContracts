@@ -78,6 +78,34 @@ public final class CoinFormat {
         return sb.toString();
     }
 
+    /** Та же сумма, но по строке на номинал (столбиком): для лора. Ноль — одна строка «0 монет». */
+    public static List<String> formatLines(long amount) {
+        return formatLines(tryEconomy().orElse(null), amount);
+    }
+
+    public static List<String> formatLines(LoveEconomy eco, long amount) {
+        List<String> lines = new ArrayList<>();
+        if (eco == null) {
+            lines.add(amount + " монет");
+            return lines;
+        }
+        List<Denomination> dens = new ArrayList<>(eco.denominations());
+        dens.sort(Comparator.comparingLong(Denomination::value).reversed());
+        long remaining = Math.max(0L, amount);
+        for (Denomination den : dens) {
+            if (den.value() <= 0) continue;
+            long count = remaining / den.value();
+            if (count > 0) {
+                lines.add(glyph(den) + " x" + count);
+                remaining %= den.value();
+            }
+        }
+        if (lines.isEmpty()) {
+            lines.add("0 " + eco.currencyName());
+        }
+        return lines;
+    }
+
     /** MiniMessage-текст с глифами монет → компонент для конкретного игрока. */
     public static net.kyori.adventure.text.Component component(Player player, String mm) {
         return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(resolveGlyphs(player, mm));

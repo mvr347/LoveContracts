@@ -478,8 +478,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
         lore.add(mm.deserialize("<yellow>Прогресс:</yellow> <white>" + progress + "</white>"));
         lore.add(Component.empty());
         lore.add(mm.deserialize("<green>Награды:</green>"));
-        c.getRewards().forEach(r ->
-                lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
+        addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
         lore.add(Component.empty());
         if (isDone) {
             lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"));
@@ -543,8 +542,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
             lore.add(mm.deserialize("<gray>" + c.getDescription() + "</gray>"));
             lore.add(Component.empty());
             lore.add(mm.deserialize("<green>Награды:</green>"));
-            c.getRewards().forEach(r ->
-                    lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
+            addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
             lore.add(Component.empty());
             lore.add(plugin.getMessageManager().getComponent("gui.contract-status-completed", "<green>✔ ВЫПОЛНЕН</green>"));
 
@@ -587,8 +585,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
             lore.add(mm.deserialize("<yellow>Прогресс:</yellow> <white>" + progress + "</white>"));
             lore.add(Component.empty());
             lore.add(mm.deserialize("<green>Награды:</green>"));
-            c.getRewards().forEach(r ->
-                    lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
+            addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
             lore.add(Component.empty());
             if (isDone) {
                 lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"));
@@ -655,17 +652,16 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
 
         lore.add(Component.empty());
         lore.add(mm.deserialize("<green>Награды:</green>"));
-        c.getRewards().forEach(r ->
-                lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<gold>  + " + r.getDisplay() + "</gold>"))));
+        addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
 
         if (!c.isStarter()) {
             boolean hasPenalty = c.getPenalties().stream()
                     .anyMatch(p -> p.getType() != me.lovelace.lovecontracts.model.Penalty.Type.NONE);
             if (hasPenalty) {
                 lore.add(mm.deserialize("<red>Штрафы:</red>"));
-                c.getPenalties().stream()
+                addMoneyLines(lore, player, "red", c.getPenalties().stream()
                         .filter(p -> p.getType() != me.lovelace.lovecontracts.model.Penalty.Type.NONE)
-                        .forEach(p -> lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, "<red>  - " + p.getDisplay() + "</red>"))));
+                        .flatMap(p -> p.getDisplayLines().stream()).toList());
             }
         }
 
@@ -710,5 +706,13 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
     @Override
     public Inventory getInventory() {
         return null;
+    }
+
+    /** Money lines of a reward/penalty, one denomination per line (a column, not a row). */
+    private void addMoneyLines(List<Component> lore, Player player, String color, List<String> lines) {
+        for (String line : lines) {
+            lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player,
+                    "<" + color + ">  </" + color + ">" + line)));
+        }
     }
 }

@@ -1,6 +1,7 @@
 package me.lovelace.lovecontracts.manager;
 
 import me.lovelace.lovecontracts.util.EconomyConfig;
+import me.lovelace.lovecontracts.util.ModelPricing;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.condition.CatchFishCondition;
 import me.lovelace.lovecontracts.condition.ContractCondition;
@@ -81,8 +82,13 @@ public class ContractRegistry {
         boolean starter = section.getBoolean("starter", section.getBoolean("is-starter", false));
         boolean enabled = section.getBoolean("enabled", true);
 
-        List<Reward> rewards = parseRewards(section.getConfigurationSection("rewards"));
-        List<Penalty> penalties = parsePenalties(section.getConfigurationSection("penalties"));
+        ConfigurationSection cond = section.getConfigurationSection("condition");
+        ConfigurationSection rewardSec = section.getConfigurationSection("rewards");
+        java.util.function.DoubleSupplier ratio = cond == null || rewardSec == null ? () -> 1.0
+                : ModelPricing.ratio(plugin, cond.getString("material"), cond.getLong("count", 0),
+                        EconomyConfig.read(plugin, rewardSec, "money", EconomyConfig.REWARD_SCALE));
+        List<Reward> rewards = parseRewards(rewardSec, ratio);
+        List<Penalty> penalties = parsePenalties(section.getConfigurationSection("penalties"), ratio);
         ContractRequirement requirement = parseRequirements(section.getConfigurationSection("requirements"));
 
         Contract contract = new Contract(id, displayName, description, difficulty, type,
@@ -107,23 +113,23 @@ public class ContractRegistry {
      * experience}/{@code reputation} keys left over in an old {@code contracts.yml} are
      * ignored rather than silently miscounted.
      */
-    private List<Reward> parseRewards(ConfigurationSection section) {
+    private List<Reward> parseRewards(ConfigurationSection section, java.util.function.DoubleSupplier ratio) {
         List<Reward> rewards = new ArrayList<>();
         if (section == null) return rewards;
 
         if (section.contains("money")) {
-            rewards.add(Reward.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.REWARD_SCALE)));
+            rewards.add(Reward.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.REWARD_SCALE), ratio));
         }
         return rewards;
     }
 
-    private List<Penalty> parsePenalties(ConfigurationSection section) {
+    private List<Penalty> parsePenalties(ConfigurationSection section, java.util.function.DoubleSupplier ratio) {
         List<Penalty> penalties = new ArrayList<>();
         if (section == null || section.getBoolean("none", false)) {
             return penalties;
         }
         if (section.contains("money")) {
-            penalties.add(Penalty.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.PENALTY_SCALE)));
+            penalties.add(Penalty.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.PENALTY_SCALE), ratio));
         }
         ConfigurationSection rep = section.getConfigurationSection("reputation");
         if (rep != null) {
