@@ -47,6 +47,14 @@ public final class CoinFormat {
         return "<white>%img_" + tag + "%</white>";
     }
 
+    /**
+     * {@code " x5"} in white. The glyph is closed by {@code </white>}, so a bare count after it fell back to the
+     * lore default (italic dark purple) in a menu lore; it is its own white tag, like {@code &f xN} in LoveShop.
+     */
+    static String count(long count) {
+        return " <white>x" + count + "</white>";
+    }
+
     /** Сумма глифами по номиналам от старшего к младшему; ноль — «0 монет» (без номинала нет глифа для ноля). */
     public static String format(long amount) {
         return format(tryEconomy().orElse(null), amount);
@@ -68,7 +76,7 @@ public final class CoinFormat {
             long count = remaining / den.value();
             if (count > 0) {
                 if (sb.length() > 0) sb.append("  ");
-                sb.append(glyph(den)).append(" x").append(count);
+                sb.append(glyph(den)).append(count(count));
                 remaining %= den.value();
             }
         }
@@ -96,7 +104,7 @@ public final class CoinFormat {
             if (den.value() <= 0) continue;
             long count = remaining / den.value();
             if (count > 0) {
-                lines.add(glyph(den) + " x" + count);
+                lines.add(glyph(den) + count(count));
                 remaining %= den.value();
             }
         }
