@@ -29,7 +29,7 @@ import java.util.UUID;
  * {@code /pcontract} — весь player-to-player контрактный флоу. Гибкость закладывается
  * через свободные флаги в create (clanonly, rep:N) вместо жёсткого набора обязательных
  * параметров — админ настраивает лимиты в config.yml, а не в коде команды. Награда — только
- * золото через LoveCore, как и у системных контрактов ({@code /contracts}).
+ * монеты через LoveCore, как и у системных контрактов ({@code /contracts}).
  */
 public class PlayerContractCommand implements CommandExecutor, TabCompleter {
 
@@ -83,13 +83,13 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(mm.deserialize("<red>Создание контрактов временно отключено (\"В ближайшее время\").</red>"));
     }
 
-    // /pcontract create deliver <material> <amount> <gold> <hours> [flags...] <description...>
-    // /pcontract create kill <entity> <amount> <gold> <hours> [flags...] <description...>
+    // /pcontract create deliver <material> <amount> <reward> <hours> [flags...] <description...>
+    // /pcontract create kill <entity> <amount> <reward> <hours> [flags...] <description...>
     private void createDeliverOrKill(Player player, String[] args, PlayerContractObjectiveType type) {
         if (args.length < 6) {
             player.sendMessage(mm.deserialize(
                     "<red>Использование: /pcontract create " + args[1].toLowerCase()
-                            + " <тип> <кол-во> <золото> <часы> [clanonly] [rep:N] <описание></red>"));
+                            + " <тип> <кол-во> <награда> <часы> [clanonly] [rep:N] <описание></red>"));
             return;
         }
 
@@ -99,20 +99,20 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
                 : requireEntityType(targetRaw).name();
 
         int amount = Integer.parseInt(args[3]);
-        long gold = Long.parseLong(args[4]);
+        long gold = parseReward(args[4]);
         int hours = Integer.parseInt(args[5]);
 
         submitCreate(player, args, 6, type, target, amount, gold, hours);
     }
 
-    // /pcontract create custom <gold> <hours> [flags...] <description...>
+    // /pcontract create custom <reward> <hours> [flags...] <description...>
     private void createCustom(Player player, String[] args) {
         if (args.length < 5) {
             player.sendMessage(mm.deserialize(
-                    "<red>Использование: /pcontract create custom <золото> <часы> [clanonly] [rep:N] <описание></red>"));
+                    "<red>Использование: /pcontract create custom <награда> <часы> [clanonly] [rep:N] <описание></red>"));
             return;
         }
-        long gold = Long.parseLong(args[2]);
+        long gold = parseReward(args[2]);
         int hours = Integer.parseInt(args[3]);
         submitCreate(player, args, 4, PlayerContractObjectiveType.CUSTOM, null, 1, gold, hours);
     }
@@ -222,6 +222,20 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(CoinFormat.component(player, message)));
     }
 
+    /** A reward as a plain number of copper ("150") or coins ("3i", "2g", "1d"); anything else is a user error. */
+    static long parseReward(String raw) {
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException plain) {
+            try {
+                return CoinFormat.tryEconomy().map(e -> e.parse(raw))
+                        .orElseThrow(() -> new IllegalArgumentException("Экономика недоступна."));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Неверная награда: " + raw + " (число или монеты: 150, 3i, 2g, 1d)");
+            }
+        }
+    }
+
     private Material requireMaterial(String name) {
         try {
             return Material.valueOf(name);
@@ -243,9 +257,9 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
                 "<dark_gray>========== <aqua>LoveContracts</aqua> ==========</dark_gray>",
                 "<aqua>/pcontract board</aqua> <gray>- доска открытых контрактов</gray>",
                 "<aqua>/pcontract my</aqua> <gray>- мои контракты</gray>",
-                "<aqua>/pcontract create deliver <материал> <кол-во> <золото> <часы> [clanonly] [rep:N] <описание></aqua>",
-                "<aqua>/pcontract create kill <существо> <кол-во> <золото> <часы> [флаги] <описание></aqua>",
-                "<aqua>/pcontract create custom <золото> <часы> [флаги] <описание></aqua>",
+                "<aqua>/pcontract create deliver <материал> <кол-во> <награда> <часы> [clanonly] [rep:N] <описание></aqua>",
+                "<aqua>/pcontract create kill <существо> <кол-во> <награда> <часы> [флаги] <описание></aqua>",
+                "<aqua>/pcontract create custom <награда> <часы> [флаги] <описание></aqua>",
                 "<aqua>/pcontract accept <id></aqua>",
                 "<aqua>/pcontract turnin <id></aqua> <gray>- сдать предметы</gray>",
                 "<aqua>/pcontract submit <id></aqua> <gray>- сдать произвольную задачу на проверку</gray>",

@@ -43,15 +43,31 @@ public final class ModelPricing {
 
     /** What an ore block gives when mined (the model prices items, not blocks); null if it is not an ore. */
     static Material oreDrop(Material ore) {
-        String name = ore.name();
-        if (!name.endsWith("_ORE")) return null;
-        String base = name.substring(0, name.length() - "_ORE".length());
-        if (base.startsWith("DEEPSLATE_")) base = base.substring("DEEPSLATE_".length());
-        return switch (base) {
-            case "IRON", "GOLD", "COPPER" -> Material.matchMaterial("RAW_" + base);
-            case "NETHER_GOLD" -> Material.GOLD_NUGGET;
-            case "NETHER_QUARTZ" -> Material.QUARTZ;
-            default -> Material.matchMaterial(base);
+        String drop = dropName(ore.name());
+        return drop == null ? null : Material.matchMaterial(drop);
+    }
+
+    /**
+     * Name of the item a mined block gives, or null when the block is not covered. Free of Bukkit so it can be tested.
+     * Stone-like blocks drop their cobbled form and ancient debris drops scrap: contracts for them were stuck at the
+     * flat yml reward because the model has no price for the block itself.
+     */
+    static String dropName(String block) {
+        return switch (block) {
+            case "STONE" -> "COBBLESTONE";
+            case "DEEPSLATE" -> "COBBLED_DEEPSLATE";
+            case "ANCIENT_DEBRIS" -> "NETHERITE_SCRAP";
+            default -> {
+                if (!block.endsWith("_ORE")) yield null;
+                String base = block.substring(0, block.length() - "_ORE".length());
+                if (base.startsWith("DEEPSLATE_")) base = base.substring("DEEPSLATE_".length());
+                yield switch (base) {
+                    case "IRON", "GOLD", "COPPER" -> "RAW_" + base;
+                    case "NETHER_GOLD" -> "GOLD_NUGGET";
+                    case "NETHER_QUARTZ" -> "QUARTZ";
+                    default -> base;
+                };
+            }
         };
     }
 

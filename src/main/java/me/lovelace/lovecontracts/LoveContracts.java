@@ -67,6 +67,7 @@ public final class LoveContracts extends JavaPlugin {
         instance = this;
 
         saveDefaultConfig();
+        mergeMissingConfigKeys();
         saveResourceIfMissing("contracts.yml");
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("npc_quests.yml");
@@ -184,6 +185,46 @@ public final class LoveContracts extends JavaPlugin {
      * Bukkit, а не ошибка, но оно засоряет консоль. Извлекаем ресурс только один раз,
      * при первом запуске.
      */
+    /** Legacy key -> its replacement and the bundled default the replacement gets. */
+    private static final java.util.Map<String, String> RENAMED_KEYS = java.util.Map.of(
+            "player-contracts.min-gold-reward", "player-contracts.min-reward",
+            "player-contracts.max-gold-reward", "player-contracts.max-reward");
+
+    /**
+     * saveDefaultConfig() never touches an existing config.yml, so a server set up before economy v2 had no
+     * {@code economy} section at all. Keys missing from the file are added from the jar (values already in the file
+     * are never overwritten). The two renamed bounds of player orders are moved to the new keys with the bundled
+     * defaults: the old values (10 / 100 000, or 100 / 1 000 000) were only ever the old defaults.
+     */
+    private void mergeMissingConfigKeys() {
+        try (java.io.InputStream in = getResource("config.yml")) {
+            if (in == null) return;
+            org.bukkit.configuration.file.YamlConfiguration jar = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(
+                    new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+            org.bukkit.configuration.file.FileConfiguration cfg = getConfig();
+            java.util.List<String> changes = new java.util.ArrayList<>();
+            for (java.util.Map.Entry<String, String> e : RENAMED_KEYS.entrySet()) {
+                if (cfg.contains(e.getKey())) {
+                    cfg.set(e.getKey(), null);
+                    cfg.set(e.getValue(), jar.get(e.getValue()));
+                    changes.add(e.getKey() + " -> " + e.getValue());
+                }
+            }
+            for (String key : jar.getKeys(true)) {
+                if (jar.isConfigurationSection(key) || cfg.contains(key)) continue;
+                cfg.set(key, jar.get(key));
+                changes.add("+" + key);
+            }
+            if (!changes.isEmpty()) {
+                saveConfig();
+                getLogger().info("config.yml: updated to the current layout (" + changes.size() + " keys): "
+                        + String.join(", ", changes));
+            }
+        } catch (java.io.IOException | RuntimeException e) {
+            getLogger().warning("Could not merge new config keys: " + e.getMessage());
+        }
+    }
+
     /**
      * Replaces a data file whose {@code data-version} is older than the one in the jar. The old file is kept as
      * {@code <name>.bak-<millis>}: saveResourceIfMissing never touched existing files, so balance fixes in the jar

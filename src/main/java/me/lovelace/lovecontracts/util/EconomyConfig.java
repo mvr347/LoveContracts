@@ -58,7 +58,30 @@ public final class EconomyConfig {
                 if (v > 0) steps.add(v);
             }
         }
-        if (steps.isEmpty()) steps = List.of(100L, 500L, 2000L, 10000L);
+        if (steps.isEmpty()) steps = denominationSteps(CoinFormat.tryEconomy().orElse(null));
         return steps;
+    }
+
+    /** The values of the visible coins, smallest first: the default click steps (1 / 100 / 2 000 / 20 000 in economy v2). */
+    static List<Long> denominationSteps(dev.lovelace.lovecore.api.economy.LoveEconomy eco) {
+        List<Long> steps = new java.util.ArrayList<>();
+        if (eco != null) {
+            for (dev.lovelace.lovecore.api.economy.Denomination d : eco.denominations()) {
+                if (d.value() > 0) steps.add(d.value());
+            }
+            java.util.Collections.sort(steps);
+        }
+        return steps.isEmpty() ? List.of(1L, 100L, 2000L, 20000L) : steps;
+    }
+
+    /** 100 diamond coins in copper (2 000 000 with the shipped denominations): the default ceiling of a player order. */
+    public static long defaultMaxReward() {
+        return CoinFormat.tryEconomy().map(e -> {
+            try {
+                return e.parse("100d");
+            } catch (RuntimeException ex) {
+                return 2_000_000L;
+            }
+        }).orElse(2_000_000L);
     }
 }
