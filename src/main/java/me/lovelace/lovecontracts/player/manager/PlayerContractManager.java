@@ -2,6 +2,7 @@ package me.lovelace.lovecontracts.player.manager;
 
 import dev.lovelace.lovecore.api.economy.MoneyConfig;
 import me.lovelace.lovecontracts.util.CoinFormat;
+import me.lovelace.lovecontracts.util.EconomyConfig;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.player.event.PlayerContractAcceptedEvent;
 import me.lovelace.lovecontracts.player.event.PlayerContractCompletedEvent;
@@ -69,8 +70,8 @@ public class PlayerContractManager {
             return future;
         }
 
-        long minGold = MoneyConfig.getScaled(cfg(), "min-gold-reward", 100);
-        long maxGold = MoneyConfig.getScaled(cfg(), "max-gold-reward", 1_000_000);
+        long minGold = MoneyConfig.getScaled(cfg(), "min-reward", 1);
+        long maxGold = MoneyConfig.getScaled(cfg(), "max-reward", EconomyConfig.defaultMaxReward());
         if (req.goldReward() < minGold || req.goldReward() > maxGold) {
             future.complete(ContractActionResult.fail(
                     "<red>Награда должна быть от</red> " + CoinFormat.format(minGold)

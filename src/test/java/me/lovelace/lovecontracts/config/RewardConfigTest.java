@@ -64,9 +64,15 @@ class RewardConfigTest {
         assertTrue(cfg.getDouble("economy.reward-scale") > 0);
         assertTrue(cfg.getDouble("economy.penalty-scale") > 0);
         assertTrue(cfg.getDouble("economy.migration.factor") > 0);
-        for (Object step : cfg.getList("economy.creation-reward-steps")) {
-            assertTrue(step instanceof Number || MoneyParser.parse(String.valueOf(step), MoneyParser.STANDARD) > 0);
+        // creation-reward-steps is optional now: without it the coin values are the steps
+        if (cfg.getList("economy.creation-reward-steps") != null) {
+            for (Object step : cfg.getList("economy.creation-reward-steps")) {
+                assertTrue(step instanceof Number || MoneyParser.parse(String.valueOf(step), MoneyParser.STANDARD) > 0);
+            }
         }
-        assertTrue(money(cfg, "player-contracts.min-gold-reward") < money(cfg, "player-contracts.max-gold-reward"));
+        // player order bounds: from one copper coin to 100 diamond coins; the old "gold" keys are gone
+        assertEquals(1L, money(cfg, "player-contracts.min-reward"));
+        assertTrue(money(cfg, "player-contracts.min-reward") < money(cfg, "player-contracts.max-reward"));
+        assertTrue(!cfg.contains("player-contracts.min-gold-reward") && !cfg.contains("player-contracts.max-gold-reward"));
     }
 }
