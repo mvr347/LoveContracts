@@ -4,12 +4,12 @@
 
 gui:
   title: "<gradient:#55FF55:#55FFFF>Доска контрактов</gradient>"
-  filter-button: "<gold>Фильтр:</gold> <yellow>{FILTER}</yellow>"
-  filter-current: "<gray>Текущий фильтр: <white>{FILTER}</white></gray>"
-  filter-click: "<gray>Нажмите для смены фильтра</gray>"
-  sort-button: "<gold>Сортировка:</gold> <yellow>{SORT}</yellow>"
-  sort-current: "<gray>Текущая сортировка: <white>{SORT}</white></gray>"
-  sort-click: "<gray>Нажмите для смены сортировки</gray>"
+  # 2026-10-07: кнопки фильтра/сортировки в стиле меню участников клана — в названии только
+  # слово, а все варианты перечислены в описании (текущий отмечен ▶). Старые ключи filter-button/
+  # sort-button с {FILTER}/{SORT} больше не используются, поэтому заведены новые ключи.
+  filter-title: "<gold>Фильтр</gold>"
+  sort-title: "<gold>Сортировка</gold>"
+  cycle-hint: "<yellow>ЛКМ <gray>- дальше, <yellow>ПКМ <gray>- назад"
   prev-page: "<yellow>← Предыдущая страница</yellow>"
   next-page: "<yellow>Следующая страница →</yellow>"
   page-info: "<gray>Страница {PAGE} из {MAX_PAGES}</gray>"
