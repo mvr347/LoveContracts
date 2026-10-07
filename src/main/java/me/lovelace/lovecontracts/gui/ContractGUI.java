@@ -1,6 +1,8 @@
 package me.lovelace.lovecontracts.gui;
 
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.gui.BoardModes.FilterMode;
+import me.lovelace.lovecontracts.gui.BoardModes.SortMode;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.textures.HeadTextures;
@@ -29,44 +31,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 54-slot Contract Board — gui-gen-4 v1.6 compliant.
- * Header: Slot 1 (Filter), Slot 3 (Sort), Slot 5 (Dynamic Action: Create / Complete / Cancel).
- * Pagination: Slot 36 (Prev Page), Slot 44 (Next Page).
- * Footer: Slot 53 (Close).
+ * 54-slot Contract Board (gui_gen v2.1).
+ * Header: slot 3 (Filter), slot 5 (Sort); all other header slots and Row1 (9-17) are glass.
+ * Pagination: slot 36 (prev page), slot 44 (next page); AIR when inactive.
+ * Footer: 45-50 glass, 51 extra button (Create / current contract), 52 glass (no Back: root menu), 53 Close.
+ * Filter/sort buttons: LMB = next option, RMB = previous option, page resets to 0.
  */
-public class ContractGUI implements Listener, InventoryHolder {    public enum FilterMode {
-        ALL("Все"),
-        EASY("Легкие"),
-        MEDIUM("Средние"),
-        HARD("Сложные"),
-        AVAILABLE("Доступные"),
-        ACCEPTED("Взятые"),
-        COMPLETED("Выполненные"),
-        FAILED("Проваленные");
-
-        private final String display;
-        FilterMode(String display) { this.display = display; }
-        public String getDisplay() { return display; }
-        public FilterMode next() {
-            FilterMode[] vals = values();
-            return vals[(ordinal() + 1) % vals.length];
-        }
-    }
-
-    public enum SortMode {
-        ALL("Все"),
-        REWARD_HIGH("От Б до М"),
-        REWARD_LOW("От М до Б"),
-        DIFFICULTY("Сложность");
-
-        private final String display;
-        SortMode(String display) { this.display = display; }
-        public String getDisplay() { return display; }
-        public SortMode next() {
-            SortMode[] vals = values();
-            return vals[(ordinal() + 1) % vals.length];
-        }
-    }
+public class ContractGUI implements Listener, InventoryHolder {
 
     private final LoveContracts plugin;
     private final MiniMessage mm = MiniMessage.miniMessage();
@@ -120,7 +91,7 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
 
     private static final int SLOT_PREV = 36;
     private static final int SLOT_NEXT = 44;
-    private static final int SLOT_CREATE = 52;
+    private static final int SLOT_CREATE = 51;
     private static final int SLOT_CLOSE = 53;
 
     public ContractGUI(LoveContracts plugin) {
@@ -197,8 +168,8 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
             inv.setItem(CONTRACT_SLOTS[idx++], contractItem(filtered.get(i), player));
         }
 
-        // Footer (45-53): 45-51 glass, 52 creation / active contract button, 53 close button
-        for (int s = 45; s <= 51; s++) {
+        // Footer (45-53): 45-50 glass, 51 creation / active contract button, 52 glass (root menu, no Back), 53 close
+        for (int s = 45; s <= 52; s++) {
             inv.setItem(s, GLASS_PANE);
         }
         Contract activeContract = plugin.getContractManager().getActiveContract(uuid);
@@ -312,16 +283,16 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
         }
 
         if (slot == SLOT_FILTER) {
-            FilterMode nextFilter = playerFilters.getOrDefault(uuid, FilterMode.ALL).next();
-            playerFilters.put(uuid, nextFilter);
+            FilterMode current = playerFilters.getOrDefault(uuid, FilterMode.ALL);
+            playerFilters.put(uuid, event.isRightClick() ? current.prev() : current.next());
             playerPages.put(uuid, 0);
             open(player);
             return;
         }
 
         if (slot == SLOT_SORT) {
-            SortMode nextSort = playerSorts.getOrDefault(uuid, SortMode.ALL).next();
-            playerSorts.put(uuid, nextSort);
+            SortMode current = playerSorts.getOrDefault(uuid, SortMode.ALL);
+            playerSorts.put(uuid, event.isRightClick() ? current.prev() : current.next());
             playerPages.put(uuid, 0);
             open(player);
             return;
@@ -680,26 +651,31 @@ public class ContractGUI implements Listener, InventoryHolder {    public enum F
     }
 
     private ItemStack filterButton(FilterMode mode) {
+        List<String> names = new ArrayList<>();
+        for (FilterMode m : FilterMode.values()) names.add(plugin.getMessageManager().getRaw(m.messageKey(), m.fallback()));
         String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("filter", TYPE_FILTER_HEAD_DEFAULT);
-        List<Component> lore = new ArrayList<>();
-        lore.add(plugin.getMessageManager().getComponent("gui.filter-current", "<gray>Текущий фильтр: <white>{FILTER}</white></gray>",
-                java.util.Map.of("FILTER", mode.getDisplay())));
-        lore.add(Component.empty());
-        lore.add(plugin.getMessageManager().getComponent("gui.filter-click", "<gray>Нажмите для смены фильтра</gray>"));
-        String title = plugin.getMessageManager().getRaw("gui.filter-button", "<gold>Фильтр:</gold> <yellow>{FILTER}</yellow>")
-                .replace("{FILTER}", mode.getDisplay());
-        return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, title, lore);
+        return cycleButton(base64, plugin.getMessageManager().getRaw("gui.filter-title", "<gold>Фильтр</gold>"),
+                names, mode.ordinal());
     }
 
     private ItemStack sortButton(SortMode mode) {
+        List<String> names = new ArrayList<>();
+        for (SortMode m : SortMode.values()) names.add(plugin.getMessageManager().getRaw(m.messageKey(), m.fallback()));
         String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("sort", SORT_HEAD_DEFAULT);
+        return cycleButton(base64, plugin.getMessageManager().getRaw("gui.sort-title", "<gold>Сортировка</gold>"),
+                names, mode.ordinal());
+    }
+
+    /** Members-menu style switch: every option listed, current one marked, LMB/RMB hint at the bottom. */
+    private ItemStack cycleButton(String base64, String title, List<String> options, int current) {
         List<Component> lore = new ArrayList<>();
-        lore.add(plugin.getMessageManager().getComponent("gui.sort-current", "<gray>Текущая сортировка: <white>{SORT}</white></gray>",
-                java.util.Map.of("SORT", mode.getDisplay())));
         lore.add(Component.empty());
-        lore.add(plugin.getMessageManager().getComponent("gui.sort-click", "<gray>Нажмите для смены сортировки</gray>"));
-        String title = plugin.getMessageManager().getRaw("gui.sort-button", "<gold>Сортировка:</gold> <yellow>{SORT}</yellow>")
-                .replace("{SORT}", mode.getDisplay());
+        for (int i = 0; i < options.size(); i++) {
+            lore.add(mm.deserialize(i == current ? "<green>▶ " + options.get(i) : "<gray>  " + options.get(i)));
+        }
+        lore.add(Component.empty());
+        lore.add(plugin.getMessageManager().getComponent("gui.cycle-hint",
+                "<yellow>ЛКМ <gray>- дальше, <yellow>ПКМ <gray>- назад"));
         return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, title, lore);
     }
 
