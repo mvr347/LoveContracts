@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.manager;
 
+import me.lovelace.lovecontracts.util.Notify;
 import dev.lovelace.lovecore.api.LoveCore;
 import dev.lovelace.lovecore.api.social.BehaviorLevels;
 import dev.lovelace.lovecore.api.stats.Metrics;
@@ -268,7 +269,7 @@ public class ContractManager {
 
         Contract contract = plugin.getRegistry().getContract(id);
         if (contract == null || !contract.isEnabled() || !isActive(id)) {
-            player.sendMessage(mm.deserialize("<red>Этот контракт больше недоступен.</red>"));
+            Notify.event(player, mm.deserialize("<red>Этот контракт больше недоступен.</red>"));
             return;
         }
 
@@ -276,7 +277,7 @@ public class ContractManager {
                 && LoveCore.service(BehaviorLevels.class)
                         .map(levels -> levels.playstyleLevel(player.getUniqueId()) == BehaviorLevels.MAX_LEVEL)
                         .orElse(false)) {
-            player.sendMessage(mm.deserialize(
+            Notify.event(player, mm.deserialize(
                     "<red>Добрые игроки предпочитают сотрудничество, а не контракты на выполнение.</red>"));
             return;
         }
@@ -288,19 +289,19 @@ public class ContractManager {
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Accept-contract failed", e);
                 Bukkit.getScheduler().runTask(plugin, () ->
-                        player.sendMessage(mm.deserialize("<red>Ошибка базы данных. Обратитесь к администратору.</red>")));
+                        Notify.event(player, mm.deserialize("<red>Ошибка базы данных. Обратитесь к администратору.</red>")));
                 return;
             }
 
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (!player.isOnline()) return;
                 if (result == AcceptResult.ALREADY_ACCEPTED_TODAY) {
-                    plugin.getMessageManager().sendMessage(player, "messages.contract-already-taken",
+                    plugin.getMessageManager().notice(player, "messages.contract-already-taken",
                             "<red>Вы уже выполняли этот контракт сегодня. Дождитесь следующей ротации.</red>");
                     return;
                 }
                 if (result == AcceptResult.NO_SLOTS_OR_EXPIRED) {
-                    plugin.getMessageManager().sendMessage(player, "messages.contract-no-slots",
+                    plugin.getMessageManager().notice(player, "messages.contract-no-slots",
                             "<red>Свободные слоты на этот контракт закончились или его срок на доске истёк.</red>");
                     return;
                 }
@@ -308,7 +309,7 @@ public class ContractManager {
                     contract.getCondition().reset(player);
                     contract.getCondition().register(player);
                 }
-                plugin.getMessageManager().sendMessage(player, "messages.contract-accepted",
+                plugin.getMessageManager().notice(player, "messages.contract-accepted",
                         "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>",
                         java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
                 plugin.getSyncManager().broadcastAccept(player, contract);
@@ -425,7 +426,7 @@ public class ContractManager {
                     plugin.getRewardProcessor().giveRewards(player, contract);
                     plugin.getStatBus().ifPresent(bus -> bus.record(player.getUniqueId(), Metrics.CONTRACTS_COMPLETED, 1.0));
                     if (player.isOnline()) {
-                        plugin.getMessageManager().sendMessage(player, "messages.contract-completed",
+                        plugin.getMessageManager().important(player, "messages.contract-completed",
                                 "<green>Выполнено:</green> <gold>{CONTRACT}</gold>",
                                 java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
                     }
@@ -483,7 +484,7 @@ public class ContractManager {
                     if (!contract.isStarter()) {
                         plugin.getRewardProcessor().applyPenalties(player, contract);
                     }
-                    plugin.getMessageManager().sendMessage(player, "messages.contract-failed",
+                    plugin.getMessageManager().important(player, "messages.contract-failed",
                             "<red>Провал:</red> <gold>{CONTRACT}</gold>",
                             java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
                     plugin.getSyncManager().syncGUIForPlayer(player);

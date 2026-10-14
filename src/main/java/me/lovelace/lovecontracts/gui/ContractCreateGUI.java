@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.gui;
 
+import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.util.EconomyConfig;
 import me.lovelace.lovecontracts.LoveContracts;
@@ -98,7 +99,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
 
     public void open(Player player) {
         if (player != null) {
-            player.sendMessage(mm.deserialize("<red>Создание контрактов временно отключено (\"В ближайшее время\").</red>"));
+            Notify.event(player, mm.deserialize("<red>Создание контрактов временно отключено (\"В ближайшее время\").</red>"));
         }
     }
 
@@ -226,7 +227,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
                     .anyMatch(c -> c.getId().startsWith(prefix));
 
             if (alreadyCreated) {
-                player.sendMessage(mm.deserialize("<red>Вы уже создали контракт! Допускается только один созданный контракт на игрока.</red>"));
+                Notify.event(player, mm.deserialize("<red>Вы уже создали контракт! Допускается только один созданный контракт на игрока.</red>"));
                 return;
             }
 
@@ -253,7 +254,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
             plugin.getContractManager().addActiveContract(contract);
 
             playerStates.remove(player.getUniqueId());
-            player.sendMessage(mm.deserialize("<green>✔ Контракт успешно создан и добавлен на доску!</green>"));
+            Notify.event(player, mm.deserialize("<green>✔ Контракт успешно создан и добавлен на доску!</green>"));
             plugin.getContractGUI().open(player);
         }
     }

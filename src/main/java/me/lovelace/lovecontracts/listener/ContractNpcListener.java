@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.listener;
 
+import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.integration.CitizensIntegration;
 import me.lovelace.lovecontracts.model.Contract;
@@ -49,11 +50,11 @@ public class ContractNpcListener implements Listener {
             boolean isCompleted = active.getCondition() != null && active.getCondition().isCompleted(player);
             if (isCompleted) {
                 plugin.getContractManager().completeContract(player, active);
-                player.sendMessage(mm.deserialize(
+                Notify.important(player, mm.deserialize(
                         "<green>✔ Вы отлично справились! Контракт успешно сдан NPC, награда получена.</green>"));
             } else {
                 plugin.getContractManager().cancelContract(player, active);
-                player.sendMessage(mm.deserialize("<yellow>Контракт отменен по вашему запросу у NPC.</yellow>"));
+                Notify.event(player, mm.deserialize("<yellow>Контракт отменен по вашему запросу у NPC.</yellow>"));
             }
         } else if (!tryReject(player)) {
             maybeSayAmbient(player);

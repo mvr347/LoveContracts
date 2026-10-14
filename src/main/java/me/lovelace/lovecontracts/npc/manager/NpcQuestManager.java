@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.npc.manager;
 
+import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.npc.model.*;
 import me.lovelace.lovecontracts.npc.storage.NpcQuestDatabase;
@@ -348,7 +349,7 @@ public class NpcQuestManager implements Listener {
                         quest.getId(), quest.getDisplayName(), "", me.lovelace.lovecontracts.model.Difficulty.EASY,
                         me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of()
                 ));
-                player.sendMessage(mm.deserialize("<green>Поздравляем! Контракт <gold>" + quest.getDisplayName() + "</gold> успешно выполнен!</green>"));
+                Notify.event(player, mm.deserialize("<green>Поздравляем! Контракт <gold>" + quest.getDisplayName() + "</gold> успешно выполнен!</green>"));
             });
         });
     }

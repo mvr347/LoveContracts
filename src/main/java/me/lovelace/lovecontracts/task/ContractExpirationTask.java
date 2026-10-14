@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.task;
 
+import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.model.Contract;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -62,7 +63,7 @@ public class ContractExpirationTask implements Runnable {
                         String msg = plugin.getConfig().getString("rotation.expiration-warning",
                                         "<yellow>⚠ Срок действия вашего контракта истекает через {TIME} мин.!</yellow>")
                                 .replace("{TIME}", String.valueOf(totalMinutes - elapsedMinutes));
-                        p.sendMessage(mm.deserialize(msg));
+                        Notify.important(p, mm.deserialize(msg));
                     }
                 }
             }

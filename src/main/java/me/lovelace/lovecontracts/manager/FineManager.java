@@ -108,7 +108,7 @@ public class FineManager {
                         plugin.getLogger().log(Level.WARNING, "Failed to clear pending fine for " + uuid, e);
                     }
                 });
-                plugin.getMessageManager().sendMessage(player, "messages.fine-cleared",
+                plugin.getMessageManager().important(player, "messages.fine-cleared",
                         "<green>✔ Взыскано {AMOUNT} в счет штрафа. Ваш долг полностью погашен!</green>",
                         java.util.Map.of("AMOUNT", CoinFormat.format(economy, charge)));
             } else {
@@ -124,7 +124,7 @@ public class FineManager {
                         plugin.getLogger().log(Level.WARNING, "Failed to update pending fine for " + uuid, e);
                     }
                 });
-                plugin.getMessageManager().sendMessage(player, "messages.fine-collected",
+                plugin.getMessageManager().important(player, "messages.fine-collected",
                         "<red>⚠ Взыскано {AMOUNT} в счет штрафа. Остаток долга: {REMAINING}</red>",
                         java.util.Map.of("AMOUNT", CoinFormat.format(economy, charge),
                                 "REMAINING", CoinFormat.format(economy, remaining)));
