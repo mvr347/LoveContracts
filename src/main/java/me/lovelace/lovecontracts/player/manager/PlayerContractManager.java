@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.player.manager;
 
+import me.lovelace.lovecontracts.util.Notify;
 import dev.lovelace.lovecore.api.economy.MoneyConfig;
 import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.util.EconomyConfig;
@@ -355,12 +356,12 @@ public class PlayerContractManager {
 
                     if (c.isObjectiveMet()) {
                         completeInternal(c).whenComplete((res, err) -> runSync(() -> {
-                            if (err == null && killer.isOnline()) killer.sendMessage(CoinFormat.component(killer, res.message()));
+                            if (err == null && killer.isOnline()) Notify.important(killer, CoinFormat.component(killer, res.message()));
                         }));
                     } else {
                         runSync(() -> {
                             if (killer.isOnline()) {
-                                killer.sendMessage(mm.deserialize(
+                                Notify.event(killer, mm.deserialize(
                                         "<gray>[Контракт] Прогресс: " + c.getProgressString() + "</gray>"));
                             }
                         });
@@ -407,7 +408,7 @@ public class PlayerContractManager {
                 runSync(() -> {
                     Player creator = bridge.onlinePlayer(c.getCreatorId());
                     if (creator != null) {
-                        creator.sendMessage(mm.deserialize(
+                        Notify.event(creator, mm.deserialize(
                                 "<yellow>" + executor.getName() + " сдал контракт на проверку: "
                                         + "/pcontract review " + shortId(c.getId()) + " accept|reject</yellow>"));
                     }
@@ -458,7 +459,7 @@ public class PlayerContractManager {
                     runSync(() -> {
                         Player executor = bridge.onlinePlayer(c.getExecutorId());
                         if (executor != null) {
-                            executor.sendMessage(mm.deserialize(
+                            Notify.event(executor, mm.deserialize(
                                     "<red>Ваша сдача по контракту " + shortId(c.getId()) + " отклонена. Продолжайте выполнение.</red>"));
                         }
                         future.complete(ContractActionResult.ok("<yellow>Сдача отклонена.</yellow>"));
@@ -575,13 +576,13 @@ public class PlayerContractManager {
                         Bukkit.getPluginManager().callEvent(new PlayerContractEndedEvent(c, prev));
                         Player creatorOnline = bridge.onlinePlayer(c.getCreatorId());
                         if (creatorOnline != null) {
-                            creatorOnline.sendMessage(mm.deserialize(
+                            Notify.important(creatorOnline, mm.deserialize(
                                     "<yellow>Ваш контракт истёк" + (refund ? " — эскроу возвращён." : ".") + "</yellow>"));
                         }
                         if (c.getExecutorId() != null) {
                             Player executorOnline = bridge.onlinePlayer(c.getExecutorId());
                             if (executorOnline != null) {
-                                executorOnline.sendMessage(mm.deserialize("<red>Принятый вами контракт истёк.</red>"));
+                                Notify.important(executorOnline, mm.deserialize("<red>Принятый вами контракт истёк.</red>"));
                             }
                         }
                     });
@@ -616,7 +617,7 @@ public class PlayerContractManager {
                         return;
                     }
                     bridge.deliverToLivePlayer(player, finalGold);
-                    player.sendMessage(CoinFormat.component(player,
+                    Notify.important(player, CoinFormat.component(player,
                             "<green>Вам доставлена отложенная выплата по контракту:</green> "
                                     + CoinFormat.format(finalGold)));
                 });

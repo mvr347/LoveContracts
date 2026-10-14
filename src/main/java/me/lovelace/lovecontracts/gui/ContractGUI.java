@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.gui;
 
+import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.gui.BoardModes.FilterMode;
 import me.lovelace.lovecontracts.gui.BoardModes.SortMode;
@@ -102,7 +103,7 @@ public class ContractGUI implements Listener, InventoryHolder {
     public void open(Player player) {
         if (player == null) return;
         if (plugin.getContractManager().isContractsDisabled(player)) {
-            player.sendMessage(mm.deserialize("<red>Для вас доступ к контрактам отключен администратором.</red>"));
+            Notify.event(player, mm.deserialize("<red>Для вас доступ к контрактам отключен администратором.</red>"));
             return;
         }
 
@@ -311,11 +312,11 @@ public class ContractGUI implements Listener, InventoryHolder {
                         open(player);
                     } else {
                         String progress = activeContract.getCondition() != null ? activeContract.getCondition().getProgressString(player) : "";
-                        player.sendMessage(mm.deserialize("<yellow>Контракт еще не выполнен. Прогресс: " + progress + "</yellow>"));
+                        Notify.event(player, mm.deserialize("<yellow>Контракт еще не выполнен. Прогресс: " + progress + "</yellow>"));
                     }
                 }
             } else {
-                player.sendMessage(mm.deserialize("<red>Создание контрактов временно недоступно (\"В ближайшее время\").</red>"));
+                Notify.event(player, mm.deserialize("<red>Создание контрактов временно недоступно (\"В ближайшее время\").</red>"));
             }
             return;
         }
@@ -345,7 +346,7 @@ public class ContractGUI implements Listener, InventoryHolder {
 
         Contract contract = plugin.getRegistry().getContract(id);
         if (contract == null) {
-            player.sendMessage(mm.deserialize("<red>Контракт не найден.</red>"));
+            Notify.event(player, mm.deserialize("<red>Контракт не найден.</red>"));
             refresh(player);
             return;
         }
@@ -370,7 +371,7 @@ public class ContractGUI implements Listener, InventoryHolder {
                     open(player);
                 } else {
                     String progress = contract.getCondition() != null ? contract.getCondition().getProgressString(player) : "";
-                    player.sendMessage(mm.deserialize("<yellow>Контракт еще не выполнен. Прогресс: " + progress + "</yellow>"));
+                    Notify.event(player, mm.deserialize("<yellow>Контракт еще не выполнен. Прогресс: " + progress + "</yellow>"));
                 }
             }
             return;
@@ -378,7 +379,7 @@ public class ContractGUI implements Listener, InventoryHolder {
 
         // Check active contract limit (max 1 active contract)
         if (plugin.getContractManager().hasActiveContract(uuid)) {
-            player.sendMessage(mm.deserialize("<red>Вы уже выполняете контракт! Одновременно можно взять только один контракт.</red>"));
+            Notify.event(player, mm.deserialize("<red>Вы уже выполняете контракт! Одновременно можно взять только один контракт.</red>"));
             return;
         }
 
@@ -386,7 +387,7 @@ public class ContractGUI implements Listener, InventoryHolder {
         if (contract.getRequirement() != null) {
             int completedCount = plugin.getContractManager().getCompletedContractsCount(uuid);
             if (!contract.getRequirement().isMet(player, completedCount)) {
-                player.sendMessage(mm.deserialize("<red>Вы не соответствуете требованиям этого контракта!</red>"));
+                Notify.event(player, mm.deserialize("<red>Вы не соответствуете требованиям этого контракта!</red>"));
                 return;
             }
         }

@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.player.gui;
 
+import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.player.event.PlayerContractAcceptedEvent;
@@ -152,7 +153,7 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         UUID contractId = UUID.fromString(idStr);
         manager.accept(player, contractId).thenAccept(result ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    player.sendMessage(CoinFormat.component(player, result.message()));
+                    Notify.event(player, CoinFormat.component(player, result.message()));
                     open(player);
                 }));
     }

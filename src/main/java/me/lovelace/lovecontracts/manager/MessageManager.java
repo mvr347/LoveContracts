@@ -2,10 +2,12 @@ package me.lovelace.lovecontracts.manager;
 
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.util.CoinFormat;
+import me.lovelace.lovecontracts.util.Notify;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.util.Map;
@@ -68,5 +70,35 @@ public class MessageManager {
             }
             sender.sendMessage(mm.deserialize(text));
         }
+    }
+
+    /**
+     * Event-style notice (action bar first, LoveNotify moves it to chat when it is too long or the channel is off).
+     * Command replies must keep using {@link #sendMessage}.
+     */
+    public void notice(Player player, String path, String defaultValue) {
+        notice(player, path, defaultValue, Map.of());
+    }
+
+    public void notice(Player player, String path, String defaultValue, Map<String, String> replacements) {
+        if (player != null) {
+            Notify.event(player, resolve(player, path, defaultValue, replacements));
+        }
+    }
+
+    /** Critical notice (money moved, contract failed): always duplicated to chat. */
+    public void important(Player player, String path, String defaultValue) {
+        important(player, path, defaultValue, Map.of());
+    }
+
+    public void important(Player player, String path, String defaultValue, Map<String, String> replacements) {
+        if (player != null) {
+            Notify.important(player, resolve(player, path, defaultValue, replacements));
+        }
+    }
+
+    private Component resolve(Player player, String path, String defaultValue, Map<String, String> replacements) {
+        // Replacements may carry coin glyphs (%img_*%): resolve them for this player before parsing.
+        return mm.deserialize(CoinFormat.resolveGlyphs(player, applyReplacements(path, defaultValue, replacements)));
     }
 }

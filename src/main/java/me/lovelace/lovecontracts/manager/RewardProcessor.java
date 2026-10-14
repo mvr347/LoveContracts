@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.manager;
 
+import me.lovelace.lovecontracts.util.Notify;
 import dev.lovelace.lovecore.api.LoveCore;
 import dev.lovelace.lovecore.api.economy.LoveEconomy;
 import me.lovelace.lovecontracts.LoveContracts;
@@ -43,7 +44,7 @@ public class RewardProcessor {
         try {
             LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
                 economy.give(player, amount);
-                player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                Notify.important(player, net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
                         .deserialize(CoinFormat.resolveGlyphs(player,
                                 "<green>Награды:</green> " + CoinFormat.format(economy, amount))));
             }, () -> plugin.getLogger().fine("Skipping MONEY reward — LoveCore not present: " + amount));
@@ -84,12 +85,12 @@ public class RewardProcessor {
                 long remainingDebt = fullAmount - immediateCharge;
                 if (remainingDebt > 0 && plugin.getFineManager() != null) {
                     plugin.getFineManager().addDebt(player.getUniqueId(), remainingDebt);
-                    plugin.getMessageManager().sendMessage(player, "messages.fine-partial",
+                    plugin.getMessageManager().important(player, "messages.fine-partial",
                             "<yellow>Списано {PAID}. Остаток долга: {REMAINING}</yellow>",
                             java.util.Map.of("PAID", CoinFormat.format(economy, immediateCharge),
                                     "REMAINING", CoinFormat.format(economy, remainingDebt)));
                 } else {
-                    plugin.getMessageManager().sendMessage(player, "messages.fine-deducted",
+                    plugin.getMessageManager().important(player, "messages.fine-deducted",
                             "<red>Списан штраф за провал контракта:</red> {AMOUNT}",
                             java.util.Map.of("AMOUNT", CoinFormat.format(economy, immediateCharge)));
                 }
