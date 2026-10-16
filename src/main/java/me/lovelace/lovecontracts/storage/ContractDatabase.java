@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import me.lovelace.lovecontracts.LoveContracts;
 
 import java.io.File;
+import org.bukkit.Bukkit;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -165,6 +166,9 @@ public class ContractDatabase implements AutoCloseable {
              Statement st = conn.createStatement()) {
             st.executeUpdate("UPDATE contract_stats SET daily_completed = 0, daily_accepted = 0, daily_failed = 0, last_daily_reset = datetime('now')");
             plugin.getLogger().info("Daily contract stats reset to 0");
+            if (plugin.getContractManager() != null) {
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> plugin.getContractManager().refreshAllStats());
+            }
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to reset daily contract stats: " + e.getMessage());
         }

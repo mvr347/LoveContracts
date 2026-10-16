@@ -41,6 +41,11 @@ public class MineMaterialCondition extends ContractCondition {
             return;
         }
 
+        // Player-placed blocks never count: place-and-break would farm progress.
+        if (LoveContracts.getInstance().getPlacedBlockTracker().isPlaced(event.getBlock())) {
+            return;
+        }
+
         Material broken = event.getBlock().getType();
         if (broken != material && !isDeepslateVariant(broken)) {
             return;

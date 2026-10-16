@@ -364,6 +364,7 @@ public class NpcQuestManager implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMine(BlockBreakEvent event) {
+        if (plugin.getPlacedBlockTracker().isPlaced(event.getBlock())) return;
         Player player = event.getPlayer();
         checkProgress(player, NpcQuestStep.Type.MINE_MATERIAL, event.getBlock().getType(), null, 1);
     }

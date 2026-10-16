@@ -60,6 +60,9 @@ public final class LoveContracts extends JavaPlugin {
 
     private me.lovelace.lovecontracts.npc.storage.NpcQuestDatabase npcQuestDatabase;
     private me.lovelace.lovecontracts.npc.manager.NpcQuestManager npcQuestManager;
+    private final me.lovelace.lovecontracts.service.PlayerStatsCache statsCache = new me.lovelace.lovecontracts.service.PlayerStatsCache();
+    private final me.lovelace.lovecontracts.util.PlacedBlockTracker placedBlockTracker =
+            new me.lovelace.lovecontracts.util.PlacedBlockTracker(this, 50_000, 60L * 60_000L);
     private me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI npcDialogueGUI;
 
     @Override
@@ -153,6 +156,7 @@ public final class LoveContracts extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(playerContractBoardGUI, this);
         Bukkit.getPluginManager().registerEvents(playerContractMyGUI, this);
         Bukkit.getPluginManager().registerEvents(npcDialogueGUI, this);
+        Bukkit.getPluginManager().registerEvents(placedBlockTracker, this);
         Bukkit.getPluginManager().registerEvents(npcQuestManager, this);
         Bukkit.getPluginManager().registerEvents(new PlayerContractListener(playerContractManager), this);
 
@@ -287,6 +291,7 @@ public final class LoveContracts extends JavaPlugin {
         HandlerList.unregisterAll(this);
         if (contractManager != null) contractManager.shutdown();
         if (registry != null) registry.shutdown();
+        if (fineManager != null) fineManager.shutdown();
         if (playerContractDatabase != null) playerContractDatabase.close();
         if (npcQuestDatabase != null) npcQuestDatabase.close();
         if (database != null) database.close();
@@ -353,6 +358,8 @@ public final class LoveContracts extends JavaPlugin {
     public PlayerContractManager getPlayerContractManager() { return playerContractManager; }
     public PlayerContractBoardGUI getPlayerContractBoardGUI() { return playerContractBoardGUI; }
     public PlayerContractMyGUI getPlayerContractMyGUI() { return playerContractMyGUI; }
+    public me.lovelace.lovecontracts.service.PlayerStatsCache getStatsCache() { return statsCache; }
+    public me.lovelace.lovecontracts.util.PlacedBlockTracker getPlacedBlockTracker() { return placedBlockTracker; }
     public me.lovelace.lovecontracts.npc.manager.NpcQuestManager getNpcQuestManager() { return npcQuestManager; }
     public me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI getNpcDialogueGUI() { return npcDialogueGUI; }
     public me.lovelace.lovecontracts.manager.FineManager getFineManager() { return fineManager; }

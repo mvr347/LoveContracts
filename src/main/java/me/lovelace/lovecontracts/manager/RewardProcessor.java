@@ -27,7 +27,7 @@ public class RewardProcessor {
     }
 
     public void giveRewards(Player player, Contract contract) {
-        if (player == null || !player.isOnline() || contract == null) return;
+        if (player == null || contract == null) return;
 
         boolean moneyEnabled = plugin.getConfig().getBoolean("rewards.money.enabled", true);
         if (!moneyEnabled) return;
@@ -40,6 +40,13 @@ public class RewardProcessor {
         }
         if (totalAmount <= 0) return;
 
+        if (!player.isOnline()) {
+            // The player quit between completion and this task: queue the payout so the reward
+            // is delivered on next join instead of vanishing.
+            queueOfflineReward(player.getUniqueId(), totalAmount, contract.getId());
+            return;
+        }
+
         long amount = totalAmount;
         try {
             LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
@@ -51,6 +58,18 @@ public class RewardProcessor {
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Failed to give reward", e);
         }
+    }
+
+    private void queueOfflineReward(java.util.UUID uuid, long amount, String contractId) {
+        var db = plugin.getPlayerContractDatabase();
+        if (db == null) return;
+        org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                db.addPendingPayout(uuid, amount, "contract-complete:" + contractId);
+            } catch (java.sql.SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to queue pending payout of " + amount + " for " + uuid, e);
+            }
+        });
     }
 
     public void applyPenalties(Player player, Contract contract) {
