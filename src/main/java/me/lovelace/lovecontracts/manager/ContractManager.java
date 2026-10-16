@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import me.lovelace.lovecontracts.service.PlayerStatsCache;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
@@ -62,11 +63,13 @@ public class ContractManager {
         failedCache.remove(uuid);
         completedCountCache.remove(uuid);
         disabledPlayers.remove(uuid);
+        plugin.getStatsCache().evict(uuid);
     }
 
     public void loadActiveContractForPlayer(Player player) {
         if (player == null) return;
         UUID uuid = player.getUniqueId();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> loadStatsFor(uuid, true));
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try (Connection conn = plugin.getDatabase().getConnection();
                  PreparedStatement ps = conn.prepareStatement(
@@ -373,6 +376,7 @@ public class ContractManager {
                 upsertStat(conn, player.getUniqueId(), "total_accepted", 1);
 
                 conn.commit();
+                loadStatsFor(player.getUniqueId(), false);
                 acceptedTodayCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
                 activeContractCache.computeIfAbsent(player.getUniqueId(), k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
                 return AcceptResult.SUCCESS;
@@ -409,6 +413,7 @@ public class ContractManager {
                     bumpStreak(conn, player.getUniqueId(), true);
                     conn.commit();
                     success = true;
+                    loadStatsFor(player.getUniqueId(), false);
 
                     Set<String> active = activeContractCache.get(player.getUniqueId());
                     if (active != null) active.remove(contract.getId());
@@ -451,35 +456,47 @@ public class ContractManager {
     public void failContract(UUID uuid, Contract contract) {
         if (uuid == null || contract == null) return;
 
-        Player online = Bukkit.getPlayer(uuid);
-        if (online != null && contract.getCondition() != null) {
-            contract.getCondition().unregister(online);
-        }
-
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean applied = false;
             try (Connection conn = plugin.getDatabase().getConnection()) {
                 conn.setAutoCommit(false);
+                int rows;
                 try (PreparedStatement ps = conn.prepareStatement(
                         "UPDATE player_contracts SET failed_at = datetime('now') " +
                         "WHERE player_uuid = ? AND contract_id = ? AND completed_at IS NULL AND failed_at IS NULL")) {
                     ps.setString(1, uuid.toString());
                     ps.setString(2, contract.getId());
-                    ps.executeUpdate();
+                    rows = ps.executeUpdate();
                 }
-                upsertStat(conn, uuid, "daily_failed", 1);
-                upsertStat(conn, uuid, "total_failed", 1);
-                bumpStreak(conn, uuid, false);
-                conn.commit();
+                // Stats, streak and penalties only when this call actually failed the contract:
+                // a repeated sweep over an already-failed row must not charge them again.
+                if (rows > 0) {
+                    upsertStat(conn, uuid, "daily_failed", 1);
+                    upsertStat(conn, uuid, "total_failed", 1);
+                    bumpStreak(conn, uuid, false);
+                    conn.commit();
+                    applied = true;
+                    loadStatsFor(uuid, false);
 
-                Set<String> active = activeContractCache.get(uuid);
-                if (active != null) active.remove(contract.getId());
-                failedCache.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
+                    Set<String> active = activeContractCache.get(uuid);
+                    if (active != null) active.remove(contract.getId());
+                    failedCache.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet()).add(contract.getId());
+                } else {
+                    conn.rollback();
+                }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Fail-contract update failed", e);
             }
 
+            final boolean didFail = applied;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 Player player = Bukkit.getPlayer(uuid);
+                // Condition listeners are unregistered on the main thread (HandlerList is not
+                // meant to be mutated from the caller's arbitrary thread).
+                if (player != null && contract.getCondition() != null) {
+                    contract.getCondition().unregister(player);
+                }
+                if (!didFail) return;
                 if (player != null && player.isOnline()) {
                     if (!contract.isStarter()) {
                         plugin.getRewardProcessor().applyPenalties(player, contract);
@@ -557,6 +574,57 @@ public class ContractManager {
             plugin.getLogger().log(Level.WARNING, "getFailedContractIds query failed", e);
         }
         return set;
+    }
+
+    /** Cache-only lookup for hot main-thread callers (PAPI): never queries the DB. */
+    public Contract peekActiveContract(UUID uuid) {
+        if (uuid == null) return null;
+        Set<String> ids = activeContractCache.get(uuid);
+        if (ids == null) return null;
+        for (String id : ids) {
+            Contract c = plugin.getRegistry().getContract(id);
+            if (c != null) return c;
+        }
+        return null;
+    }
+
+    /** Loads the stats row of an online player (call off the main thread) and stores it. */
+    public void loadStatsFor(UUID uuid, boolean insertIfAbsent) {
+        PlayerStatsCache.Stats stats = readStats(uuid);
+        if (stats == null) return;
+        PlayerStatsCache cache = plugin.getStatsCache();
+        if (insertIfAbsent) {
+            // Only keep it if the player is still online; otherwise it would leak.
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (Bukkit.getPlayer(uuid) != null) cache.put(uuid, stats);
+            });
+        } else {
+            cache.replaceIfCached(uuid, stats);
+        }
+    }
+
+    /** Re-reads stats for everyone currently cached (after bulk resets). Call off the main thread. */
+    public void refreshAllStats() {
+        for (UUID uuid : plugin.getStatsCache().cachedPlayers()) loadStatsFor(uuid, false);
+    }
+
+    private PlayerStatsCache.Stats readStats(UUID uuid) {
+        try (Connection conn = plugin.getDatabase().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT daily_completed, daily_failed, daily_accepted, total_completed, total_failed, " +
+                     "total_accepted, current_streak, best_streak FROM contract_stats WHERE player_uuid = ?")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new PlayerStatsCache.Stats(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getInt(4),
+                            rs.getInt(5), rs.getInt(6), rs.getInt(7), rs.getInt(8));
+                }
+            }
+            return PlayerStatsCache.Stats.EMPTY;
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "Failed to load contract stats for " + uuid, e);
+            return null;
+        }
     }
 
     public Set<String> getActiveContractIds(UUID uuid) {

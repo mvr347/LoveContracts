@@ -338,6 +338,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                                     "last_daily_reset = datetime('now') WHERE player_uuid = ?")) {
                 ps.setString(1, uuid.toString());
                 ps.executeUpdate();
+                if (plugin.getContractManager() != null) plugin.getContractManager().loadStatsFor(uuid, false);
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Reset failed", e);
             }

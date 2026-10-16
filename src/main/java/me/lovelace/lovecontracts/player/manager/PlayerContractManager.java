@@ -277,8 +277,16 @@ public class PlayerContractManager {
     // Сдача задачи: доставка предметов
     // ------------------------------------------------------------------
 
+    // Contracts with a turn-in currently being processed: a double click must not run two turn-ins.
+    private final java.util.Set<UUID> turnInInFlight = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     public CompletableFuture<ContractActionResult> turnInDelivery(Player executor, UUID contractId) {
         CompletableFuture<ContractActionResult> future = new CompletableFuture<>();
+        if (!turnInInFlight.add(contractId)) {
+            future.complete(ContractActionResult.fail("<yellow>Сдача уже обрабатывается.</yellow>"));
+            return future;
+        }
+        future.whenComplete((r, t) -> turnInInFlight.remove(contractId));
 
         runAsync(() -> {
             try {
@@ -324,8 +332,15 @@ public class PlayerContractManager {
                     c.setObjectiveProgress(c.getObjectiveAmount());
 
                     completeInternal(c).whenComplete((res, err) -> {
-                        if (err != null) {
-                            future.complete(ContractActionResult.fail("<red>Ошибка БД при завершении.</red>"));
+                        if (err != null || res == null || !res.success()) {
+                            // Completion did not go through (lost the status race or DB error):
+                            // the items were already taken, so hand them back.
+                            runSync(() -> {
+                                returnItems(executor, material, c.getObjectiveAmount());
+                                future.complete(err != null
+                                        ? ContractActionResult.fail("<red>Ошибка БД при завершении.</red>")
+                                        : res == null ? ContractActionResult.fail("<red>Ошибка.</red>") : res);
+                            });
                         } else {
                             future.complete(res);
                         }
@@ -351,8 +366,11 @@ public class PlayerContractManager {
                 for (PlayerContract c : candidates) {
                     if (!type.name().equals(c.getObjectiveTarget())) continue;
 
-                    c.setObjectiveProgress(c.getObjectiveProgress() + 1);
-                    db.update(c);
+                    // Atomic increment guarded by status: a stale read can no longer overwrite a
+                    // concurrent completion/cancel with an old status.
+                    int progress = db.incrementKillProgress(c.getId());
+                    if (progress < 0) continue;
+                    c.setObjectiveProgress(progress);
 
                     if (c.isObjectiveMet()) {
                         completeInternal(c).whenComplete((res, err) -> runSync(() -> {
@@ -403,7 +421,11 @@ public class PlayerContractManager {
                 }
 
                 c.setStatus(PlayerContractStatus.PENDING_REVIEW);
-                db.update(c);
+                if (!db.tryUpdate(c, PlayerContractStatus.IN_PROGRESS)) {
+                    runSync(() -> future.complete(ContractActionResult.fail(
+                            "<yellow>Контракт уже был изменён.</yellow>")));
+                    return;
+                }
 
                 runSync(() -> {
                     Player creator = bridge.onlinePlayer(c.getCreatorId());
@@ -455,7 +477,11 @@ public class PlayerContractManager {
                     });
                 } else {
                     c.setStatus(PlayerContractStatus.IN_PROGRESS);
-                    db.update(c);
+                    if (!db.tryUpdate(c, PlayerContractStatus.PENDING_REVIEW)) {
+                        runSync(() -> future.complete(ContractActionResult.fail(
+                                "<yellow>Контракт уже был изменён.</yellow>")));
+                        return;
+                    }
                     runSync(() -> {
                         Player executor = bridge.onlinePlayer(c.getExecutorId());
                         if (executor != null) {
@@ -779,6 +805,17 @@ public class PlayerContractManager {
             if (item != null && item.getType() == material) count += item.getAmount();
         }
         return count;
+    }
+
+    private void returnItems(Player player, Material material, int amount) {
+        int remaining = amount;
+        while (remaining > 0) {
+            int stack = Math.min(remaining, material.getMaxStackSize());
+            remaining -= stack;
+            for (ItemStack left : player.getInventory().addItem(new ItemStack(material, stack)).values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), left);
+            }
+        }
     }
 
     private void removeMaterial(Player player, Material material, int amount) {

@@ -163,6 +163,27 @@ public class PlayerContractDatabase implements AutoCloseable {
         }
     }
 
+    /**
+     * Atomically bumps kill progress, only while the contract is still IN_PROGRESS and below its
+     * target. Returns the new progress, or -1 if nothing was updated.
+     */
+    public int incrementKillProgress(UUID id) throws SQLException {
+        try (Connection conn = plugin.getDatabase().getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE pcontracts SET objective_progress = objective_progress + 1 "
+                            + "WHERE id = ? AND status = 'IN_PROGRESS' AND objective_progress < objective_amount")) {
+                ps.setString(1, id.toString());
+                if (ps.executeUpdate() == 0) return -1;
+            }
+            try (PreparedStatement ps = conn.prepareStatement("SELECT objective_progress FROM pcontracts WHERE id = ?")) {
+                ps.setString(1, id.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? rs.getInt(1) : -1;
+                }
+            }
+        }
+    }
+
     public Optional<PlayerContract> findById(UUID id) throws SQLException {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement("SELECT * FROM pcontracts WHERE id = ?")) {

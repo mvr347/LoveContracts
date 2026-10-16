@@ -26,6 +26,13 @@ public class FineManager {
     private final LoveContracts plugin;
     private final MiniMessage mm = MiniMessage.miniMessage();
     private final Map<UUID, Long> playerDebts = new ConcurrentHashMap<>();
+    // Single writer: debt writes are applied in submission order, so concurrent add/collect
+    // can no longer land out of order and overwrite each other with a stale absolute value.
+    private final java.util.concurrent.ExecutorService writer = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "LoveContracts-fines");
+        t.setDaemon(true);
+        return t;
+    });
 
     public FineManager(LoveContracts plugin) {
         this.plugin = plugin;
@@ -63,16 +70,16 @@ public class FineManager {
     public void addDebt(UUID uuid, long amount) {
         if (uuid == null || amount <= 0) return;
 
-        long newTotal = playerDebts.compute(uuid, (k, v) -> (v == null ? 0L : v) + amount);
+        playerDebts.compute(uuid, (k, v) -> (v == null ? 0L : v) + amount);
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        writer.execute(() -> {
             try (Connection conn = plugin.getDatabase().getConnection();
                  PreparedStatement ps = conn.prepareStatement(
                          "INSERT INTO pending_fines (player_uuid, amount, updated_at) VALUES (?, ?, datetime('now')) " +
-                         "ON CONFLICT(player_uuid) DO UPDATE SET amount = ?, updated_at = datetime('now')")) {
+                         "ON CONFLICT(player_uuid) DO UPDATE SET amount = amount + ?, updated_at = datetime('now')")) {
                 ps.setString(1, uuid.toString());
-                ps.setLong(2, newTotal);
-                ps.setLong(3, newTotal);
+                ps.setLong(2, amount);
+                ps.setLong(3, amount);
                 ps.executeUpdate();
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to save pending fine for " + uuid, e);
@@ -99,36 +106,49 @@ public class FineManager {
 
             if (remaining <= 0) {
                 playerDebts.remove(uuid);
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                    try (Connection conn = plugin.getDatabase().getConnection();
-                         PreparedStatement ps = conn.prepareStatement("DELETE FROM pending_fines WHERE player_uuid = ?")) {
-                        ps.setString(1, uuid.toString());
-                        ps.executeUpdate();
-                    } catch (SQLException e) {
-                        plugin.getLogger().log(Level.WARNING, "Failed to clear pending fine for " + uuid, e);
-                    }
-                });
+                writeCollected(uuid, charge);
                 plugin.getMessageManager().important(player, "messages.fine-cleared",
                         "<green>✔ Взыскано {AMOUNT} в счет штрафа. Ваш долг полностью погашен!</green>",
                         java.util.Map.of("AMOUNT", CoinFormat.format(economy, charge)));
             } else {
                 playerDebts.put(uuid, remaining);
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                    try (Connection conn = plugin.getDatabase().getConnection();
-                         PreparedStatement ps = conn.prepareStatement(
-                                 "UPDATE pending_fines SET amount = ?, updated_at = datetime('now') WHERE player_uuid = ?")) {
-                        ps.setLong(1, remaining);
-                        ps.setString(2, uuid.toString());
-                        ps.executeUpdate();
-                    } catch (SQLException e) {
-                        plugin.getLogger().log(Level.WARNING, "Failed to update pending fine for " + uuid, e);
-                    }
-                });
+                writeCollected(uuid, charge);
                 plugin.getMessageManager().important(player, "messages.fine-collected",
                         "<red>⚠ Взыскано {AMOUNT} в счет штрафа. Остаток долга: {REMAINING}</red>",
                         java.util.Map.of("AMOUNT", CoinFormat.format(economy, charge),
                                 "REMAINING", CoinFormat.format(economy, remaining)));
             }
         });
+    }
+
+    /** Applies a collected amount as a delta, then drops the row once nothing is owed. */
+    private void writeCollected(UUID uuid, long charge) {
+        writer.execute(() -> {
+            try (Connection conn = plugin.getDatabase().getConnection()) {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE pending_fines SET amount = amount - ?, updated_at = datetime('now') WHERE player_uuid = ?")) {
+                    ps.setLong(1, charge);
+                    ps.setString(2, uuid.toString());
+                    ps.executeUpdate();
+                }
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "DELETE FROM pending_fines WHERE player_uuid = ? AND amount <= 0")) {
+                    ps.setString(1, uuid.toString());
+                    ps.executeUpdate();
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "Failed to update pending fine for " + uuid, e);
+            }
+        });
+    }
+
+    /** Drains queued debt writes; call from onDisable before the DB closes. */
+    public void shutdown() {
+        writer.shutdown();
+        try {
+            writer.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
