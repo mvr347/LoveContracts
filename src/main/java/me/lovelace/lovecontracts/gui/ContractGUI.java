@@ -452,15 +452,16 @@ public class ContractGUI implements Listener, InventoryHolder {
         lore.add(mm.deserialize("<green>Награды:</green>"));
         addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
         lore.add(Component.empty());
+        lore.add(mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"));
         if (isDone) {
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"));
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red><b>ПКМ: Отменить контракт (Провал и штраф)</b></red>"));
+            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green>ЛКМ <dark_gray>— <gray>сдать контракт (получить награду)"));
+            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red>ПКМ <dark_gray>— <gray>отменить контракт (штраф)"));
         } else {
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-in-progress", "<yellow>✓ ВЗЯТЫЙ (В процессе)</yellow>"));
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red><b>ПКМ: Отменить контракт (Провал и штраф)</b></red>"));
+            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-in-progress", "<yellow>✓ В процессе выполнения</yellow>"));
+            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red>ПКМ <dark_gray>— <gray>отменить контракт (штраф)"));
         }
 
-        String itemTitle = plugin.getMessageManager().getRaw("gui.current-contract", "<gradient:#FFFF55:#FFAA00><b>Текущий контракт</b></gradient>");
+        String itemTitle = plugin.getMessageManager().getRaw("gui.current-contract", "<gold>Текущий контракт</gold>");
         ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, itemTitle, lore);
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
@@ -480,8 +481,12 @@ public class ContractGUI implements Listener, InventoryHolder {
                 .replace("{MAX_PAGES}", String.valueOf(maxPages));
         return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
                 base64,
-                plugin.getMessageManager().getRaw("gui.prev-page", "<yellow>← Предыдущая страница</yellow>"),
-                List.of(mm.deserialize(pageInfo))
+                plugin.getMessageManager().getRaw("gui.prev-page", "<yellow>Предыдущая страница</yellow>"),
+                List.of(
+                        mm.deserialize(pageInfo),
+                        mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"),
+                        mm.deserialize("<green>ЛКМ <dark_gray>— <gray>назад")
+                )
         );
     }
 
@@ -492,8 +497,12 @@ public class ContractGUI implements Listener, InventoryHolder {
                 .replace("{MAX_PAGES}", String.valueOf(maxPages));
         return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
                 base64,
-                plugin.getMessageManager().getRaw("gui.next-page", "<yellow>Следующая страница →</yellow>"),
-                List.of(mm.deserialize(pageInfo))
+                plugin.getMessageManager().getRaw("gui.next-page", "<yellow>Следующая страница</yellow>"),
+                List.of(
+                        mm.deserialize(pageInfo),
+                        mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"),
+                        mm.deserialize("<green>ЛКМ <dark_gray>— <gray>вперёд")
+                )
         );
     }
 
@@ -639,9 +648,10 @@ public class ContractGUI implements Listener, InventoryHolder {
 
         lore.add(Component.empty());
         if (!reqMet) {
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-req-unmet", "<red>✗ ТРЕБОВАНИЯ НЕ ВЫПОЛНЕНЫ</red>"));
+            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-req-unmet", "<red>✕ Требования не выполнены</red>"));
         } else {
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-click-to-accept", "<yellow>Нажмите, чтобы принять</yellow>"));
+            lore.add(mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"));
+            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-click-to-accept", "<green>ЛКМ <dark_gray>— <gray>принять контракт"));
         }
 
         ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, c.getDisplayName(), lore);

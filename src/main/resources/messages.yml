@@ -9,41 +9,41 @@
 # всем игрокам) в экшнбар не переводились. Без LoveCore плагин шлёт всё напрямую (экшнбар и чат).
 
 gui:
-  title: "<gradient:#55FF55:#55FFFF>Доска контрактов</gradient>"
+  title: "<gold>Доска контрактов</gold>"
   # 2026-10-07: кнопки фильтра/сортировки в стиле меню участников клана — в названии только
   # слово, а все варианты перечислены в описании (текущий отмечен ▶). Старые ключи filter-button/
   # sort-button с {FILTER}/{SORT} больше не используются, поэтому заведены новые ключи.
   filter-title: "<gold>Фильтр</gold>"
   sort-title: "<gold>Сортировка</gold>"
-  cycle-hint: "<yellow>ЛКМ <gray>- дальше, <yellow>ПКМ <gray>- назад"
-  prev-page: "<yellow>← Предыдущая страница</yellow>"
-  next-page: "<yellow>Следующая страница →</yellow>"
+  cycle-hint: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>вперёд\n<gold>ПКМ <dark_gray>— <gray>назад"
+  prev-page: "<yellow>Предыдущая страница</yellow>"
+  next-page: "<yellow>Следующая страница</yellow>"
   page-info: "<gray>Страница {PAGE} из {MAX_PAGES}</gray>"
   close-button: "<red>Закрыть</red>"
-  close-lore: "<gray>Закрыть меню</gray>"
+  close-lore: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>закрыть меню"
 
-  current-contract: "<gradient:#FFFF55:#FFAA00><b>Текущий контракт</b></gradient>"
-  inactive-create: "<gradient:#55FF55:#55FFFF><b>+ Создать контракт</b></gradient>"
-  inactive-create-disabled: "<red><b>Временно отключено</b></red>"
+  current-contract: "<gold>Текущий контракт</gold>"
+  inactive-create: "<gold>Создать контракт</gold>"
+  inactive-create-disabled: "<red>Временно отключено</red>"
   inactive-create-lore: "<gray>В ближайшее время</gray>"
 
-  contract-status-completed: "<green>✔ ВЫПОЛНЕН</green>"
-  contract-status-failed: "<red>✖ ПРОВАЛЕН</red>"
-  contract-status-active-done-lmb: "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"
-  contract-status-active-done-rmb: "<red><b>ПКМ: Отменить контракт (Провал и штраф)</b></red>"
-  contract-status-active-in-progress: "<yellow>✓ ВЗЯТЫЙ (В процессе)</yellow>"
-  contract-status-locked: "<red>🔒 КОНТРАКТ ЗАБЛОКИРОВАН</red>"
+  contract-status-completed: "<green>✔ Выполнен</green>"
+  contract-status-failed: "<red>✖ Провален</red>"
+  contract-status-active-done-lmb: "<green>ЛКМ <dark_gray>— <gray>сдать контракт (получить награду)"
+  contract-status-active-done-rmb: "<red>ПКМ <dark_gray>— <gray>отменить контракт (штраф)"
+  contract-status-active-in-progress: "<yellow>✓ В процессе выполнения</yellow>"
+  contract-status-locked: "<red>🔒 Контракт заблокирован</red>"
   contract-status-locked-lore: "<red>У вас уже есть активный контракт!</red>"
-  contract-status-req-unmet: "<red>✗ ТРЕБОВАНИЯ НЕ ВЫПОЛНЕНЫ</red>"
-  contract-status-click-to-accept: "<yellow>Нажмите, чтобы принять</yellow>"
+  contract-status-req-unmet: "<red>✕ Требования не выполнены</red>"
+  contract-status-click-to-accept: "<green>ЛКМ <dark_gray>— <gray>принять контракт"
 
-  confirm-title: "<gradient:#55FF55:#55FFFF>Подтверждение контракта</gradient>"
-  confirm-yes: "<green>✓ Принять контракт</green>"
-  confirm-yes-lore: "<gray>Нажмите, чтобы подтвердить принятие</gray>"
-  confirm-no: "<red>✗ Отмена</red>"
-  confirm-no-lore: "<gray>Нажмите, чтобы вернуться на доску</gray>"
+  confirm-title: "<gold>Подтверждение контракта</gold>"
+  confirm-yes: "<green>Принять контракт</green>"
+  confirm-yes-lore: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>подтвердить принятие"
+  confirm-no: "<red>Отмена</red>"
+  confirm-no-lore: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>вернуться на доску"
 
-  player-board-title: "<gradient:#55FF55:#55FFFF>Заказы игроков</gradient>"
+  player-board-title: "<gold>Заказы игроков</gold>"
 
 filters:
   all: "Все"
