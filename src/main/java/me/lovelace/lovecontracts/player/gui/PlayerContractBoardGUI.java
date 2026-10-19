@@ -3,6 +3,10 @@ package me.lovelace.lovecontracts.player.gui;
 import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.gui.LoreBlocks;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
+import me.lovelace.lovecontracts.manager.MessageManager;
 import me.lovelace.lovecontracts.player.event.PlayerContractAcceptedEvent;
 import me.lovelace.lovecontracts.player.event.PlayerContractCreatedEvent;
 import me.lovelace.lovecontracts.player.event.PlayerContractEndedEvent;
@@ -10,6 +14,8 @@ import me.lovelace.lovecontracts.player.manager.PlayerContractManager;
 import me.lovelace.lovecontracts.player.model.PlayerContract;
 import me.lovelace.lovecontracts.player.model.PlayerContractObjectiveType;
 import me.lovelace.lovecontracts.textures.HeadTextures;
+import me.lovelace.lovecontracts.util.HeadUtil;
+import me.lovelace.lovecontracts.util.ItemText;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -50,19 +56,12 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
     private static final String CLOSE_HEAD = HeadTextures.CLOSE;
 
     private static final ItemStack GLASS_PANE;
-    private static final ItemStack CLOSE_BUTTON;
 
     static {
         GLASS_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = GLASS_PANE.getItemMeta();
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
-
-        CLOSE_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                CLOSE_HEAD,
-                "<red>Закрыть</red>",
-                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>"))
-        );
     }
 
     private static final int[] CONTRACT_SLOTS = {
@@ -110,11 +109,11 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
 
         // Footer (45-53)
         for (int s = 45; s <= 51; s++) inv.setItem(s, GLASS_PANE);
-        ItemStack closeBtn = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
+        // Navigation-style button: the name only, no lore (gui-gen-6, section 14)
+        ItemStack closeBtn = HeadUtil.createBase64Head(
                 CLOSE_HEAD,
-                plugin.getMessageManager().getRaw("gui.close-button", "<red>Закрыть</red>"),
-                List.of(Component.empty(), plugin.getMessageManager().getComponent("gui.close-lore", "<gray>Закрыть меню</gray>"))
-        );
+                plugin.getMessageManager().text("gui.close-button"),
+                List.of());
         inv.setItem(SLOT_CLOSE, closeBtn);
 
         player.openInventory(inv);
@@ -200,6 +199,7 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         lastClick.remove(uuid);
     }
 
+    /** Card of an open offer: the offer in gold, its task and reward in sections, one click to accept. */
     private ItemStack contractItem(Player viewer, PlayerContract c) {
         Material mat = switch (c.getObjectiveType()) {
             case DELIVER_ITEM -> Material.CHEST;
@@ -207,22 +207,30 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
             case CUSTOM -> Material.WRITTEN_BOOK;
         };
 
+        MessageManager messages = plugin.getMessageManager();
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize("<gold>" + c.getDescription() + "</gold>"));
+        meta.displayName(ItemText.upright(mm.deserialize("<gold>" + c.getDescription() + "</gold>")));
 
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Наниматель:</gray> <white>" + c.getCreatorName() + "</white>"));
-        lore.add(mm.deserialize("<gray>Задача:</gray> <white>" + objectiveLabel(c) + "</white>"));
-        lore.add(Component.empty());
-        lore.add(CoinFormat.component(viewer, "<green>Награда:</green> " + CoinFormat.format(c.getGoldReward())));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<yellow>Срок:</yellow> <white>" + hoursLeft(c) + "</white>"));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<gray>id: " + PlayerContractManager.shortId(c.getId()) + "</gray>"));
-        lore.add(mm.deserialize("<yellow>Нажмите, чтобы принять</yellow>"));
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.player-board-subtitle"));
+        lines.add("");
+        lines.add(messages.text("gui.section-task"));
+        // Map.of rejects null values; a missing name shows as "null", as the old concatenation did
+        lines.add(messages.text("gui.player-task-creator", Map.of("creator", String.valueOf(c.getCreatorName()))));
+        lines.add(messages.text("gui.player-task-objective", Map.of("objective", objectiveLabel(c))));
+        lines.add(messages.text("gui.player-task-deadline", Map.of("time", hoursLeft(c))));
+        lines.add(messages.text("gui.player-task-id", Map.of("id", PlayerContractManager.shortId(c.getId()))));
+        lines.add("");
+        lines.add(messages.text("gui.section-reward"));
+        lines.add("  " + CoinFormat.format(c.getGoldReward()));
+        lines.addAll(LoreBlocks.clicks(messages::getRaw, Hint.of(Click.LEFT, messages.text("gui.action-accept"))));
 
-        meta.lore(lore);
+        List<Component> lore = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            lore.add(CoinFormat.component(viewer, line));
+        }
+        meta.lore(ItemText.upright(lore));
         meta.getPersistentDataContainer().set(idKey, PersistentDataType.STRING, c.getId().toString());
         item.setItemMeta(meta);
         return item;
@@ -240,17 +248,6 @@ public class PlayerContractBoardGUI implements Listener, InventoryHolder {
         if (minutes <= 0) return "истекает";
         if (minutes < 60) return minutes + " мин";
         return (minutes / 60) + " ч";
-    }
-
-    private ItemStack headItem(Player player) {
-        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-        org.bukkit.inventory.meta.SkullMeta meta = (org.bukkit.inventory.meta.SkullMeta) item.getItemMeta();
-        meta.setOwningPlayer(player);
-        meta.displayName(mm.deserialize("<aqua>" + player.getName() + "</aqua>"));
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Заказы игроков</gray>"));
-        meta.lore(lore);
-        return item;
     }
 
     @Override
