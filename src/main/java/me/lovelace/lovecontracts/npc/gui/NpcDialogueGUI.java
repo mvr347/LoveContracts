@@ -1,10 +1,16 @@
 package me.lovelace.lovecontracts.npc.gui;
 
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.gui.LoreBlocks;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
+import me.lovelace.lovecontracts.manager.MessageManager;
 import me.lovelace.lovecontracts.npc.model.NpcDialogueNode;
 import me.lovelace.lovecontracts.npc.model.NpcDialogueOption;
 import me.lovelace.lovecontracts.npc.model.NpcQuest;
 import me.lovelace.lovecontracts.textures.HeadTextures;
+import me.lovelace.lovecontracts.util.HeadUtil;
+import me.lovelace.lovecontracts.util.ItemText;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -43,19 +49,12 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
     private static final String CLOSE_HEAD = HeadTextures.CLOSE;
 
     private static final ItemStack GLASS_PANE;
-    private static final ItemStack CLOSE_BUTTON;
 
     static {
         GLASS_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = GLASS_PANE.getItemMeta();
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
-
-        CLOSE_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                CLOSE_HEAD,
-                "<red>Закрыть</red>",
-                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть разговор</gray>"))
-        );
     }
 
     private static final int[] OPTION_SLOTS = { 29, 30, 31, 32, 33 };
@@ -90,7 +89,7 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
 
         // Footer (45-53)
         for (int s = 45; s <= 52; s++) inv.setItem(s, GLASS_PANE);
-        inv.setItem(53, CLOSE_BUTTON);
+        inv.setItem(53, closeButton());
 
         player.openInventory(inv);
     }
@@ -162,25 +161,36 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         }
     }
 
-    private ItemStack npcHeadItem(NpcQuest quest) {
-        ItemStack item = new ItemStack(Material.BOOK);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize("<gold>" + quest.getDisplayName() + "</gold>"));
-        meta.lore(List.of(mm.deserialize("<gray>Разговор с NPC #" + quest.getNpcId() + "</gray>")));
-        item.setItemMeta(meta);
-        return item;
+    private MessageManager messages() {
+        return plugin.getMessageManager();
+    }
+
+    /** Navigation has no lore (gui-gen-6, section 14): the name only. */
+    private ItemStack closeButton() {
+        String base64 = CLOSE_HEAD;
+        return HeadUtil.createBase64Head(base64, messages().text("gui.close-button"), List.of());
+    }
+
+    private List<Component> toLore(List<String> lines) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            out.add(mm.deserialize(line));
+        }
+        return out;
     }
 
     private ItemStack dialogueTextItem(NpcDialogueNode node) {
         ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize("<yellow>Диалог:</yellow>"));
+        meta.displayName(ItemText.upright(mm.deserialize(messages().text("gui.npc-dialogue-name"))));
 
         List<Component> lore = new ArrayList<>();
+        lore.add(mm.deserialize(messages().text("gui.npc-dialogue-subtitle")));
+        lore.add(Component.empty());
         for (String line : node.getTextLines()) {
             lore.add(mm.deserialize(line));
         }
-        meta.lore(lore);
+        meta.lore(ItemText.upright(lore));
         item.setItemMeta(meta);
         return item;
     }
@@ -193,10 +203,15 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
             case CLOSE -> Material.RED_DYE;
         };
 
+        MessageManager messages = messages();
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.npc-option-subtitle"));
+        lines.addAll(LoreBlocks.clicks(messages::getRaw, Hint.of(Click.LEFT, messages.text("gui.action-npc-option"))));
+
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize(option.getText()));
-        meta.lore(List.of(Component.empty(), mm.deserialize("<gray>Нажмите для выбора</gray>")));
+        meta.displayName(ItemText.upright(mm.deserialize(option.getText())));
+        meta.lore(ItemText.upright(toLore(lines)));
         item.setItemMeta(meta);
         return item;
     }

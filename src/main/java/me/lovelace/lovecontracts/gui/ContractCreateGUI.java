@@ -9,6 +9,9 @@ import me.lovelace.lovecontracts.condition.ContractCondition;
 import me.lovelace.lovecontracts.condition.CraftItemCondition;
 import me.lovelace.lovecontracts.condition.KillEntityCondition;
 import me.lovelace.lovecontracts.condition.MineMaterialCondition;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
+import me.lovelace.lovecontracts.manager.MessageManager;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.ContractType;
 import me.lovelace.lovecontracts.model.Difficulty;
@@ -38,6 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 27-slot Contract Creation Modal — gui-gen-4 standard.
+ * Currently disabled: {@link #open(Player)} only tells the player so. The item texts follow gui-gen-6 for the day it is
+ * enabled again.
  */
 public class ContractCreateGUI implements Listener, InventoryHolder {
 
@@ -103,58 +108,109 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
         }
     }
 
+    private MessageManager messages() {
+        return plugin.getMessageManager();
+    }
+
+    private List<Component> components(List<String> lines) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            out.add(mm.deserialize(line));
+        }
+        return out;
+    }
+
+    private static List<Component> components(Player viewer, List<String> lines) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            out.add(CoinFormat.component(viewer, line));
+        }
+        return out;
+    }
+
+    /** The next count of the wizard's count button (10 → 25 → 50 → 100 → 10), as in {@link #onClick}. */
+    private static int nextCount(int count) {
+        return switch (count) {
+            case 10 -> 25;
+            case 25 -> 50;
+            case 50 -> 100;
+            default -> 10;
+        };
+    }
+
     private ItemStack presetItem(PresetType preset) {
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Выберите шаблон квеста</gray>"));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<yellow>Клик: Сменить тип</yellow>"));
+        MessageManager messages = messages();
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.create-preset-subtitle"));
+        lines.add("");
+        lines.add(messages.text("gui.create-preset-hint"));
+        lines.add("");
+        lines.add(messages.text("gui.section-after-click"));
+        lines.add(messages.text("gui.create-preset-change", Map.of(
+                "now", preset.getDisplay(), "next", preset.next().getDisplay())));
+        lines.addAll(LoreBlocks.clicks(messages::getRaw,
+                Hint.of(Click.LEFT, messages.text("gui.action-create-preset"))));
 
         return HeadUtil.createBase64Head(
                 PRESET_HEAD,
-                "<gold>Шаблон квеста:</gold> <yellow>" + preset.getDisplay() + "</yellow>",
-                lore
+                messages.text("gui.create-preset-name", Map.of("value", preset.getDisplay())),
+                components(lines)
         );
     }
 
     private ItemStack countItem(int count) {
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Требуемое количество выполнения</gray>"));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<yellow>Клик: 10 → 25 → 50 → 100</yellow>"));
+        MessageManager messages = messages();
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.create-count-subtitle"));
+        lines.add("");
+        lines.add(messages.text("gui.create-count-hint"));
+        lines.add("");
+        lines.add(messages.text("gui.section-after-click"));
+        lines.add(messages.text("gui.create-count-change", Map.of(
+                "now", String.valueOf(count), "next", String.valueOf(nextCount(count)))));
+        lines.add("");
+        lines.add(messages.text("gui.section-steps"));
+        lines.add(messages.text("gui.create-count-steps", Map.of("steps", "10 <dark_gray>→ <white>25 <dark_gray>→ <white>50 <dark_gray>→ <white>100")));
+        lines.addAll(LoreBlocks.clicks(messages::getRaw,
+                Hint.of(Click.LEFT, messages.text("gui.action-create-count"))));
 
         return HeadUtil.createBase64Head(
                 COUNT_HEAD,
-                "<gold>Количество:</gold> <yellow>" + count + "</yellow>",
-                lore
+                messages.text("gui.create-count-name", Map.of("value", String.valueOf(count))),
+                components(lines)
         );
     }
 
-    private ItemStack rewardItem(Player viewer, long reward) {
-        List<Long> steps = EconomyConfig.rewardSteps(plugin);
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Выставить награду в виде монет</gray>"));
-        lore.add(mm.deserialize("<gray>Игрок может переставить размер награды</gray>"));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<yellow>Клик по кругу:</yellow>"));
-        for (long step : steps) {
-            for (String line : CoinFormat.formatLines(step)) {
-                lore.add(CoinFormat.component(viewer, "<dark_gray>  </dark_gray>" + line));
-            }
-            if (step != steps.get(steps.size() - 1)) lore.add(mm.deserialize("<dark_gray>  ─</dark_gray>"));
-        }
+    /** The next reward step, as in {@link #onClick}: the configured steps in a circle; an unknown value gives the first. */
+    private static long nextStep(List<Long> steps, long current) {
+        int at = steps.indexOf(current);
+        return steps.get((at + 1) % steps.size());
+    }
 
-        List<Component> head = new ArrayList<>();
-        head.add(mm.deserialize("<gold>Награда:</gold>"));
-        for (String line : CoinFormat.formatLines(reward)) {
-            head.add(CoinFormat.component(viewer, "<dark_gray>  </dark_gray>" + line));
+    private ItemStack rewardItem(Player viewer, long reward) {
+        MessageManager messages = messages();
+        List<Long> steps = EconomyConfig.rewardSteps(plugin);
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.create-reward-subtitle"));
+        lines.add("");
+        lines.add(messages.text("gui.create-reward-hint"));
+        lines.add(messages.text("gui.create-reward-hint-2"));
+        lines.add("");
+        lines.add(messages.text("gui.section-after-click"));
+        lines.add(messages.text("gui.create-reward-change", Map.of(
+                "now", CoinFormat.format(reward), "next", CoinFormat.format(nextStep(steps, reward)))));
+        lines.add("");
+        lines.add(messages.text("gui.section-steps"));
+        for (long step : steps) {
+            lines.addAll(ContractLore.coinRows(List.of(CoinFormat.format(step))));
         }
-        head.add(Component.empty());
-        lore.addAll(0, head);
+        lines.addAll(LoreBlocks.clicks(messages::getRaw,
+                Hint.of(Click.LEFT, messages.text("gui.action-create-reward"))));
 
         return HeadUtil.createBase64Head(
                 REWARD_HEAD,
-                "<gold>Награда</gold>",
-                lore
+                messages.text("gui.create-reward-name"),
+                components(viewer, lines)
         );
     }
 
@@ -190,12 +246,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
         }
 
         if (slot == 12) { // Count toggle
-            state.count = switch (state.count) {
-                case 10 -> 25;
-                case 25 -> 50;
-                case 50 -> 100;
-                default -> 10;
-            };
+            state.count = nextCount(state.count);
             open(player);
             return;
         }
@@ -203,8 +254,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
         if (slot == 14) { // Reward toggle (coins)
             // Cycle through the configured steps (economy.creation-reward-steps); unknown value → first step.
             List<Long> steps = EconomyConfig.rewardSteps(plugin);
-            int at = steps.indexOf(state.moneyReward);
-            state.moneyReward = steps.get((at + 1) % steps.size());
+            state.moneyReward = nextStep(steps, state.moneyReward);
             open(player);
             return;
         }

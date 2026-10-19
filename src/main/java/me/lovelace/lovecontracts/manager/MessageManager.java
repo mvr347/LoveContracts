@@ -10,6 +10,11 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -30,11 +35,48 @@ public class MessageManager {
             plugin.saveResource("messages.yml", false);
         }
         config = YamlConfiguration.loadConfiguration(file);
+        migrateOutdated(file);
+    }
+
+    /**
+     * A messages.yml older than the jar gets its gui section from the jar (see {@link MessagesMigrator}). The previous
+     * file is kept next to it as {@code messages.yml.bak-<millis>} before anything is written. Idempotent: once the
+     * version matches, nothing is written again, so a reload does not repeat it.
+     */
+    private void migrateOutdated(File file) {
+        YamlConfiguration bundled;
+        try (InputStream in = plugin.getResource("messages.yml")) {
+            if (in == null) return;
+            bundled = YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            plugin.getLogger().warning("Could not read the bundled messages.yml: " + e.getMessage());
+            return;
+        }
+        if (!MessagesMigrator.migrate(config, bundled)) return;
+        File backup = new File(plugin.getDataFolder(), "messages.yml.bak-" + System.currentTimeMillis());
+        try {
+            Files.copy(file.toPath(), backup.toPath());
+            config.save(file);
+            plugin.getLogger().warning("messages.yml: gui texts updated to the gui-gen-6 style (old copy: "
+                    + backup.getName() + "). Re-apply custom gui texts if any.");
+        } catch (IOException e) {
+            // the new texts still work in memory; the file stays as it was, so nothing on disk is lost
+            plugin.getLogger().warning("Could not save the migrated messages.yml: " + e.getMessage());
+        }
     }
 
     public String getRaw(String path, String defaultValue) {
         if (config == null) return defaultValue;
         return config.getString(path, defaultValue);
+    }
+
+    /** GUI text by key with {@code {placeholders}} filled in. A missing key shows as {@code [path]}, so it is seen in game. */
+    public String text(String path) {
+        return text(path, Map.of());
+    }
+
+    public String text(String path, Map<String, String> replacements) {
+        return applyReplacements(path, "[" + path + "]", replacements);
     }
 
     public Component getComponent(String path, String defaultValue) {

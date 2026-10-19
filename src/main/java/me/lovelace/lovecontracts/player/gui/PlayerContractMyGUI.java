@@ -3,10 +3,18 @@ package me.lovelace.lovecontracts.player.gui;
 import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.gui.LoreBlocks;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
+import me.lovelace.lovecontracts.manager.MessageManager;
 import me.lovelace.lovecontracts.player.manager.PlayerContractManager;
 import me.lovelace.lovecontracts.player.model.PlayerContract;
 import me.lovelace.lovecontracts.player.model.PlayerContractObjectiveType;
+import me.lovelace.lovecontracts.player.model.PlayerContractStatus;
 import me.lovelace.lovecontracts.textures.HeadTextures;
+import me.lovelace.lovecontracts.util.HeadUtil;
+import me.lovelace.lovecontracts.util.ItemText;
+import me.lovelace.lovecontracts.util.LoreBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -48,19 +56,12 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
     private static final String CLOSE_HEAD = HeadTextures.CLOSE;
 
     private static final ItemStack GLASS_PANE;
-    private static final ItemStack CLOSE_BUTTON;
 
     static {
         GLASS_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = GLASS_PANE.getItemMeta();
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
-
-        CLOSE_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                CLOSE_HEAD,
-                "<red>Закрыть</red>",
-                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>"))
-        );
     }
 
     private static final int[] CONTRACT_SLOTS = {
@@ -99,10 +100,15 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
 
         // Footer (45-53)
         for (int s = 45; s <= 52; s++) inv.setItem(s, GLASS_PANE);
-        inv.setItem(SLOT_CLOSE, CLOSE_BUTTON);
+        inv.setItem(SLOT_CLOSE, closeButton());
 
         player.openInventory(inv);
         openInventories.add(player.getUniqueId());
+    }
+
+    /** Navigation has no lore (gui-gen-6, section 14): the name only. */
+    private ItemStack closeButton() {
+        return HeadUtil.createBase64Head(CLOSE_HEAD, plugin.getMessageManager().text("gui.close-button"), List.of());
     }
 
     public boolean isOpen(Player player) {
@@ -154,6 +160,10 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
         lastClick.remove(uuid);
     }
 
+    /**
+     * Own contract: the state is in the name, the role and the progress in the info section, the commands that move
+     * it on in their own section, and the click that cancels or gives it up while it is still open.
+     */
     private ItemStack contractItem(PlayerContract c, Player viewer) {
         boolean isCreator = c.getCreatorId().equals(viewer.getUniqueId());
         Material mat = switch (c.getStatus()) {
@@ -165,60 +175,71 @@ public class PlayerContractMyGUI implements Listener, InventoryHolder {
             case EXPIRED -> Material.REDSTONE;
         };
 
+        MessageManager messages = plugin.getMessageManager();
+        String shortId = PlayerContractManager.shortId(c.getId());
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(mm.deserialize("<gold>" + c.getDescription() + "</gold>"));
+        String state = messages.text(statusKey(c.getStatus()));
+        meta.displayName(ItemText.upright(mm.deserialize(messages.text("gui.item-name-state", Map.of(
+                "name", "<gold>" + c.getDescription() + "</gold>", "state", state)))));
 
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Роль:</gray> <white>" + (isCreator ? "Наниматель" : "Исполнитель") + "</white>"));
-        lore.add(mm.deserialize("<gray>Статус:</gray> <white>" + statusLabel(c.getStatus()) + "</white>"));
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.my-subtitle"));
+        lines.add("");
+        lines.add(messages.text("gui.section-info"));
+        lines.add(messages.text("gui.my-role", Map.of(
+                "role", messages.text(isCreator ? "gui.my-role-creator" : "gui.my-role-executor"))));
         if (c.getObjectiveType() == PlayerContractObjectiveType.KILL_ENTITY) {
-            lore.add(mm.deserialize("<gray>Прогресс:</gray> <white>" + c.getProgressString() + "</white>"));
+            lines.add(messages.text("gui.my-progress", Map.of(
+                    "current", String.valueOf(c.getObjectiveProgress()),
+                    "required", String.valueOf(c.getObjectiveAmount()))));
+            lines.add(messages.text("gui.progress-bar", Map.of(
+                    "bar", LoreBar.bar(c.getObjectiveProgress(), c.getObjectiveAmount()))));
         }
-        lore.add(mm.deserialize("<gray>id: " + PlayerContractManager.shortId(c.getId()) + "</gray>"));
-        lore.add(Component.empty());
+        lines.add(messages.text("gui.my-id", Map.of("id", shortId)));
 
+        List<String> commands = new ArrayList<>();
         if (c.getObjectiveType() == PlayerContractObjectiveType.DELIVER_ITEM && !isCreator
                 && c.getStatus().name().equals("IN_PROGRESS")) {
-            lore.add(mm.deserialize("<yellow>/pcontract turnin " + PlayerContractManager.shortId(c.getId()) + "</yellow>"));
+            commands.add(messages.text("gui.my-command-turnin", Map.of("id", shortId)));
         }
         if (c.getObjectiveType() == PlayerContractObjectiveType.CUSTOM && !isCreator
                 && c.getStatus().name().equals("IN_PROGRESS")) {
-            lore.add(mm.deserialize("<yellow>/pcontract submit " + PlayerContractManager.shortId(c.getId()) + "</yellow>"));
+            commands.add(messages.text("gui.my-command-submit", Map.of("id", shortId)));
         }
         if (isCreator && c.getStatus().name().equals("PENDING_REVIEW")) {
-            lore.add(mm.deserialize("<yellow>/pcontract review " + PlayerContractManager.shortId(c.getId()) + " accept|reject</yellow>"));
+            commands.add(messages.text("gui.my-command-review", Map.of("id", shortId)));
+        }
+        if (!commands.isEmpty()) {
+            lines.add("");
+            lines.add(messages.text("gui.section-commands"));
+            lines.addAll(commands);
         }
         if (!c.getStatus().isTerminal()) {
-            lore.add(mm.deserialize("<red>Нажмите, чтобы " + (isCreator ? "отменить" : "отказаться") + "</red>"));
+            lines.addAll(LoreBlocks.clicks(messages::getRaw, Hint.of(Click.LEFT,
+                    messages.text(isCreator ? "gui.action-cancel-own" : "gui.action-abandon"))));
         }
 
-        meta.lore(lore);
+        List<Component> lore = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            lore.add(mm.deserialize(line));
+        }
+        meta.lore(ItemText.upright(lore));
         meta.getPersistentDataContainer().set(idKey, PersistentDataType.STRING, c.getId().toString());
         item.setItemMeta(meta);
         return item;
     }
 
-    private String statusLabel(me.lovelace.lovecontracts.player.model.PlayerContractStatus status) {
+    /** Message key of a status, which carries its colour: the name shows it after {@code | }. */
+    private static String statusKey(PlayerContractStatus status) {
         return switch (status) {
-            case OPEN -> "<yellow>ОТКРЫТ</yellow>";
-            case IN_PROGRESS -> "<gold>В ВЫПОЛНЕНИИ</gold>";
-            case PENDING_REVIEW -> "<light_purple>НА ПРОВЕРКЕ</light_purple>";
-            case COMPLETED -> "<green>ВЫПОЛНЕН</green>";
-            case ABANDONED, CANCELLED -> "<red>ОТМЕНЕН</red>";
-            case EXPIRED -> "<gray>ИСТЕК</gray>";
+            case OPEN -> "gui.my-status-open";
+            case IN_PROGRESS -> "gui.my-status-in-progress";
+            case PENDING_REVIEW -> "gui.my-status-pending-review";
+            case COMPLETED -> "gui.my-status-completed";
+            case ABANDONED, CANCELLED -> "gui.my-status-cancelled";
+            case EXPIRED -> "gui.my-status-expired";
         };
-    }
-
-    private ItemStack headItem(Player player) {
-        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-        org.bukkit.inventory.meta.SkullMeta meta = (org.bukkit.inventory.meta.SkullMeta) item.getItemMeta();
-        meta.setOwningPlayer(player);
-        meta.displayName(mm.deserialize("<aqua>" + player.getName() + "</aqua>"));
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Мои контракты</gray>"));
-        meta.lore(lore);
-        return item;
     }
 
     @Override

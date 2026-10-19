@@ -8,42 +8,172 @@
 # истечении контракта. Раньше всё шло в чат напрямую. Тексты держите короткими; broadcast-* (рассылка
 # всем игрокам) в экшнбар не переводились. Без LoveCore плагин шлёт всё напрямую (экшнбар и чат).
 
+# 2026-10-19: версия текстов меню. Раздел gui переведён на стандарт gui-gen-6 (GUI_LORE_STYLE.md): название
+# «Имя | Состояние», подзаголовок первой строкой лора, секции «▪», клики — отдельными строками после разделителя.
+# Сервер со старым файлом (без ключа или с меньшим значением) при старте сохраняет свой messages.yml как
+# messages.yml.bak-<время> и берёт из jar только раздел gui: без этого новые тексты не дойдут до серверов.
+# Сообщения чата и команд (разделы messages, commands, ...) не трогаются, правки администратора там остаются.
+data-version: 2
+
 gui:
+  # Экранные заголовки окон (не лор предметов): стандарт их не меняет.
   title: "<gold>Доска контрактов</gold>"
-  # 2026-10-07: кнопки фильтра/сортировки в стиле меню участников клана — в названии только
-  # слово, а все варианты перечислены в описании (текущий отмечен ▶). Старые ключи filter-button/
-  # sort-button с {FILTER}/{SORT} больше не используются, поэтому заведены новые ключи.
-  filter-title: "<gold>Фильтр</gold>"
-  sort-title: "<gold>Сортировка</gold>"
-  cycle-hint: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>вперёд\n<gold>ПКМ <dark_gray>— <gray>назад"
-  prev-page: "<yellow>Предыдущая страница</yellow>"
-  next-page: "<yellow>Следующая страница</yellow>"
-  page-info: "<gray>Страница {PAGE} из {MAX_PAGES}</gray>"
-  close-button: "<red>Закрыть</red>"
-  close-lore: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>закрыть меню"
-
-  current-contract: "<gold>Текущий контракт</gold>"
-  inactive-create: "<gold>Создать контракт</gold>"
-  inactive-create-disabled: "<red>Временно отключено</red>"
-  inactive-create-lore: "<gray>В ближайшее время</gray>"
-
-  contract-status-completed: "<green>✔ Выполнен</green>"
-  contract-status-failed: "<red>✖ Провален</red>"
-  contract-status-active-done-lmb: "<green>ЛКМ <dark_gray>— <gray>сдать контракт (получить награду)"
-  contract-status-active-done-rmb: "<red>ПКМ <dark_gray>— <gray>отменить контракт (штраф)"
-  contract-status-active-in-progress: "<yellow>✓ В процессе выполнения</yellow>"
-  contract-status-locked: "<red>🔒 Контракт заблокирован</red>"
-  contract-status-locked-lore: "<red>У вас уже есть активный контракт!</red>"
-  contract-status-req-unmet: "<red>✕ Требования не выполнены</red>"
-  contract-status-click-to-accept: "<green>ЛКМ <dark_gray>— <gray>принять контракт"
-
-  confirm-title: "<gold>Подтверждение контракта</gold>"
-  confirm-yes: "<green>Принять контракт</green>"
-  confirm-yes-lore: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>подтвердить принятие"
-  confirm-no: "<red>Отмена</red>"
-  confirm-no-lore: "<dark_gray><st>─────────────────────</st></dark_gray>\n<green>ЛКМ <dark_gray>— <gray>вернуться на доску"
-
   player-board-title: "<gold>Заказы игроков</gold>"
+  confirm-title: "<gold>Подтверждение контракта</gold>"
+
+  # Стиль gui-gen-6. LoreBlocks собирает отсюда разделитель, строки кликов и блок неактивной кнопки.
+  # Клик — отдельная строка после разделителя, одно действие в строке: ЛКМ зелёный, ПКМ золотой, Shift+… жёлтый.
+  # Текст действия (action-*) пишется без ЛКМ/ПКМ: сам клик добавляет стиль, а не текст.
+  style:
+    separator: "<dark_gray><st>─────────────────────</st></dark_gray>"
+    click:
+      left: "<green>ЛКМ <dark_gray>— <gray>{action}"
+      right: "<gold>ПКМ <dark_gray>— <gray>{action}"
+      shift-left: "<yellow>Shift+ЛКМ <dark_gray>— <gray>{action}"
+      shift-right: "<yellow>Shift+ПКМ <dark_gray>— <gray>{action}"
+    # Неактивная кнопка: разделитель, статус, «Причина:», заблокированный клик — именно в таком порядке.
+    reason: "<red>Причина: <gray>{reason}"
+    blocked-click: "<dark_gray>{click} — {action} (заблокировано)"
+    disabled-name: "<gray>{name} <dark_gray>| <red>Недоступно"
+    status:
+      unavailable: "<red>✕ Действие недоступно"
+      locked: "<red>✕ Заблокировано"
+      cooldown: "<yellow>⌛ Подождите"
+      # Единственное место, где в лоре допустим знак ✔: достигнут предел.
+      max: "<green>✔ Достигнут предел"
+
+  # Общие части: название «Имя | Состояние», секции, строка шкалы.
+  item-name-state: "{name} <dark_gray>| {state}"
+  section-conditions: "<dark_gray>▪ <gray>Условия:"
+  section-progress: "<dark_gray>▪ <gray>Прогресс:"
+  section-requirements: "<dark_gray>▪ <gray>Требования:"
+  section-reward: "<dark_gray>▪ <gray>Награда:"
+  section-penalty: "<dark_gray>▪ <gray>Штраф при провале:"
+  section-after-click: "<dark_gray>▪ <gray>После клика:"
+  section-steps: "<dark_gray>▪ <gray>Шаги:"
+  section-commands: "<dark_gray>▪ <gray>Команды:"
+  section-effects: "<dark_gray>▪ <gray>Что произойдёт:"
+  section-info: "<dark_gray>▪ <gray>Сведения:"
+  section-task: "<dark_gray>▪ <gray>Задание:"
+  progress-bar: "  {bar}"
+
+  # Действия кликов: только текст, строку «ЛКМ — …» собирает LoreBlocks из gui.style.click.
+  action-cycle-next: "следующий вариант"
+  action-cycle-previous: "предыдущий вариант"
+  action-create: "создать контракт"
+  action-create-preset: "сменить тип"
+  action-create-count: "следующее значение"
+  action-create-reward: "следующая сумма"
+  action-accept: "принять контракт"
+  action-complete: "сдать контракт (получить награду)"
+  action-cancel: "отменить контракт (штраф)"
+  action-cancel-own: "отменить контракт"
+  action-abandon: "отказаться от контракта"
+  action-confirm: "подтвердить принятие"
+  action-back-board: "вернуться на доску"
+  action-npc-option: "выбрать ответ"
+
+  # Навигация — без лора (раздел 14 стандарта): только название.
+  prev-page: "<gray>« Предыдущая страница"
+  next-page: "<gray>Следующая страница »"
+  close-button: "<red>Закрыть"
+
+  # Переключатель фильтра и сортировки: в названии «Фильтр | Текущий», ▶ отмечает только текущий вариант.
+  # 2026-10-07: кнопки фильтра/сортировки в стиле меню участников клана — в названии только слово,
+  # а все варианты перечислены в описании (текущий отмечен ▶). Старые ключи filter-button/sort-button
+  # с {FILTER}/{SORT} больше не используются.
+  filter-title: "Фильтр"
+  sort-title: "Сортировка"
+  cycle-name: "<gold>{name} <dark_gray>| <yellow>{current}"
+  cycle-subtitle: "<dark_gray>Переключатель"
+  cycle-options-title: "<dark_gray>▪ <gray>Варианты:"
+  cycle-option-current: "  <green>▶ {name}"
+  cycle-option-other: "    <gray>{name}"
+
+  # Доска: кнопка создания (сейчас отключена) и текущий контракт в нижнем ряду.
+  inactive-create: "<gold>Создать контракт</gold>"
+  inactive-create-subtitle: "<dark_gray>Создание контракта"
+  inactive-create-lore: "<gray>В ближайшее время"
+  inactive-create-disabled: "Временно отключено"
+  current-contract: "<dark_gray>Текущий контракт"
+
+  # Контракт на доске: состояние — в названии, статус — отдельной строкой лора.
+  contract-subtitle: "<dark_gray>Контракт"
+  contract-state-in-progress: "<yellow>В процессе"
+  contract-state-ready: "<green>Готов к сдаче"
+  contract-state-completed: "<green>Выполнен"
+  contract-state-failed: "<red>Провален"
+  contract-status-in-progress: "<yellow>⌛ В процессе выполнения"
+  contract-status-ready: "<green>✓ Условия выполнены"
+  contract-status-completed: "<green>✓ Контракт выполнен"
+  contract-status-failed: "<red>✕ Контракт провален"
+  contract-status-locked: "<red>✕ Контракт заблокирован"
+  contract-reason-locked: "У вас уже есть активный контракт!"
+  contract-reason-requirements: "Не выполнены требования контракта"
+  contract-difficulty: "  <gray>Сложность: {difficulty}"
+  contract-duration: "  <gray>Время: <white>{duration}"
+  contract-progress: "  <gray>Выполнено: <white>{current} <dark_gray>/ <white>{required}"
+  requirement-level-ok: "  <green>✓ <gray>Уровень: <white>{min}+"
+  requirement-level-missing: "  <red>✕ <gray>Уровень: <red>{level} <dark_gray>/ <white>{min}"
+  requirement-permission-ok: "  <green>✓ <gray>Особый статус: получен"
+  requirement-permission-missing: "  <red>✕ <gray>Требуется особый статус"
+  requirement-completed-ok: "  <green>✓ <gray>Выполнено контрактов: <white>{min}+"
+  requirement-completed-missing: "  <red>✕ <gray>Выполнено контрактов: <red>{done} <dark_gray>/ <white>{min}"
+
+  # Подтверждение принятия.
+  confirm-yes: "<green>Принять контракт</green>"
+  confirm-subtitle: "<dark_gray>Подтверждение"
+  effect-active: "  <green>+ <gray>Контракт станет вашим активным заданием"
+  effect-single: "  <gray>Одновременно можно вести только один контракт"
+  effect-penalty: "  <red>− <gray>Отмена или провал спишет штраф"
+  confirm-no: "<red>Отмена</red>"
+  confirm-no-subtitle: "<dark_gray>Отмена"
+  confirm-no-text: "<gray>Ничего не изменится."
+
+  # Мастер создания контракта (сейчас отключён, тексты приведены к стандарту).
+  create-preset-name: "<gold>Шаблон квеста <dark_gray>| <yellow>{value}"
+  create-preset-subtitle: "<dark_gray>Шаблон квеста"
+  create-preset-hint: "<gray>Выберите шаблон квеста"
+  create-preset-change: "  <gray>Шаблон: <white>{now} <dark_gray>→ <green>{next}"
+  create-count-name: "<gold>Количество <dark_gray>| <yellow>{value}"
+  create-count-subtitle: "<dark_gray>Количество"
+  create-count-hint: "<gray>Требуемое количество выполнения"
+  create-count-change: "  <gray>Количество: <white>{now} <dark_gray>→ <green>{next}"
+  create-count-steps: "  <white>{steps}"
+  create-reward-name: "<gold>Награда"
+  create-reward-subtitle: "<dark_gray>Награда квеста"
+  create-reward-hint: "<gray>Выставить награду в виде монет"
+  create-reward-hint-2: "<gray>Игрок может переставить размер награды"
+  create-reward-change: "  <gray>Награда: {now} <dark_gray>→ {next}"
+
+  # Диалог NPC.
+  npc-dialogue-name: "<gold>Диалог"
+  npc-dialogue-subtitle: "<dark_gray>Разговор"
+  npc-option-subtitle: "<dark_gray>Ответ"
+
+  # Доска заказов игроков.
+  player-board-subtitle: "<dark_gray>Заказ игрока"
+  player-task-creator: "  <gray>Наниматель: <white>{creator}"
+  player-task-objective: "  <gray>Задача: <white>{objective}"
+  player-task-deadline: "  <gray>Срок: <white>{time}"
+  player-task-id: "  <gray>id: <white>{id}"
+
+  # Мои контракты игрока.
+  my-subtitle: "<dark_gray>Мой контракт"
+  my-role: "  <gray>Роль: <white>{role}"
+  my-role-creator: "Наниматель"
+  my-role-executor: "Исполнитель"
+  my-progress: "  <gray>Прогресс: <white>{current} <dark_gray>/ <white>{required}"
+  my-id: "  <gray>id: <white>{id}"
+  my-command-turnin: "  <yellow>/pcontract turnin {id}"
+  my-command-submit: "  <yellow>/pcontract submit {id}"
+  my-command-review: "  <yellow>/pcontract review {id} accept|reject"
+  my-status-open: "<yellow>Открыт"
+  my-status-in-progress: "<green>В выполнении"
+  my-status-pending-review: "<gold>На проверке"
+  my-status-completed: "<green>Выполнен"
+  my-status-cancelled: "<red>Отменён"
+  my-status-expired: "<gray>Истёк"
 
 filters:
   all: "Все"

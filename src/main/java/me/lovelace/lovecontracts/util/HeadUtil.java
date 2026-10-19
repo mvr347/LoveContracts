@@ -68,10 +68,10 @@ public class HeadUtil {
                 }
             }
             if (displayName != null && !displayName.isEmpty()) {
-                meta.displayName(mm.deserialize(displayName));
+                meta.displayName(ItemText.upright(mm.deserialize(displayName)));
             }
             if (lore != null) {
-                meta.lore(lore);
+                meta.lore(ItemText.upright(lore));
             }
             item.setItemMeta(meta);
         }
