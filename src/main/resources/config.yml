@@ -144,7 +144,6 @@ npc:
       aggressive-playstyle:
         - "<gray>*настороженно косится*</gray>"
       friendly:
-        - "<green>О, рад тебя видеть!</green>"
         - "<green>С тобой всегда приятно иметь дело.</green>"
 
 # Таблички
