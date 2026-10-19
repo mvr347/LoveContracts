@@ -2,9 +2,6 @@ package me.lovelace.lovecontracts.model;
 
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ContractRequirement {
 
     private final int minLevel;
@@ -29,34 +26,4 @@ public class ContractRequirement {
         return true;
     }
 
-    public List<String> getMissingRequirementsLore(Player player, int playerCompletedCount) {
-        List<String> lore = new ArrayList<>();
-        if (player == null) return lore;
-
-        if (minLevel > 0) {
-            if (player.getLevel() >= minLevel) {
-                lore.add("<green>✓ Уровень: " + minLevel + "+</green>");
-            } else {
-                lore.add("<red>✗ Уровень: " + player.getLevel() + "/" + minLevel + "</red>");
-            }
-        }
-
-        if (permission != null) {
-            if (player.hasPermission(permission)) {
-                lore.add("<green>✓ Статус доступа получении</green>");
-            } else {
-                lore.add("<red>✗ Требуется особый статус</red>");
-            }
-        }
-
-        if (minCompletedContracts > 0) {
-            if (playerCompletedCount >= minCompletedContracts) {
-                lore.add("<green>✓ Выполнено контрактов: " + minCompletedContracts + "+</green>");
-            } else {
-                lore.add("<red>✗ Выполнено контрактов: " + playerCompletedCount + "/" + minCompletedContracts + "</red>");
-            }
-        }
-
-        return lore;
-    }
 }

@@ -2,11 +2,18 @@ package me.lovelace.lovecontracts.gui;
 
 import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.condition.ContractCondition;
 import me.lovelace.lovecontracts.gui.BoardModes.FilterMode;
 import me.lovelace.lovecontracts.gui.BoardModes.SortMode;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
+import me.lovelace.lovecontracts.manager.MessageManager;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.textures.HeadTextures;
+import me.lovelace.lovecontracts.util.CoinFormat;
+import me.lovelace.lovecontracts.util.HeadUtil;
+import me.lovelace.lovecontracts.util.LoreBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -37,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Pagination: slot 36 (prev page), slot 44 (next page); AIR when inactive.
  * Footer: 45-50 glass, 51 extra button (Create / current contract), 52 glass (no Back: root menu), 53 Close.
  * Filter/sort buttons: LMB = next option, RMB = previous option, page resets to 0.
+ * Lore texts follow the gui-gen-6 style (see {@link LoreBlocks}); the texts themselves are messages.yml gui.* keys.
  */
 public class ContractGUI implements Listener, InventoryHolder {
 
@@ -66,19 +74,12 @@ public class ContractGUI implements Listener, InventoryHolder {
     private static final String ACTIVE_QUEST_HEAD = HeadTextures.STARTER_QUEST;
 
     private static final ItemStack GLASS_PANE;
-    private static final ItemStack CLOSE_BUTTON;
 
     static {
         GLASS_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = GLASS_PANE.getItemMeta();
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
-
-        CLOSE_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                CLOSE_HEAD_DEFAULT,
-                "<red>Закрыть</red>",
-                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Закрыть меню</gray>"))
-        );
     }
 
     private static final int[] CONTRACT_SLOTS = {
@@ -123,8 +124,8 @@ public class ContractGUI implements Listener, InventoryHolder {
         playerPages.put(uuid, page);
 
         Inventory inv;
-        if (player.getOpenInventory() != null 
-                && player.getOpenInventory().getTopInventory() != null 
+        if (player.getOpenInventory() != null
+                && player.getOpenInventory().getTopInventory() != null
                 && player.getOpenInventory().getTopInventory().getHolder() instanceof ContractGUI) {
             inv = player.getOpenInventory().getTopInventory();
             inv.clear();
@@ -154,11 +155,11 @@ public class ContractGUI implements Listener, InventoryHolder {
 
         // Pagination buttons on slots 36 and 44
         if (page > 0) {
-            inv.setItem(SLOT_PREV, prevPageButton(page + 1, maxPages));
+            inv.setItem(SLOT_PREV, prevPageButton());
         }
 
         if (page < maxPages - 1) {
-            inv.setItem(SLOT_NEXT, nextPageButton(page + 1, maxPages));
+            inv.setItem(SLOT_NEXT, nextPageButton());
         }
 
         // Working Zone (CONTRACT_SLOTS) - Paginated
@@ -177,7 +178,7 @@ public class ContractGUI implements Listener, InventoryHolder {
         if (activeContract != null) {
             inv.setItem(SLOT_CREATE, currentContractButton(player, activeContract));
         } else {
-            inv.setItem(SLOT_CREATE, inactiveCreateButton());
+            inv.setItem(SLOT_CREATE, inactiveCreateButton(player));
         }
         inv.setItem(SLOT_CLOSE, closeButton());
 
@@ -413,60 +414,130 @@ public class ContractGUI implements Listener, InventoryHolder {
         playerPages.remove(uuid);
     }
 
-    private ItemStack closeButton() {
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("close", CLOSE_HEAD_DEFAULT);
-        return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                base64,
-                plugin.getMessageManager().getRaw("gui.close-button", "<red>Закрыть</red>"),
-                List.of(Component.empty(), plugin.getMessageManager().getComponent("gui.close-lore", "<gray>Закрыть меню</gray>"))
-        );
+    // ---- menu texts: messages.yml gui.* through MessageManager, click lines through LoreBlocks ----
+
+    private MessageManager messages() {
+        return plugin.getMessageManager();
     }
 
-    private ItemStack inactiveCreateButton() {
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("create-inactive",
-                me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("create", CREATE_HEAD));
-        List<Component> lore = new ArrayList<>();
-        lore.add(plugin.getMessageManager().getComponent("gui.inactive-create-disabled", "<red><b>Временно отключено</b></red>"));
-        lore.add(plugin.getMessageManager().getComponent("gui.inactive-create-lore", "<gray>В ближайшее время</gray>"));
-
-        return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                base64,
-                plugin.getMessageManager().getRaw("gui.inactive-create", "<gradient:#55FF55:#55FFFF><b>+ Создать контракт</b></gradient>"),
-                lore
-        );
+    private LoreBlocks.Style style() {
+        return messages()::getRaw;
     }
 
-    private ItemStack currentContractButton(Player player, Contract c) {
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("active-quest", ACTIVE_QUEST_HEAD);
-        boolean isDone = c.getCondition() != null && c.getCondition().isCompleted(player);
-        String progress = c.getCondition() != null ? c.getCondition().getProgressString(player) : "0/0";
+    /** Plain action text of a click line (the click itself is added by {@link LoreBlocks}). */
+    private String action(String key) {
+        return messages().text(key);
+    }
 
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gold>" + strip(c.getDisplayName()) + "</gold>"));
-        lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
-        lore.add(mm.deserialize("<gray>" + c.getDescription() + "</gray>"));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<yellow>Время:</yellow> <white>" + c.getFormattedDuration() + "</white>"));
-        lore.add(mm.deserialize("<yellow>Прогресс:</yellow> <white>" + progress + "</white>"));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<green>Награды:</green>"));
-        addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"));
-        if (isDone) {
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green>ЛКМ <dark_gray>— <gray>сдать контракт (получить награду)"));
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red>ПКМ <dark_gray>— <gray>отменить контракт (штраф)"));
-        } else {
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-in-progress", "<yellow>✓ В процессе выполнения</yellow>"));
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red>ПКМ <dark_gray>— <gray>отменить контракт (штраф)"));
+    private String text(String key) {
+        return messages().text(key);
+    }
+
+    /** MiniMessage lore lines as components, with coin glyphs resolved for the viewer. */
+    private static List<Component> components(Player player, List<String> lines) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            out.add(CoinFormat.component(player, line));
         }
+        return out;
+    }
 
-        String itemTitle = plugin.getMessageManager().getRaw("gui.current-contract", "<gold>Текущий контракт</gold>");
-        ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, itemTitle, lore);
+    private List<Component> components(List<String> lines) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            out.add(mm.deserialize(line));
+        }
+        return out;
+    }
+
+    private String description(Contract c) {
+        return "<gray>" + c.getDescription() + "</gray>";
+    }
+
+    /** Name of a contract with its state: {@code Имя | Состояние}. */
+    private String stateName(Contract c, String stateKey) {
+        return messages().text("gui.item-name-state", Map.of("name", c.getDisplayName(), "state", text(stateKey)));
+    }
+
+    /** Section «Условия»: the difficulty, and the time limit for the contracts that have one. */
+    private void addConditions(List<String> lines, Contract c, boolean withDuration) {
+        lines.add(text("gui.section-conditions"));
+        lines.add(messages().text("gui.contract-difficulty", Map.of("difficulty", c.getDifficulty().getFormattedTag())));
+        if (withDuration) {
+            lines.add(messages().text("gui.contract-duration", Map.of("duration", c.getFormattedDuration())));
+        }
+    }
+
+    private static long[] progressOf(Player player, Contract c) {
+        ContractCondition condition = c.getCondition();
+        if (condition == null) {
+            return new long[]{0, 0};
+        }
+        return new long[]{condition.getProgress(player), condition.getRequiredAmount()};
+    }
+
+    /** Lore of a taken contract (the board item and the footer button): progress bar, reward, state, clicks. */
+    private List<String> activeLines(Player player, Contract c, boolean done, String subtitleKey) {
+        long[] progress = progressOf(player, c);
+        List<String> lines = new ArrayList<>();
+        lines.add(text(subtitleKey));
+        lines.add("");
+        lines.add(description(c));
+        lines.add("");
+        addConditions(lines, c, true);
+        lines.add("");
+        lines.add(text("gui.section-progress"));
+        lines.add(messages().text("gui.contract-progress", Map.of(
+                "current", String.valueOf(progress[0]), "required", String.valueOf(progress[1]))));
+        lines.add(messages().text("gui.progress-bar", Map.of("bar", LoreBar.bar(progress[0], progress[1]))));
+        lines.add("");
+        lines.add(text("gui.section-reward"));
+        lines.addAll(ContractLore.coinRows(ContractLore.rewardLines(c)));
+        lines.add("");
+        lines.add(text(done ? "gui.contract-status-ready" : "gui.contract-status-in-progress"));
+        if (done) {
+            lines.addAll(LoreBlocks.clicks(style(),
+                    Hint.of(Click.LEFT, action("gui.action-complete")),
+                    Hint.of(Click.RIGHT, action("gui.action-cancel"))));
+        } else {
+            lines.addAll(LoreBlocks.clicks(style(), Hint.of(Click.RIGHT, action("gui.action-cancel"))));
+        }
+        return lines;
+    }
+
+    private ItemStack contractStack(Player player, Contract c, String base64, String name, List<String> lines) {
+        ItemStack item = HeadUtil.createBase64Head(base64, name, components(player, lines));
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
         item.setItemMeta(meta);
         return item;
+    }
+
+    private ItemStack closeButton() {
+        String base64 = HeadUtil.getHeadTexture("close", CLOSE_HEAD_DEFAULT);
+        return HeadUtil.createBase64Head(base64, text("gui.close-button"), List.of());
+    }
+
+    private ItemStack inactiveCreateButton(Player player) {
+        String base64 = HeadUtil.getHeadTexture("create-inactive",
+                HeadUtil.getHeadTexture("create", CREATE_HEAD));
+        List<String> lines = new ArrayList<>();
+        lines.add(text("gui.inactive-create-subtitle"));
+        lines.add("");
+        lines.add(text("gui.inactive-create-lore"));
+        lines.addAll(LoreBlocks.blocked(style(), LoreBlocks.status(style(), "unavailable"),
+                text("gui.inactive-create-disabled"), Hint.of(Click.LEFT, action("gui.action-create"))));
+
+        String plainName = strip(text("gui.inactive-create"));
+        return HeadUtil.createBase64Head(base64, LoreBlocks.disabledName(style(), plainName), components(player, lines));
+    }
+
+    private ItemStack currentContractButton(Player player, Contract c) {
+        String base64 = HeadUtil.getHeadTexture("active-quest", ACTIVE_QUEST_HEAD);
+        boolean done = c.getCondition() != null && c.getCondition().isCompleted(player);
+        return contractStack(player, c, base64,
+                stateName(c, done ? "gui.contract-state-ready" : "gui.contract-state-in-progress"),
+                activeLines(player, c, done, "gui.current-contract"));
     }
 
     private String strip(String input) {
@@ -474,36 +545,15 @@ public class ContractGUI implements Listener, InventoryHolder {
         return input.replaceAll("<[^>]+>", "");
     }
 
-    private ItemStack prevPageButton(int page, int maxPages) {
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("prev", PREV_HEAD);
-        String pageInfo = plugin.getMessageManager().getRaw("gui.page-info", "<gray>Страница {PAGE} из {MAX_PAGES}</gray>")
-                .replace("{PAGE}", String.valueOf(page))
-                .replace("{MAX_PAGES}", String.valueOf(maxPages));
-        return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                base64,
-                plugin.getMessageManager().getRaw("gui.prev-page", "<yellow>Предыдущая страница</yellow>"),
-                List.of(
-                        mm.deserialize(pageInfo),
-                        mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"),
-                        mm.deserialize("<green>ЛКМ <dark_gray>— <gray>назад")
-                )
-        );
+    /** Navigation has no lore (gui-gen-6, section 14): the name only. */
+    private ItemStack prevPageButton() {
+        String base64 = HeadUtil.getHeadTexture("prev", PREV_HEAD);
+        return HeadUtil.createBase64Head(base64, text("gui.prev-page"), List.of());
     }
 
-    private ItemStack nextPageButton(int page, int maxPages) {
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("next", NEXT_HEAD);
-        String pageInfo = plugin.getMessageManager().getRaw("gui.page-info", "<gray>Страница {PAGE} из {MAX_PAGES}</gray>")
-                .replace("{PAGE}", String.valueOf(page))
-                .replace("{MAX_PAGES}", String.valueOf(maxPages));
-        return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                base64,
-                plugin.getMessageManager().getRaw("gui.next-page", "<yellow>Следующая страница</yellow>"),
-                List.of(
-                        mm.deserialize(pageInfo),
-                        mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"),
-                        mm.deserialize("<green>ЛКМ <dark_gray>— <gray>вперёд")
-                )
-        );
+    private ItemStack nextPageButton() {
+        String base64 = HeadUtil.getHeadTexture("next", NEXT_HEAD);
+        return HeadUtil.createBase64Head(base64, text("gui.next-page"), List.of());
     }
 
     public ItemStack contractItem(Contract c, Player player) {
@@ -514,90 +564,62 @@ public class ContractGUI implements Listener, InventoryHolder {
         boolean hasActive = plugin.getContractManager().hasActiveContract(uuid);
 
         if (completedToday) {
-            String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("completed",
-                    me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("completed-contract",
+            String base64 = HeadUtil.getHeadTexture("completed",
+                    HeadUtil.getHeadTexture("completed-contract",
                     HeadTextures.CONTRACT_STATUS_DEFAULT));
 
-            List<Component> lore = new ArrayList<>();
-            lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
-            lore.add(mm.deserialize("<gray>" + c.getDescription() + "</gray>"));
-            lore.add(Component.empty());
-            lore.add(mm.deserialize("<green>Награды:</green>"));
-            addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
-            lore.add(Component.empty());
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-completed", "<green>✔ ВЫПОЛНЕН</green>"));
-
-            ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, c.getDisplayName() + " <green>(ВЫПОЛНЕН)</green>", lore);
-            ItemMeta meta = item.getItemMeta();
-            meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
-            item.setItemMeta(meta);
-            return item;
+            List<String> lines = new ArrayList<>();
+            lines.add(text("gui.contract-subtitle"));
+            lines.add("");
+            lines.add(description(c));
+            lines.add("");
+            addConditions(lines, c, false);
+            lines.add("");
+            lines.add(text("gui.section-reward"));
+            lines.addAll(ContractLore.coinRows(ContractLore.rewardLines(c)));
+            lines.add("");
+            lines.add(text("gui.contract-status-completed"));
+            return contractStack(player, c, base64, stateName(c, "gui.contract-state-completed"), lines);
         }
 
         if (failed) {
-            String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("failed",
-                    me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("failed-contract",
+            String base64 = HeadUtil.getHeadTexture("failed",
+                    HeadUtil.getHeadTexture("failed-contract",
                     HeadTextures.CONTRACT_STATUS_DEFAULT));
 
-            List<Component> lore = new ArrayList<>();
-            lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
-            lore.add(mm.deserialize("<gray>" + c.getDescription() + "</gray>"));
-            lore.add(Component.empty());
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-failed", "<red>✖ ПРОВАЛЕН</red>"));
-
-            ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, c.getDisplayName() + " <red>(ПРОВАЛЕН)</red>", lore);
-            ItemMeta meta = item.getItemMeta();
-            meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
-            item.setItemMeta(meta);
-            return item;
+            List<String> lines = new ArrayList<>();
+            lines.add(text("gui.contract-subtitle"));
+            lines.add("");
+            lines.add(description(c));
+            lines.add("");
+            addConditions(lines, c, false);
+            lines.add("");
+            lines.add(text("gui.contract-status-failed"));
+            return contractStack(player, c, base64, stateName(c, "gui.contract-state-failed"), lines);
         }
 
         if (isThisActive) {
-            String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("active",
-                    me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("active-quest", ACTIVE_QUEST_HEAD));
-            boolean isDone = c.getCondition() != null && c.getCondition().isCompleted(player);
-            String progress = c.getCondition() != null ? c.getCondition().getProgressString(player) : "0/0";
-
-            List<Component> lore = new ArrayList<>();
-            lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
-            lore.add(mm.deserialize("<gray>" + c.getDescription() + "</gray>"));
-            lore.add(Component.empty());
-            lore.add(mm.deserialize("<yellow>Время:</yellow> <white>" + c.getFormattedDuration() + "</white>"));
-            lore.add(mm.deserialize("<yellow>Прогресс:</yellow> <white>" + progress + "</white>"));
-            lore.add(Component.empty());
-            lore.add(mm.deserialize("<green>Награды:</green>"));
-            addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
-            lore.add(Component.empty());
-            if (isDone) {
-                lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-lmb", "<green><b>ЛКМ: Сдать контракт (Забрать награду)</b></green>"));
-                lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red><b>ПКМ: Отменить контракт</b></red>"));
-            } else {
-                lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-in-progress", "<yellow>✓ ВЗЯТЫЙ (В процессе)</yellow>"));
-                lore.add(plugin.getMessageManager().getComponent("gui.contract-status-active-done-rmb", "<red><b>ПКМ: Отменить контракт</b></red>"));
-            }
-
-            ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, c.getDisplayName() + " <yellow>(ВЗЯТЫЙ)</yellow>", lore);
-            ItemMeta meta = item.getItemMeta();
-            meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
-            item.setItemMeta(meta);
-            return item;
+            String base64 = HeadUtil.getHeadTexture("active",
+                    HeadUtil.getHeadTexture("active-quest", ACTIVE_QUEST_HEAD));
+            boolean done = c.getCondition() != null && c.getCondition().isCompleted(player);
+            return contractStack(player, c, base64,
+                    stateName(c, done ? "gui.contract-state-ready" : "gui.contract-state-in-progress"),
+                    activeLines(player, c, done, "gui.contract-subtitle"));
         }
 
         if (hasActive) {
-            String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("locked", LOCKED_HEAD_DEFAULT);
+            String base64 = HeadUtil.getHeadTexture("locked", LOCKED_HEAD_DEFAULT);
 
-            List<Component> lore = new ArrayList<>();
-            lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
-            lore.add(mm.deserialize("<gray>" + c.getDescription() + "</gray>"));
-            lore.add(Component.empty());
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-locked", "<red>🔒 КОНТРАКТ ЗАБЛОКИРОВАН</red>"));
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-locked-lore", "<red>У вас уже есть активный контракт!</red>"));
-
-            ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, "<red>" + c.getDisplayName() + "</red>", lore);
-            ItemMeta meta = item.getItemMeta();
-            meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
-            item.setItemMeta(meta);
-            return item;
+            List<String> lines = new ArrayList<>();
+            lines.add(text("gui.contract-subtitle"));
+            lines.add("");
+            lines.add(description(c));
+            lines.add("");
+            addConditions(lines, c, false);
+            lines.addAll(LoreBlocks.blocked(style(), text("gui.contract-status-locked"),
+                    text("gui.contract-reason-locked"), Hint.of(Click.LEFT, action("gui.action-accept"))));
+            return contractStack(player, c, base64,
+                    LoreBlocks.disabledName(style(), c.getDisplayName()), lines);
         }
 
         String base64Key = switch (c.getDifficulty()) {
@@ -612,94 +634,86 @@ public class ContractGUI implements Listener, InventoryHolder {
             case MEDIUM -> MEDIUM_HEAD_DEFAULT;
             case HARD -> HARD_HEAD_DEFAULT;
         };
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture(base64Key, defaultHead);
-
-        List<Component> lore = new ArrayList<>();
-        lore.add(mm.deserialize("<gray>Сложность:</gray> " + c.getDifficulty().getFormattedTag()));
-        lore.add(mm.deserialize("<gray>" + c.getDescription() + "</gray>"));
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<yellow>Время:</yellow> <white>" + c.getFormattedDuration() + "</white>"));
+        String base64 = HeadUtil.getHeadTexture(base64Key, defaultHead);
 
         boolean reqMet = true;
+        int completedCount = 0;
         if (c.getRequirement() != null) {
-            int completedCount = plugin.getContractManager().getCompletedContractsCount(uuid);
+            completedCount = plugin.getContractManager().getCompletedContractsCount(uuid);
             reqMet = c.getRequirement().isMet(player, completedCount);
-            lore.add(Component.empty());
-            lore.add(mm.deserialize("<yellow>Требования:</yellow>"));
-            for (String line : c.getRequirement().getMissingRequirementsLore(player, completedCount)) {
-                lore.add(mm.deserialize(line));
-            }
         }
 
-        lore.add(Component.empty());
-        lore.add(mm.deserialize("<green>Награды:</green>"));
-        addMoneyLines(lore, player, "gold", c.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList());
+        List<String> lines = new ArrayList<>();
+        lines.add(text("gui.contract-subtitle"));
+        lines.add("");
+        lines.add(description(c));
+        lines.add("");
+        addConditions(lines, c, true);
 
-        if (!c.isStarter()) {
-            boolean hasPenalty = c.getPenalties().stream()
-                    .anyMatch(p -> p.getType() != me.lovelace.lovecontracts.model.Penalty.Type.NONE);
-            if (hasPenalty) {
-                lore.add(mm.deserialize("<red>Штрафы:</red>"));
-                addMoneyLines(lore, player, "red", c.getPenalties().stream()
-                        .filter(p -> p.getType() != me.lovelace.lovecontracts.model.Penalty.Type.NONE)
-                        .flatMap(p -> p.getDisplayLines().stream()).toList());
-            }
+        if (c.getRequirement() != null) {
+            lines.add("");
+            lines.add(text("gui.section-requirements"));
+            lines.addAll(new ContractLore(messages()).requirementRows(player, c.getRequirement(), completedCount));
         }
 
-        lore.add(Component.empty());
-        if (!reqMet) {
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-req-unmet", "<red>✕ Требования не выполнены</red>"));
+        lines.add("");
+        lines.add(text("gui.section-reward"));
+        lines.addAll(ContractLore.coinRows(ContractLore.rewardLines(c)));
+
+        if (ContractLore.hasPenalty(c)) {
+            lines.add("");
+            lines.add(text("gui.section-penalty"));
+            lines.addAll(ContractLore.coinRows(ContractLore.penaltyLines(c)));
+        }
+
+        String name;
+        if (reqMet) {
+            lines.addAll(LoreBlocks.clicks(style(), Hint.of(Click.LEFT, action("gui.action-accept"))));
+            name = c.getDisplayName();
         } else {
-            lore.add(mm.deserialize("<dark_gray><st>─────────────────────</st></dark_gray>"));
-            lore.add(plugin.getMessageManager().getComponent("gui.contract-status-click-to-accept", "<green>ЛКМ <dark_gray>— <gray>принять контракт"));
+            lines.addAll(LoreBlocks.blocked(style(), LoreBlocks.status(style(), "unavailable"),
+                    text("gui.contract-reason-requirements"), Hint.of(Click.LEFT, action("gui.action-accept"))));
+            name = LoreBlocks.disabledName(style(), c.getDisplayName());
         }
-
-        ItemStack item = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, c.getDisplayName(), lore);
-        ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
-        item.setItemMeta(meta);
-        return item;
+        return contractStack(player, c, base64, name, lines);
     }
 
     private ItemStack filterButton(FilterMode mode) {
         List<String> names = new ArrayList<>();
         for (FilterMode m : FilterMode.values()) names.add(plugin.getMessageManager().getRaw(m.messageKey(), m.fallback()));
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("filter", TYPE_FILTER_HEAD_DEFAULT);
-        return cycleButton(base64, plugin.getMessageManager().getRaw("gui.filter-title", "<gold>Фильтр</gold>"),
-                names, mode.ordinal());
+        String base64 = HeadUtil.getHeadTexture("filter", TYPE_FILTER_HEAD_DEFAULT);
+        return cycleButton(base64, text("gui.filter-title"), names, mode.ordinal());
     }
 
     private ItemStack sortButton(SortMode mode) {
         List<String> names = new ArrayList<>();
         for (SortMode m : SortMode.values()) names.add(plugin.getMessageManager().getRaw(m.messageKey(), m.fallback()));
-        String base64 = me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("sort", SORT_HEAD_DEFAULT);
-        return cycleButton(base64, plugin.getMessageManager().getRaw("gui.sort-title", "<gold>Сортировка</gold>"),
-                names, mode.ordinal());
+        String base64 = HeadUtil.getHeadTexture("sort", SORT_HEAD_DEFAULT);
+        return cycleButton(base64, text("gui.sort-title"), names, mode.ordinal());
     }
 
-    /** Members-menu style switch: every option listed, current one marked, LMB/RMB hint at the bottom. */
+    /**
+     * Members-menu style switch: the name shows the current option, the list marks it with ▶, and the two click
+     * lines below say where the next and the previous option are.
+     */
     private ItemStack cycleButton(String base64, String title, List<String> options, int current) {
-        List<Component> lore = new ArrayList<>();
-        lore.add(Component.empty());
+        List<String> lines = new ArrayList<>();
+        lines.add(text("gui.cycle-subtitle"));
+        lines.add("");
+        lines.add(text("gui.cycle-options-title"));
         for (int i = 0; i < options.size(); i++) {
-            lore.add(mm.deserialize(i == current ? "<green>▶ " + options.get(i) : "<gray>  " + options.get(i)));
+            String key = i == current ? "gui.cycle-option-current" : "gui.cycle-option-other";
+            lines.add(messages().text(key, Map.of("name", options.get(i))));
         }
-        lore.add(Component.empty());
-        lore.add(plugin.getMessageManager().getComponent("gui.cycle-hint",
-                "<yellow>ЛКМ <gray>- дальше, <yellow>ПКМ <gray>- назад"));
-        return me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(base64, title, lore);
+        lines.addAll(LoreBlocks.clicks(style(),
+                Hint.of(Click.LEFT, action("gui.action-cycle-next")),
+                Hint.of(Click.RIGHT, action("gui.action-cycle-previous"))));
+        String name = messages().text("gui.cycle-name", Map.of("name", title, "current", options.get(current)));
+        return HeadUtil.createBase64Head(base64, name, components(lines));
     }
 
     @Override
     public Inventory getInventory() {
         return null;
-    }
-
-    /** Money lines of a reward/penalty, one denomination per line (a column, not a row). */
-    private void addMoneyLines(List<Component> lore, Player player, String color, List<String> lines) {
-        for (String line : lines) {
-            lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player,
-                    "<" + color + ">  </" + color + ">" + line)));
-        }
     }
 }

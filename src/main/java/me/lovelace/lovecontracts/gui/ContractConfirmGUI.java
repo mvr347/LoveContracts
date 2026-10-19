@@ -1,10 +1,14 @@
 package me.lovelace.lovecontracts.gui;
 
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
+import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
+import me.lovelace.lovecontracts.manager.MessageManager;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.textures.HeadTextures;
+import me.lovelace.lovecontracts.util.CoinFormat;
+import me.lovelace.lovecontracts.util.HeadUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -18,6 +22,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,12 +30,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 5-slot Hopper confirmation menu:
- * Slot 0: [✓] Confirm | Slot 1: Glass | Slot 2: Contract Preview | Slot 3: Glass | Slot 4: [✗] Cancel
+ * Slot 0: Confirm | Slot 1: Glass | Slot 2: Contract Preview | Slot 3: Glass | Slot 4: Cancel
  */
 public class ContractConfirmGUI implements Listener, InventoryHolder {
 
     private final LoveContracts plugin;
-    private final MiniMessage mm = MiniMessage.miniMessage();
     private final Map<UUID, Contract> pendingContracts = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastClick = new ConcurrentHashMap<>();
 
@@ -38,26 +42,12 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
     private static final String NO_HEAD = HeadTextures.CANCEL;
 
     private static final ItemStack GLASS_PANE;
-    private static final ItemStack CONFIRM_BUTTON;
-    private static final ItemStack CANCEL_BUTTON;
 
     static {
         GLASS_PANE = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta glassMeta = GLASS_PANE.getItemMeta();
         glassMeta.displayName(Component.text(" "));
         GLASS_PANE.setItemMeta(glassMeta);
-
-        CONFIRM_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("confirm", YES_HEAD),
-                "<green>✓ Принять контракт</green>",
-                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Нажмите, чтобы подтвердить принятие</gray>"))
-        );
-
-        CANCEL_BUTTON = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("cancel", NO_HEAD),
-                "<red>✗ Отмена</red>",
-                List.of(Component.empty(), MiniMessage.miniMessage().deserialize("<gray>Нажмите, чтобы вернуться на доску</gray>"))
-        );
     }
 
     public ContractConfirmGUI(LoveContracts plugin) {
@@ -67,20 +57,18 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
     public void open(Player player, Contract contract, ItemStack previewItem) {
         pendingContracts.put(player.getUniqueId(), contract);
         Component title = plugin.getMessageManager().getComponent("gui.confirm-title",
-                "<gradient:#55FF55:#55FFFF>Подтверждение контракта</gradient>");
+                "<gold>Подтверждение контракта</gold>");
         Inventory inv = Bukkit.createInventory(this, InventoryType.HOPPER, title);
 
-        ItemStack confirmBtn = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("confirm", YES_HEAD),
-                plugin.getMessageManager().getRaw("gui.confirm-yes", "<green>✓ Принять контракт</green>"),
-                List.of(Component.empty(), plugin.getMessageManager().getComponent("gui.confirm-yes-lore", "<gray>Нажмите, чтобы подтвердить принятие</gray>"))
-        );
+        ItemStack confirmBtn = HeadUtil.createBase64Head(
+                HeadUtil.getHeadTexture("confirm", YES_HEAD),
+                messages().text("gui.confirm-yes"),
+                components(player, acceptLines(player, contract)));
 
-        ItemStack cancelBtn = me.lovelace.lovecontracts.util.HeadUtil.createBase64Head(
-                me.lovelace.lovecontracts.util.HeadUtil.getHeadTexture("cancel", NO_HEAD),
-                plugin.getMessageManager().getRaw("gui.confirm-no", "<red>✗ Отмена</red>"),
-                List.of(Component.empty(), plugin.getMessageManager().getComponent("gui.confirm-no-lore", "<gray>Нажмите, чтобы вернуться на доску</gray>"))
-        );
+        ItemStack cancelBtn = HeadUtil.createBase64Head(
+                HeadUtil.getHeadTexture("cancel", NO_HEAD),
+                messages().text("gui.confirm-no"),
+                components(player, cancelLines()));
 
         inv.setItem(0, confirmBtn);
         inv.setItem(1, GLASS_PANE);
@@ -89,6 +77,60 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
         inv.setItem(4, cancelBtn);
 
         player.openInventory(inv);
+    }
+
+    private MessageManager messages() {
+        return plugin.getMessageManager();
+    }
+
+    /** What accepting does, what it needs and what it pays, then the click that confirms. */
+    private List<String> acceptLines(Player player, Contract contract) {
+        MessageManager messages = messages();
+        boolean penalty = ContractLore.hasPenalty(contract);
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.confirm-subtitle"));
+        lines.add("");
+        lines.add(messages.text("gui.section-effects"));
+        lines.add(messages.text("gui.effect-active"));
+        lines.add(messages.text("gui.effect-single"));
+        if (penalty) {
+            lines.add(messages.text("gui.effect-penalty"));
+        }
+        if (contract.getRequirement() != null) {
+            int completed = plugin.getContractManager().getCompletedContractsCount(player.getUniqueId());
+            lines.add("");
+            lines.add(messages.text("gui.section-requirements"));
+            lines.addAll(new ContractLore(messages).requirementRows(player, contract.getRequirement(), completed));
+        }
+        lines.add("");
+        lines.add(messages.text("gui.section-reward"));
+        lines.addAll(ContractLore.coinRows(ContractLore.rewardLines(contract)));
+        if (penalty) {
+            lines.add("");
+            lines.add(messages.text("gui.section-penalty"));
+            lines.addAll(ContractLore.coinRows(ContractLore.penaltyLines(contract)));
+        }
+        lines.addAll(LoreBlocks.clicks(messages::getRaw, Hint.of(Click.LEFT, messages.text("gui.action-confirm"))));
+        return lines;
+    }
+
+    private List<String> cancelLines() {
+        MessageManager messages = messages();
+        List<String> lines = new ArrayList<>();
+        lines.add(messages.text("gui.confirm-no-subtitle"));
+        lines.add("");
+        lines.add(messages.text("gui.confirm-no-text"));
+        lines.addAll(LoreBlocks.clicks(messages::getRaw,
+                Hint.of(Click.RIGHT, messages.text("gui.action-back-board"))));
+        return lines;
+    }
+
+    private static List<Component> components(Player player, List<String> lines) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            out.add(CoinFormat.component(player, line));
+        }
+        return out;
     }
 
     @EventHandler
