@@ -17,20 +17,20 @@ public class NpcQuestStep {
     private final Type type;
     private final Material material;
     private final EntityType entityType;
-    private final int targetNpcId;
+    private final String targetNpcKey;
     private final String targetNpcName;
     private final int count;
     private final String description;
     private final NpcDialogueNode visitDialogue;
 
     public NpcQuestStep(int stepNumber, Type type, Material material, EntityType entityType,
-                        int targetNpcId, String targetNpcName, int count, String description,
+                        String targetNpcKey, String targetNpcName, int count, String description,
                         NpcDialogueNode visitDialogue) {
         this.stepNumber = stepNumber;
         this.type = type != null ? type : Type.CRAFT_ITEM;
         this.material = material;
         this.entityType = entityType;
-        this.targetNpcId = targetNpcId;
+        this.targetNpcKey = targetNpcKey;
         this.targetNpcName = targetNpcName != null ? targetNpcName : "";
         this.count = Math.max(1, count);
         this.description = description != null ? description : "";
@@ -41,7 +41,8 @@ public class NpcQuestStep {
     public Type getType() { return type; }
     public Material getMaterial() { return material; }
     public EntityType getEntityType() { return entityType; }
-    public int getTargetNpcId() { return targetNpcId; }
+    /** Key of the NPC to visit in the configured provider, or null. */
+    public String getTargetNpcKey() { return targetNpcKey; }
     public String getTargetNpcName() { return targetNpcName; }
     public int getCount() { return count; }
     public String getDescription() { return description; }

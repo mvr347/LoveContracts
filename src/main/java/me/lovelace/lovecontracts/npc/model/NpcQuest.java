@@ -11,7 +11,8 @@ import java.util.Map;
 public class NpcQuest {
 
     private final String id;
-    private final int npcId;
+    /** Key of the quest-giver NPC in the configured provider (numeric Citizens id as text), or null. */
+    private final String npcKey;
     private final String displayName;
     private final boolean repeatable;
     private final int cooldownMinutes;
@@ -20,11 +21,11 @@ public class NpcQuest {
     private final List<NpcQuestStep> steps;
     private final List<Reward> rewards;
 
-    public NpcQuest(String id, int npcId, String displayName, boolean repeatable, int cooldownMinutes,
+    public NpcQuest(String id, String npcKey, String displayName, boolean repeatable, int cooldownMinutes,
                     String initialDialogueNode, Map<String, NpcDialogueNode> dialogues,
                     List<NpcQuestStep> steps, List<Reward> rewards) {
         this.id = id;
-        this.npcId = npcId;
+        this.npcKey = npcKey;
         this.displayName = displayName != null ? displayName : id;
         this.repeatable = repeatable;
         this.cooldownMinutes = Math.max(0, cooldownMinutes);
@@ -35,7 +36,7 @@ public class NpcQuest {
     }
 
     public String getId() { return id; }
-    public int getNpcId() { return npcId; }
+    public String getNpcKey() { return npcKey; }
     public String getDisplayName() { return displayName; }
     public boolean isRepeatable() { return repeatable; }
     public int getCooldownMinutes() { return cooldownMinutes; }
