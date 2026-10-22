@@ -5,6 +5,11 @@
 # выше лёгкого контракта (150–400), но ниже среднего (500–900). Масштаб: economy.reward-scale.
 # ============================================
 
+# 2026-10-22: NPC задаются строковым ключом выбранного провайдера (integrations.npc-provider в config.yml):
+# npc-key / target-npc-key. Для Citizens это числовой id в кавычках. Старые npc-id / target-npc-id
+# по-прежнему читаются (числовой id = ключ провайдера citizens), поэтому data-version не поднимался —
+# отредактированные админами файлы не заменяются.
+
 # Версия набора: если на сервере файл старее, при старте он сохраняется как npc_quests.yml.bak-<время>
 # и заменяется этим (см. contracts.yml).
 data-version: 2
@@ -12,7 +17,7 @@ data-version: 2
 npc_quests:
 
   blacksmith_chain:
-    npc-id: 1
+    npc-key: "1"
     display-name: "<gold>Кузнечный заказ</gold>"
     repeatable: true
     cooldown-minutes: 30
@@ -49,7 +54,7 @@ npc_quests:
         description: "Скрафтите 16 железных слитков"
       - step: 2
         type: "VISIT_NPC"
-        target-npc-id: 2
+        target-npc-key: "2"
         target-npc-name: "Оружейник"
         description: "Отнесите слитки Оружейнику (NPC #2)"
         dialogue:
@@ -64,7 +69,7 @@ npc_quests:
       money: 300
 
   guard_patrol:
-    npc-id: 3
+    npc-key: "3"
     display-name: "<red>Зачистка периметра</red>"
     repeatable: true
     cooldown-minutes: 45

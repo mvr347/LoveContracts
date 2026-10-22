@@ -4,7 +4,8 @@ import me.lovelace.lovecontracts.command.ContractCommand;
 import me.lovelace.lovecontracts.command.LoveContractsAdminCommand;
 import me.lovelace.lovecontracts.gui.ContractConfirmGUI;
 import me.lovelace.lovecontracts.gui.ContractGUI;
-import me.lovelace.lovecontracts.integration.CitizensIntegration;
+import me.lovelace.lovecontracts.integration.NpcBridge;
+import me.lovelace.lovecontracts.integration.NpcSettings;
 import me.lovelace.lovecontracts.listener.ContractNpcListener;
 import me.lovelace.lovecontracts.listener.ContractSignListener;
 import me.lovelace.lovecontracts.manager.ContractManager;
@@ -51,6 +52,7 @@ public final class LoveContracts extends JavaPlugin {
     private me.lovelace.lovecontracts.manager.FineManager fineManager;
     private MessageManager messageManager;
     private Optional<StatBus> statBus = Optional.empty();
+    private final NpcBridge npcBridge = new NpcBridge(this::getConfig, message -> getLogger().warning(message));
 
     private PlayerContractDatabase playerContractDatabase;
     private PlayerContractManager playerContractManager;
@@ -71,6 +73,7 @@ public final class LoveContracts extends JavaPlugin {
 
         saveDefaultConfig();
         mergeMissingConfigKeys();
+        migrateNpcBinding();
         saveResourceIfMissing("contracts.yml");
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("npc_quests.yml");
@@ -149,7 +152,7 @@ public final class LoveContracts extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new me.lovelace.lovecontracts.listener.PlayerQuitListener(this), this);
         Bukkit.getPluginManager().registerEvents(new me.lovelace.lovecontracts.listener.FineCollectionListener(this), this);
         Bukkit.getPluginManager().registerEvents(new ContractSignListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new ContractNpcListener(this, new CitizensIntegration()), this);
+        registerNpcListener();
         Bukkit.getPluginManager().registerEvents(contractGUI, this);
         Bukkit.getPluginManager().registerEvents(confirmGUI, this);
         Bukkit.getPluginManager().registerEvents(contractCreateGUI, this);
@@ -227,6 +230,33 @@ public final class LoveContracts extends JavaPlugin {
         } catch (java.io.IOException | RuntimeException e) {
             getLogger().warning("Could not merge new config keys: " + e.getMessage());
         }
+    }
+
+    /** Moves the numeric {@code npc.id} of older configs into {@code npc.key} (see {@link NpcSettings}). */
+    private void migrateNpcBinding() {
+        if (NpcSettings.migrateLegacyBinding(getConfig())) {
+            saveConfig();
+            getLogger().info("config.yml: npc.id -> npc.key (" + NpcSettings.boundKey(getConfig()) + ")");
+        }
+    }
+
+    /**
+     * NpcClickEvent lives in LoveCore; without it the class cannot even be linked, so the listener is registered
+     * defensively and the NPC board is simply off. Which provider is used is decided per click, not here.
+     */
+    private void registerNpcListener() {
+        try {
+            Bukkit.getPluginManager().registerEvents(new ContractNpcListener(this, npcBridge), this);
+        } catch (LinkageError loveCoreMissing) {
+            getLogger().warning("LoveCore API is not available: the contract-board NPC is disabled");
+            return;
+        }
+        // Providers register while plugins enable; check once after startup so a typo or a missing plugin is logged.
+        Bukkit.getScheduler().runTask(this, () -> {
+            if (npcBridge.boundKey() != null) {
+                npcBridge.provider();
+            }
+        });
     }
 
     /**
@@ -365,4 +395,5 @@ public final class LoveContracts extends JavaPlugin {
     public me.lovelace.lovecontracts.manager.FineManager getFineManager() { return fineManager; }
     public MessageManager getMessageManager() { return messageManager; }
     public Optional<StatBus> getStatBus() { return statBus; }
+    public NpcBridge getNpcBridge() { return npcBridge; }
 }

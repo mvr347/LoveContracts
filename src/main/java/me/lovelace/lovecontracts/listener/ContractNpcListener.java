@@ -2,16 +2,16 @@ package me.lovelace.lovecontracts.listener;
 
 import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.LoveContracts;
-import me.lovelace.lovecontracts.integration.CitizensIntegration;
+import me.lovelace.lovecontracts.integration.NpcBridge;
 import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.player.integration.LoveCoreBridge;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import dev.lovelace.lovecore.api.npc.NpcClick;
+import dev.lovelace.lovecore.api.npc.NpcClickEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 
 import java.util.List;
 import java.util.Random;
@@ -19,31 +19,35 @@ import java.util.Random;
 public class ContractNpcListener implements Listener {
 
     private final LoveContracts plugin;
-    private final CitizensIntegration citizens;
+    private final NpcBridge npcs;
     private final LoveCoreBridge bridge = new LoveCoreBridge();
     private final MiniMessage mm = MiniMessage.miniMessage();
     private final Random random = new Random();
 
-    public ContractNpcListener(LoveContracts plugin, CitizensIntegration citizens) {
+    public ContractNpcListener(LoveContracts plugin, NpcBridge npcs) {
         this.plugin = plugin;
-        this.citizens = citizens;
+        this.npcs = npcs;
     }
 
+    /**
+     * Fired by LoveCore for every NPC provider, so clicks on NPCs of other providers (or other NPCs) are ignored here.
+     * Right click hands in / cancels the active contract or opens the board; left click only opens the board.
+     */
     @EventHandler(priority = EventPriority.HIGH)
-    public void onNpcRightClick(PlayerInteractEntityEvent event) {
-        if (!citizens.isAvailable())
-            return;
-
-        Integer npcId = citizens.npcId(event.getRightClicked());
-        if (npcId == null)
-            return;
-
-        int boundId = plugin.getConfig().getInt("npc.id", -1);
-        if (boundId < 0 || npcId != boundId)
+    public void onNpcClick(NpcClickEvent event) {
+        if (!npcs.isBoundNpc(event.npc()))
             return;
 
         event.setCancelled(true);
         Player player = event.getPlayer();
+        if (event.click() == NpcClick.LEFT) {
+            if (!tryReject(player)) {
+                maybeSayAmbient(player);
+                plugin.getContractGUI().open(player);
+            }
+            return;
+        }
+
         Contract active = plugin.getContractManager().getActiveContract(player.getUniqueId());
 
         if (active != null) {
@@ -57,29 +61,6 @@ public class ContractNpcListener implements Listener {
                 Notify.event(player, mm.deserialize("<yellow>Контракт отменен по вашему запросу у NPC.</yellow>"));
             }
         } else if (!tryReject(player)) {
-            maybeSayAmbient(player);
-            plugin.getContractGUI().open(player);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onNpcLeftClick(EntityDamageByEntityEvent event) {
-        if (!citizens.isAvailable())
-            return;
-        if (!(event.getDamager() instanceof Player player))
-            return;
-
-        Integer npcId = citizens.npcId(event.getEntity());
-        if (npcId == null)
-            return;
-
-        int boundId = plugin.getConfig().getInt("npc.id", -1);
-        if (boundId < 0 || npcId != boundId)
-            return;
-
-        event.setCancelled(true);
-        // Left Click -> Open main contracts board
-        if (!tryReject(player)) {
             maybeSayAmbient(player);
             plugin.getContractGUI().open(player);
         }

@@ -2,6 +2,7 @@ package me.lovelace.lovecontracts.npc.manager;
 
 import me.lovelace.lovecontracts.util.Notify;
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.integration.NpcSettings;
 import me.lovelace.lovecontracts.npc.model.*;
 import me.lovelace.lovecontracts.npc.storage.NpcQuestDatabase;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -49,7 +50,7 @@ public class NpcQuestManager implements Listener {
     private final LoveContracts plugin;
     private final MiniMessage mm = MiniMessage.miniMessage();
     private final Map<String, NpcQuest> questMap = new LinkedHashMap<>();
-    private final Map<Integer, List<NpcQuest>> npcQuestMap = new HashMap<>();
+    private final Map<String, List<NpcQuest>> npcQuestMap = new HashMap<>();
     private final Map<UUID, Map<String, ActiveQuestProgress>> activePlayerQuests = new ConcurrentHashMap<>();
 
     public NpcQuestManager(LoveContracts plugin, NpcQuestDatabase db) {
@@ -84,7 +85,9 @@ public class NpcQuestManager implements Listener {
             try {
                 NpcQuest quest = parseQuest(id, sec);
                 questMap.put(id, quest);
-                npcQuestMap.computeIfAbsent(quest.getNpcId(), k -> new ArrayList<>()).add(quest);
+                if (quest.getNpcKey() != null) {
+                    npcQuestMap.computeIfAbsent(quest.getNpcKey(), k -> new ArrayList<>()).add(quest);
+                }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to load NPC quest '" + id + "'", e);
             }
@@ -94,7 +97,8 @@ public class NpcQuestManager implements Listener {
     }
 
     private NpcQuest parseQuest(String id, ConfigurationSection sec) {
-        int npcId = sec.getInt("npc-id", 0);
+        // npc-key is the provider key; npc-id is the pre-provider spelling (numeric Citizens id) and stays readable.
+        String npcKey = NpcSettings.readKey(sec.get("npc-key"), sec.get("npc-id"));
         String name = sec.getString("display-name", id);
         boolean repeatable = sec.getBoolean("repeatable", true);
         int cooldown = sec.getInt("cooldown-minutes", 0);
@@ -121,7 +125,7 @@ public class NpcQuestManager implements Listener {
             }
         }
 
-        return new NpcQuest(id, npcId, name, repeatable, cooldown, initialDialogue, dialogues, steps, parseRewards(sec.getConfigurationSection("rewards")));
+        return new NpcQuest(id, npcKey, name, repeatable, cooldown, initialDialogue, dialogues, steps, parseRewards(sec.getConfigurationSection("rewards")));
     }
 
     private NpcDialogueNode parseDialogueNode(String nodeId, ConfigurationSection sec) {
@@ -166,7 +170,7 @@ public class NpcQuestManager implements Listener {
         if (entStr != null) {
             try { ent = EntityType.valueOf(entStr); } catch (Exception ignored) {}
         }
-        int targetNpcId = Integer.parseInt(getMapString(map, "target-npc-id", "0"));
+        String targetNpcKey = NpcSettings.readKey(map.get("target-npc-key"), map.get("target-npc-id"));
         String targetNpcName = getMapString(map, "target-npc-name", "");
         int count = Integer.parseInt(getMapString(map, "count", "1"));
         String desc = getMapString(map, "description", "");
@@ -194,7 +198,7 @@ public class NpcQuestManager implements Listener {
             visitDialogue = new NpcDialogueNode("visit", lines, options);
         }
 
-        return new NpcQuestStep(number, type, mat, ent, targetNpcId, targetNpcName, count, desc, visitDialogue);
+        return new NpcQuestStep(number, type, mat, ent, targetNpcKey, targetNpcName, count, desc, visitDialogue);
     }
 
     /** NPC quest rewards are physical LoveCore currency only — see {@link me.lovelace.lovecontracts.model.Reward}. */
@@ -209,8 +213,9 @@ public class NpcQuestManager implements Listener {
         return rewards;
     }
 
-    public List<NpcQuest> getQuestsForNpc(int npcId) {
-        return npcQuestMap.getOrDefault(npcId, List.of());
+    public List<NpcQuest> getQuestsForNpc(String npcKey) {
+        String key = NpcSettings.normalizeKey(npcKey);
+        return key == null ? List.of() : npcQuestMap.getOrDefault(key, List.of());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

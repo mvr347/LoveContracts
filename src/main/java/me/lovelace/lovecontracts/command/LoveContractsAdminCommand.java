@@ -1,7 +1,7 @@
 package me.lovelace.lovecontracts.command;
 
 import me.lovelace.lovecontracts.LoveContracts;
-import me.lovelace.lovecontracts.integration.CitizensIntegration;
+import me.lovelace.lovecontracts.integration.NpcSettings;
 import me.lovelace.lovecontracts.model.Contract;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Location;
@@ -11,7 +11,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,7 +42,6 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
     private final LoveContracts plugin;
     private final MiniMessage mm = MiniMessage.miniMessage();
-    private final CitizensIntegration citizens = new CitizensIntegration();
 
     public LoveContractsAdminCommand(LoveContracts plugin) {
         this.plugin = plugin;
@@ -98,7 +96,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin rotate</aqua> <gray>- Принудительно ротировать контракты</gray>"));
         sender.sendMessage(mm.deserialize(
-                "<aqua>/lovecontractsadmin npc</aqua> <gray>- Привязать NPC Citizens (по взгляду)</gray>"));
+                "<aqua>/lovecontractsadmin npc</aqua> <gray>- Привязать NPC контрактов (по взгляду или выбору)</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin gui open <игрок></aqua> <gray>- Открыть игроку главное меню контрактов</gray>"));
         sender.sendMessage(mm.deserialize(
@@ -184,24 +182,28 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             sender.sendMessage(mm.deserialize("<red>✖ Недостаточно прав.</red>"));
             return;
         }
-        if (!citizens.isAvailable()) {
-            player.sendMessage(mm.deserialize("<red>✖ Плагин Citizens не установлен или отключен.</red>"));
+        var provider = plugin.getNpcBridge().provider();
+        if (provider.isEmpty()) {
+            player.sendMessage(mm.deserialize("<red>✖ Провайдер NPC «" + plugin.getNpcBridge().providerId()
+                    + "» не установлен или отключен.</red>"));
             return;
         }
-        Entity looked = citizens.lookedAtNpc(player, 6.0);
-        if (looked == null) {
-            player.sendMessage(mm.deserialize("<red>✖ Сначала посмотрите на NPC Citizens.</red>"));
+        var target = provider.get().targeted(player);
+        if (target.isEmpty()) {
+            player.sendMessage(mm.deserialize("<red>✖ Сначала посмотрите на NPC или выберите его.</red>"));
             return;
         }
-        Integer id = citizens.npcId(looked);
-        if (id == null) {
+        String key = NpcSettings.normalizeKey(target.get().key());
+        if (key == null) {
             player.sendMessage(mm.deserialize("<red>✖ Не удалось определить ID NPC.</red>"));
             return;
         }
-        plugin.getConfig().set("npc.id", id);
+        plugin.getConfig().set(NpcSettings.KEY_PATH, key);
+        plugin.getConfig().set(NpcSettings.LEGACY_ID_PATH, null);
         plugin.saveConfig();
         player.sendMessage(
-                mm.deserialize("<green>✔ Привязан NPC контрактов #" + id + ". ПКМ открывает доску.</green>"));
+                mm.deserialize("<green>✔ Привязан NPC контрактов " + NpcSettings.describe(key)
+                        + ". ПКМ открывает доску.</green>"));
     }
 
     private void sign(CommandSender sender, String[] args) {
