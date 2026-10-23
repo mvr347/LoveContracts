@@ -87,6 +87,18 @@ class NpcBridgeTest {
     }
 
     @Test
+    void globalMeansTheCoreChoiceAndWithoutTheCoreCitizensAndNeverWarns() {
+        config.set("integrations.npc-provider", "global");
+        registered.put("citizens", provider("citizens"));
+
+        assertEquals("citizens", bridge().providerId());
+        assertTrue(bridge().provider().isPresent());
+        assertTrue(warnings.isEmpty());
+        assertTrue(NpcSettings.followsGlobal(" Global "));
+        assertFalse(NpcSettings.followsGlobal("citizens"));
+    }
+
+    @Test
     void unknownValueFallsBackToCitizensWithOneWarning() {
         config.set("integrations.npc-provider", "cmi");
         registered.put("citizens", provider("citizens"));

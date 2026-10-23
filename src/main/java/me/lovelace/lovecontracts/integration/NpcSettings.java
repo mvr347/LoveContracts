@@ -1,6 +1,8 @@
 package me.lovelace.lovecontracts.integration;
 
+import dev.lovelace.lovecore.api.LoveCore;
 import dev.lovelace.lovecore.api.npc.NpcHandle;
+import dev.lovelace.lovecore.api.provider.ProviderKind;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.Locale;
@@ -29,8 +31,27 @@ public final class NpcSettings {
         return raw != null && KNOWN_PROVIDERS.contains(raw.toString().trim().toLowerCase(Locale.ROOT));
     }
 
-    /** Provider id from the config value; unknown or blank values fall back to {@code citizens}. */
+    /** Config value that follows {@code integrations.provider} of LoveCore. */
+    public static final String GLOBAL = "global";
+
+    /** True for an absent, blank or {@code global} value: the provider is then the global choice of LoveCore. */
+    public static boolean followsGlobal(Object raw) {
+        return raw == null || raw.toString().isBlank() || GLOBAL.equalsIgnoreCase(raw.toString().trim());
+    }
+
+    /**
+     * Provider id from the config value. {@code global}, absent or blank follows {@code integrations.provider}
+     * of LoveCore (without LoveCore: {@code citizens}); a known id wins; an unknown value falls back to
+     * {@code citizens}.
+     */
     public static String providerId(Object raw) {
+        if (followsGlobal(raw)) {
+            try {
+                return LoveCore.providerId(ProviderKind.NPC, GLOBAL);
+            } catch (LinkageError coreMissingOrOld) {
+                return CITIZENS;
+            }
+        }
         return isKnownProvider(raw) ? raw.toString().trim().toLowerCase(Locale.ROOT) : CITIZENS;
     }
 
