@@ -46,10 +46,10 @@ public final class NpcBridge {
     /** The configured provider id; an unknown value is reported once and treated as {@code citizens}. */
     public synchronized String providerId() {
         Object raw = config.get().get(NpcSettings.PROVIDER_PATH, null);
-        if (raw != null && !raw.toString().isBlank() && !NpcSettings.isKnownProvider(raw)) {
+        if (!NpcSettings.followsGlobal(raw) && !NpcSettings.isKnownProvider(raw)) {
             if (!warnedUnknownValue) {
                 warnedUnknownValue = true;
-                warn.accept(NpcSettings.PROVIDER_PATH + ": unknown value '" + raw + "' (expected citizens or "
+                warn.accept(NpcSettings.PROVIDER_PATH + ": unknown value '" + raw + "' (expected global, citizens or "
                         + "loveessential), using citizens");
             }
         } else {

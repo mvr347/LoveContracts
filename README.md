@@ -144,7 +144,7 @@ gui:
 
 ```yaml
 integrations:
-  npc-provider: citizens   # citizens | loveessential
+  npc-provider: global   # global (как в integrations.provider LoveCore) | citizens | loveessential
 
 npc:
   enabled: true
