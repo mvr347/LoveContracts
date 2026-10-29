@@ -51,11 +51,15 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                               @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Только для игроков.");
+            // Help needs no player, so console may read it.
+            if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
+                sendHelp(sender);
+            } else {
+                sender.sendMessage(mm.deserialize("<red>Команда доступна только игрокам.</red>"));
+            }
             return true;
         }
         if (!player.hasPermission("pcontracts.use")) {
-            player.sendMessage(mm.deserialize("<red>Нет прав.</red>"));
             return true;
         }
         if (args.length == 0) {
@@ -252,7 +256,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void sendHelp(Player player) {
+    private void sendHelp(CommandSender player) {
         List<String> lines = List.of(
                 "<dark_gray>========== <aqua>LoveContracts</aqua> ==========</dark_gray>",
                 "<aqua>/pcontract board</aqua> <gray>- доска открытых контрактов</gray>",

@@ -15,18 +15,21 @@ commands:
     # Старое имя команды (lovecontracts) и его прежние короткие алиасы остаются здесь же,
     # чтобы никто не потерял доступ по привычке — эта команда уже была чисто admin-scoped,
     # так что переименование не требует отдельного redirect-сообщения.
-    aliases: [lovecontracts, lc, lca, lcadmin]
+    aliases: [lovecontracts, lca, lcadmin]
     permission: lovecontracts.admin
+    permission-message: ""
   contracts:
     description: Open contract board / view stats (Admin fallback)
     usage: /contracts [stats|abandon <id>]
     aliases: [contract, контракты]
     permission: lovecontracts.admin
+    permission-message: ""
   pcontract:
     description: Player-to-player contracts
     usage: /pcontract <board|my|create|accept|turnin|submit|review|cancel|info|help>
     aliases: [pcontracts, playercontract, контракт]
     permission: lovecontracts.admin
+    permission-message: ""
 
 permissions:
   lovecontracts.admin:

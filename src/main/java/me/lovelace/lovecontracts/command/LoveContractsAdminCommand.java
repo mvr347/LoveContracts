@@ -50,8 +50,8 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
             @NotNull String label, @NotNull String[] args) {
+        // Silent on purpose: a command the sender cannot use is simply not theirs.
         if (!sender.hasPermission("lovecontracts.admin")) {
-            sender.sendMessage(mm.deserialize("<red>✖ Недостаточно прав.</red>"));
             return true;
         }
 
@@ -73,10 +73,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             case "reset" -> reset(sender, args);
             case "toggle" -> toggle(sender, args);
             case "help" -> sendHelp(sender);
-            default -> {
-                sender.sendMessage(mm.deserialize("<red>✖ Неизвестная подкоманда.</red>"));
-                sendHelp(sender);
-            }
+            default -> sendHelp(sender);
         }
         return true;
     }
@@ -116,7 +113,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
     private void create(CommandSender sender) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(mm.deserialize("<red>✖ Команда только для игроков.</red>"));
+            sender.sendMessage(mm.deserialize("<red>Команда доступна только игрокам.</red>"));
             return;
         }
         plugin.getContractCreateGUI().open(player);
@@ -175,11 +172,10 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
     private void npc(CommandSender sender) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(mm.deserialize("<red>✖ Команда только для игроков.</red>"));
+            sender.sendMessage(mm.deserialize("<red>Команда доступна только игрокам.</red>"));
             return;
         }
         if (!sender.hasPermission("lovecontracts.npc")) {
-            sender.sendMessage(mm.deserialize("<red>✖ Недостаточно прав.</red>"));
             return;
         }
         var provider = plugin.getNpcBridge().provider();
@@ -208,11 +204,10 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
     private void sign(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(mm.deserialize("<red>✖ Команда только для игроков.</red>"));
+            sender.sendMessage(mm.deserialize("<red>Команда доступна только игрокам.</red>"));
             return;
         }
         if (!sender.hasPermission("lovecontracts.sign")) {
-            sender.sendMessage(mm.deserialize("<red>✖ Недостаточно прав.</red>"));
             return;
         }
 

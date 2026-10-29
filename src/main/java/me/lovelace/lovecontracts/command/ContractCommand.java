@@ -25,12 +25,11 @@ public class ContractCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                              @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Команда только для игроков.");
+            sender.sendMessage(mm.deserialize("<red>Команда доступна только игрокам.</red>"));
             return true;
         }
 
         if (!player.hasPermission("lovecontracts.use")) {
-            player.sendMessage(mm.deserialize("<red>Недостаточно прав.</red>"));
             return true;
         }
 
