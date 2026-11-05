@@ -17,6 +17,8 @@ public final class MessagesMigrator {
     /** Sections overwritten when migrating to version N (index = N - 2). */
     private static final List<List<String>> SECTIONS_BY_VERSION = List.of(
             // v2: GUI lore and names in the gui-gen-6 standard (style.*, gui.*)
+            List.of("gui"),
+            // v3 (2026-11-05): slot 0 of the board is the common NPC head with its description
             List.of("gui"));
 
     private MessagesMigrator() {

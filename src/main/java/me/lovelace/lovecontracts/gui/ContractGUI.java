@@ -141,6 +141,8 @@ public class ContractGUI implements Listener, InventoryHolder {
                 inv.setItem(s, filterButton(filter));
             } else if (s == SLOT_SORT) {
                 inv.setItem(s, sortButton(sort));
+            } else if (s == 0) {
+                inv.setItem(s, npcHeader());
             } else {
                 inv.setItem(s, GLASS_PANE);
             }
@@ -511,6 +513,13 @@ public class ContractGUI implements Listener, InventoryHolder {
         meta.getPersistentDataContainer().set(contractKey, PersistentDataType.STRING, c.getId());
         item.setItemMeta(meta);
         return item;
+    }
+
+    /** Slot 0 of every NPC menu: the common NPC head with a short description of the board. */
+    private ItemStack npcHeader() {
+        String base64 = HeadUtil.getHeadTexture("npc-header", HeadTextures.NPC_HEADER);
+        return HeadUtil.createBase64Head(base64, text("gui.npc-head-name"),
+                components(List.of(text("gui.npc-head-sub"), "", text("gui.npc-head-line1"), text("gui.npc-head-line2"))));
     }
 
     private ItemStack closeButton() {

@@ -90,4 +90,25 @@ class MessagesMigratorTest {
             assertEquals(MessagesMigrator.latestVersion(), bundled.getInt(MessagesMigrator.VERSION_KEY));
         }
     }
+
+    @Test
+    void versionThreeBringsTheNpcHeadTexts() {
+        YamlConfiguration server = yaml("""
+                data-version: 2
+                gui:
+                  title: "<red>Старый"
+                """);
+        YamlConfiguration bundled = yaml("""
+                data-version: 3
+                gui:
+                  title: "<gold>Доска"
+                  npc-head-name: "<gold>Доска контрактов"
+                """);
+
+        assertTrue(MessagesMigrator.migrate(server, bundled));
+
+        assertEquals("<gold>Доска контрактов", server.getString("gui.npc-head-name"));
+        assertEquals(3, server.getInt(MessagesMigrator.VERSION_KEY));
+        assertEquals(3, MessagesMigrator.latestVersion());
+    }
 }
