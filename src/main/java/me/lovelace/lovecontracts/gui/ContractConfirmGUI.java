@@ -91,8 +91,10 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
             // Right under the subtitle: which contract this is (the hopper showed it as an item in the middle).
             yesLore.add(Math.min(1, yesLore.size()), Component.text("  ").append(previewItem.effectiveName()));
         }
-        ItemStack yes = ConfirmMenuLayout.button(Component.text(messages().text("gui.confirm-yes")), yesLore);
-        ItemStack no = ConfirmMenuLayout.button(Component.text(messages().text("gui.confirm-no")),
+        // The names are MiniMessage strings (<green>…</green>): parse them, plain Component.text would show the tags.
+        var mm = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage();
+        ItemStack yes = ConfirmMenuLayout.button(mm.deserialize(messages().text("gui.confirm-yes")), yesLore);
+        ItemStack no = ConfirmMenuLayout.button(mm.deserialize(messages().text("gui.confirm-no")),
                 components(player, cancelLines()));
         if (yes == null || no == null) return false;
         Inventory inv = Bukkit.createInventory(this, ConfirmMenuLayout.SIZE, ConfirmMenuLayout.title(player));
