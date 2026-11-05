@@ -60,7 +60,7 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
         pendingContracts.put(player.getUniqueId(), contract);
         Component title = plugin.getMessageManager().getComponent("gui.confirm-title",
                 "<gold>Подтверждение контракта</gold>");
-        if (ConfirmMenuLayout.available() && openLarge(player, contract, previewItem)) {
+        if (ConfirmMenuLayout.available(player) && openLarge(player, contract, previewItem)) {
             return;
         }
         Inventory inv = Bukkit.createInventory(this, InventoryType.HOPPER, title);
