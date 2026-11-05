@@ -29,7 +29,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 5-slot Hopper confirmation menu:
+ * Contract confirmation. With ItemsAdder and PlaceholderAPI present it is the server's 27-slot confirm menu
+ * (owner decision 2026-11-05): the contract preview and the reward / penalty sit in the lore of the confirm button.
+ * Otherwise the 5-slot Hopper menu:
  * Slot 0: Confirm | Slot 1: Glass | Slot 2: Contract Preview | Slot 3: Glass | Slot 4: Cancel
  */
 public class ContractConfirmGUI implements Listener, InventoryHolder {
@@ -58,6 +60,9 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
         pendingContracts.put(player.getUniqueId(), contract);
         Component title = plugin.getMessageManager().getComponent("gui.confirm-title",
                 "<gold>Подтверждение контракта</gold>");
+        if (ConfirmMenuLayout.available() && openLarge(player, contract, previewItem)) {
+            return;
+        }
         Inventory inv = Bukkit.createInventory(this, InventoryType.HOPPER, title);
 
         ItemStack confirmBtn = HeadUtil.createBase64Head(
@@ -77,6 +82,23 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
         inv.setItem(4, cancelBtn);
 
         player.openInventory(inv);
+    }
+
+    /** The 27-slot menu; false (nothing opened) when the invisible item is gone, so the caller opens the hopper. */
+    private boolean openLarge(Player player, Contract contract, ItemStack previewItem) {
+        List<Component> yesLore = new ArrayList<>(components(player, acceptLines(player, contract)));
+        if (previewItem != null && !previewItem.getType().isAir()) {
+            // Right under the subtitle: which contract this is (the hopper showed it as an item in the middle).
+            yesLore.add(Math.min(1, yesLore.size()), Component.text("  ").append(previewItem.effectiveName()));
+        }
+        ItemStack yes = ConfirmMenuLayout.button(Component.text(messages().text("gui.confirm-yes")), yesLore);
+        ItemStack no = ConfirmMenuLayout.button(Component.text(messages().text("gui.confirm-no")),
+                components(player, cancelLines()));
+        if (yes == null || no == null) return false;
+        Inventory inv = Bukkit.createInventory(this, ConfirmMenuLayout.SIZE, ConfirmMenuLayout.title(player));
+        ConfirmMenuLayout.fill(inv, yes, no);
+        player.openInventory(inv);
+        return true;
     }
 
     private MessageManager messages() {
@@ -154,11 +176,14 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
         lastClick.put(player.getUniqueId(), now);
 
         int slot = event.getRawSlot();
-        if (slot < 0 || slot > 4) return;
+        boolean large = event.getView().getTopInventory().getSize() == ConfirmMenuLayout.SIZE;
+        if (slot < 0 || slot >= event.getView().getTopInventory().getSize()) return;
+        boolean confirm = large ? ConfirmMenuLayout.isConfirm(slot) : slot == 0;
+        boolean cancel = large ? ConfirmMenuLayout.isCancel(slot) : slot == 4;
 
         Contract contract = pendingContracts.get(player.getUniqueId());
 
-        if (slot == 0) { // Confirm
+        if (confirm) { // Confirm
             pendingContracts.remove(player.getUniqueId());
             player.closeInventory();
             if (contract != null) {
@@ -167,7 +192,7 @@ public class ContractConfirmGUI implements Listener, InventoryHolder {
             return;
         }
 
-        if (slot == 4) { // Cancel
+        if (cancel) { // Cancel
             pendingContracts.remove(player.getUniqueId());
             plugin.getContractGUI().open(player);
         }
