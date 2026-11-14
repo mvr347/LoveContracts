@@ -46,6 +46,10 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
     private final Map<UUID, NpcQuest> activeQuests = new ConcurrentHashMap<>();
     private final Map<UUID, NpcDialogueNode> activeNodes = new ConcurrentHashMap<>();
 
+    private final Map<UUID, dev.lovelace.lovecore.api.npc.NpcHandle> speakers = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> expectedSteps = new ConcurrentHashMap<>();
+    private final Map<UUID, Inventory> views = new ConcurrentHashMap<>();
+
     private static final String CLOSE_HEAD = HeadTextures.CLOSE;
 
     private static final ItemStack GLASS_PANE;
@@ -63,12 +67,48 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         this.plugin = plugin;
     }
 
-    public void open(Player player, NpcQuest quest, NpcDialogueNode node) {
+    private record OfferPage(List<NpcQuest> offers, int page) implements InventoryHolder {
+        private OfferPage { offers = List.copyOf(offers); }
+        @Override public Inventory getInventory() { return null; }
+    }
+
+    public void openOffers(Player player, List<NpcQuest> offers) {
+        openOffers(player, offers, 0);
+    }
+
+    private void openOffers(Player player, List<NpcQuest> offers, int page) {
+        if (offers.isEmpty()) return;
+        page = Math.max(0, Math.min(page, (offers.size() - 1) / 45));
+        Inventory inventory = Bukkit.createInventory(new OfferPage(offers, page), 54,
+                mm.deserialize("<gold>Поручения</gold>"));
+        for (int slot = 0; slot < 45 && page * 45 + slot < offers.size(); slot++) {
+            NpcQuest quest = offers.get(page * 45 + slot);
+            ItemStack item = new ItemStack(Material.WRITABLE_BOOK);
+            ItemMeta meta = item.getItemMeta();
+            meta.displayName(ItemText.upright(mm.deserialize(quest.getDisplayName())));
+            meta.lore(List.of(Component.text(plugin.getNpcQuestManager().isActive(player, quest) ? "Продолжить поручение" : "Обсудить новое поручение")));
+            item.setItemMeta(meta);
+            inventory.setItem(slot, item);
+        }
+        if (page > 0) inventory.setItem(45, offerNavigation("Назад"));
+        inventory.setItem(49, closeButton());
+        if ((page + 1) * 45 < offers.size()) inventory.setItem(53, offerNavigation("Далее"));
+        player.openInventory(inventory);
+    }
+
+    private ItemStack offerNavigation(String name) {
+        ItemStack item = new ItemStack(Material.ARROW);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(name));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public void open(Player player, NpcQuest quest, NpcDialogueNode node, dev.lovelace.lovecore.api.npc.NpcHandle speaker, int expected) {
         if (player == null || quest == null || node == null) return;
 
         UUID uuid = player.getUniqueId();
-        activeQuests.put(uuid, quest);
-        activeNodes.put(uuid, node);
+
 
         Inventory inv = Bukkit.createInventory(this, 54, mm.deserialize("<gold>" + quest.getDisplayName() + "</gold>"));
 
@@ -79,7 +119,7 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         for (int s = 9; s <= 17; s++) inv.setItem(s, GLASS_PANE);
 
         // Dialogue text on Slot 22
-        inv.setItem(22, dialogueTextItem(node));
+        inv.setItem(22, dialogueTextItem(node, quest, player));
 
         // Options on OPTION_SLOTS (no glass filler!)
         List<NpcDialogueOption> options = node.getOptions();
@@ -92,10 +132,28 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         inv.setItem(53, closeButton());
 
         player.openInventory(inv);
+        activeQuests.put(uuid, quest);
+        activeNodes.put(uuid, node);
+        speakers.put(uuid, speaker);
+        expectedSteps.put(uuid, expected);
+        views.put(uuid, inv);
     }
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
+        if (event.getInventory().getHolder() instanceof OfferPage page) {
+            event.setCancelled(true);
+            if (!(event.getWhoClicked() instanceof Player player)) return;
+            int slot = event.getRawSlot();
+            if (slot == 49) player.closeInventory();
+            else if (slot == 45 && page.page() > 0) openOffers(player, page.offers(), page.page() - 1);
+            else if (slot == 53 && (page.page() + 1) * 45 < page.offers().size()) openOffers(player, page.offers(), page.page() + 1);
+            else if (slot >= 0 && slot < 45 && page.page() * 45 + slot < page.offers().size()) {
+                player.closeInventory();
+                plugin.getNpcQuestManager().openNpcInteraction(player, page.offers().get(page.page() * 45 + slot).getId());
+            }
+            return;
+        }
         if (!(event.getInventory().getHolder() instanceof NpcDialogueGUI)) return;
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player)) return;
@@ -116,28 +174,32 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         UUID uuid = player.getUniqueId();
         NpcQuest quest = activeQuests.get(uuid);
         NpcDialogueNode node = activeNodes.get(uuid);
-        if (quest == null || node == null) return;
+        if (quest == null || node == null || views.get(uuid) != event.getInventory()) return;
+        if (!plugin.getNpcQuestManager().canInteract(player, speakers.get(uuid))) {
+            player.closeInventory();
+            return;
+        }
 
         for (int i = 0; i < OPTION_SLOTS.length && i < node.getOptions().size(); i++) {
             if (slot == OPTION_SLOTS[i]) {
                 NpcDialogueOption option = node.getOptions().get(i);
-                handleOptionAction(player, quest, option);
+                handleOptionAction(player, quest, option, speakers.get(uuid), expectedSteps.getOrDefault(uuid, -1));
                 return;
             }
         }
     }
 
-    private void handleOptionAction(Player player, NpcQuest quest, NpcDialogueOption option) {
+    private void handleOptionAction(Player player, NpcQuest quest, NpcDialogueOption option, dev.lovelace.lovecore.api.npc.NpcHandle speaker, int expected) {
         switch (option.getAction()) {
             case ACCEPT_QUEST -> {
                 player.closeInventory();
-                plugin.getNpcQuestManager().startQuest(player, quest);
+                if (expected == -1) plugin.getNpcQuestManager().startQuest(player, quest);
             }
             case NEXT_NODE -> {
                 if (option.getNextNode() != null) {
                     NpcDialogueNode next = quest.getDialogueNode(option.getNextNode());
                     if (next != null) {
-                        open(player, quest, next);
+                        open(player, quest, next, speaker, expected);
                         return;
                     }
                 }
@@ -145,7 +207,7 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
             }
             case COMPLETE_STEP -> {
                 player.closeInventory();
-                plugin.getNpcQuestManager().advanceStep(player, quest);
+                plugin.getNpcQuestManager().confirmStep(player, quest, expected, speaker);
             }
             case CLOSE -> player.closeInventory();
         }
@@ -155,10 +217,20 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
     public void onClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() instanceof NpcDialogueGUI) {
             UUID uuid = event.getPlayer().getUniqueId();
+            if (views.get(uuid) != event.getInventory()) return;
+            views.remove(uuid);
+            speakers.remove(uuid);
+            expectedSteps.remove(uuid);
             activeQuests.remove(uuid);
             activeNodes.remove(uuid);
             lastClick.remove(uuid);
         }
+    }
+
+    @EventHandler
+    public void onDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+        if (event.getInventory().getHolder() == this || event.getInventory().getHolder() instanceof OfferPage)
+            event.setCancelled(true);
     }
 
     private MessageManager messages() {
@@ -179,7 +251,7 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         return out;
     }
 
-    private ItemStack dialogueTextItem(NpcDialogueNode node) {
+    private ItemStack dialogueTextItem(NpcDialogueNode node, NpcQuest quest, Player player) {
         ItemStack item = new ItemStack(Material.WRITTEN_BOOK);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(ItemText.upright(mm.deserialize(messages().text("gui.npc-dialogue-name"))));
@@ -190,6 +262,10 @@ public class NpcDialogueGUI implements Listener, InventoryHolder {
         for (String line : node.getTextLines()) {
             lore.add(mm.deserialize(line));
         }
+        lore.add(Component.empty());
+        lore.add(mm.deserialize("<gold>Награда за всю цепочку:</gold>"));
+        for (var reward : quest.getRewards()) for (String line : reward.getDisplayLines())
+            lore.add(mm.deserialize(me.lovelace.lovecontracts.util.CoinFormat.resolveGlyphs(player, line)));
         meta.lore(ItemText.upright(lore));
         item.setItemMeta(meta);
         return item;

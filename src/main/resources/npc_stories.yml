@@ -1,0 +1,158 @@
+# Дополнительные цепочки 2.0. Файл создаётся отдельно, не заменяя npc_quests.yml администратора.
+# @contractor — NPC, привязанный /lovecontractsadmin npc.
+# @brew:saloonkeeper_main — NPC выбранного провайдера с меткой lovebrew.trader=saloonkeeper_main.
+# Для другого трактирщика замените ключ после @brew: или укажите обычный ключ NPC.
+npc_quests:
+  innkeeper_supplies_v2:
+    npc-key: "@contractor"
+    display-name: "<gold>Пустые полки трактира</gold>"
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактник:</yellow> Трактирщик просил помощи: поставка припасов задерживается."
+          - "Узнай у него подробности. Он сам скажет, что нужно принести."
+        options:
+          - {text: "Узнать о поставке", action: NEXT_NODE, next-node: details}
+          - {text: "Возьмусь за помощь", action: ACCEPT_QUEST}
+          - {text: "Позже", action: CLOSE}
+      details:
+        text:
+          - "Сначала поговори с трактирщиком, затем передай припасы и обсуди результат."
+          - "Оплата — за всю работу, после последнего разговора."
+        options:
+          - {text: "Беру поручение", action: ACCEPT_QUEST}
+          - {text: "Не сейчас", action: CLOSE}
+      fearful:
+        text:
+          - "<yellow>Контрактник:</yellow> Я слышал о твоих драках. Давай спокойно."
+          - "Трактирщику нужны припасы. Помоги без угроз — это будет хороший поступок."
+        options:
+          - {text: "Я помогу спокойно", action: ACCEPT_QUEST}
+          - {text: "Уйти", action: CLOSE}
+      skeptical:
+        text:
+          - "<yellow>Контрактник:</yellow> Слова ничего не стоят. Покажи делом, что тебе можно доверять."
+          - "У трактирщика задержались припасы. Готов помочь?"
+        options:
+          - {text: "Докажу делом", action: ACCEPT_QUEST}
+          - {text: "Позже", action: CLOSE}
+      friendly:
+        text:
+          - "<yellow>Контрактник:</yellow> Рад тебя видеть! Есть дело для надёжного человека."
+          - "Нашему трактирщику нужна помощь с припасами."
+        options:
+          - {text: "На меня можно рассчитывать", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - type: VISIT_NPC
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: Трактирщик
+        description: "Расспросите трактирщика о пропавшей поставке"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Вечером придут гости, а хлеба совсем не осталось."
+            - "Принеси 24 обычных хлеба. После передачи поговорим ещё раз."
+          options:
+            - {text: "Принесу хлеб", action: COMPLETE_STEP}
+            - {text: "Зайду позже", action: CLOSE}
+      - type: DELIVER_ITEM
+        material: BREAD
+        count: 24
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: Трактирщик
+        description: "Передайте трактирщику 24 хлеба"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Удалось собрать хлеб? Я приму 24 штуки."
+          options:
+            - {text: "Передать 24 хлеба", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - type: VISIT_NPC
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: Трактирщик
+        description: "Обсудите результат с трактирщиком и получите награду"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Теперь гости не останутся голодными. Спасибо за помощь!"
+            - "Держи оплату. Если захочешь заглянуть в трактир — всегда рад."
+          options:
+            - {text: "Завершить поручение", action: COMPLETE_STEP}
+            - {text: "Поговорим позже", action: CLOSE}
+    rewards:
+      # 1600 × reward-factor 0.15 = 240 медных единиц; ниже золотой монеты.
+      money: 1600
+
+  # Пример истории с несколькими обычными NPC. Включать после настройки npc-actors
+  # и координат вашей локации. Ни профессия, ни LoveBrew для неё не требуются.
+  village_remedy_v2:
+    enabled: false
+    npc-key: "@actor:captain"
+    display-name: "<gold>Лекарство для караула</gold>"
+    repeatable: false
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Капитан:</yellow> Один из дозорных вернулся с болот с лихорадкой."
+          - "Спроси травницу, что ей нужно для лекарства. Я оплачу помощь после твоего возвращения."
+        options:
+          - {text: "Я помогу дозорному", action: ACCEPT_QUEST}
+          - {text: "Кто знает о болезни больше?", action: NEXT_NODE, next-node: background}
+          - {text: "Мне нужно подумать", action: CLOSE}
+      background:
+        text:
+          - "Травница уже видела такую лихорадку. Не трать время на слухи — поговори с ней лично."
+        options:
+          - {text: "Отправлюсь к ней", action: ACCEPT_QUEST}
+          - {text: "Пока не готов", action: CLOSE}
+    steps:
+      - type: VISIT_NPC
+        target-npc-key: "@actor:herbalist"
+        target-npc-name: Травница
+        description: "Расспросите травницу о лекарстве для караула"
+        dialogue:
+          text:
+            - "<yellow>Травница:</yellow> Для отвара нужны восемь коричневых грибов. Осмотри старую болотную тропу."
+          options:
+            - {text: "Я найду грибы", action: COMPLETE_STEP}
+            - {text: "Поговорим позже", action: CLOSE}
+          reactions:
+            fearful:
+              text:
+                - "<yellow>Травница:</yellow> Не надо угроз. Мне страшно, но стражнику нужна помощь. Найди восемь коричневых грибов."
+            skeptical:
+              text:
+                - "<yellow>Травница:</yellow> Обещаниям я не верю. Принеси восемь коричневых грибов — тогда поговорим."
+            friendly:
+              text:
+                - "<yellow>Травница:</yellow> На тебя можно положиться. Найди восемь коричневых грибов, и мы поможем караулу."
+      - type: VISIT_LOCATION
+        description: "Осмотрите старую болотную тропу"
+        location: {world: world, x: 120, y: 64, z: -80, radius: 8}
+      - type: DELIVER_ITEM
+        material: BROWN_MUSHROOM
+        count: 8
+        target-npc-key: "@actor:herbalist"
+        target-npc-name: Травница
+        description: "Передайте травнице восемь коричневых грибов"
+        dialogue:
+          text:
+            - "<yellow>Травница:</yellow> Передай грибы. Отвар я приготовлю сама — сообщи капитану, что лекарство будет готово к вечеру."
+          options:
+            - {text: "Передать восемь грибов", action: COMPLETE_STEP}
+            - {text: "Я ещё не всё нашёл", action: CLOSE}
+      - type: VISIT_NPC
+        target-npc-key: "@actor:captain"
+        target-npc-name: Капитан
+        description: "Вернитесь к капитану и расскажите о лекарстве"
+        dialogue:
+          text:
+            - "<yellow>Капитан:</yellow> Значит, к вечеру дозорный получит лекарство. Спасибо за помощь."
+          options:
+            - {text: "Завершить поручение", action: COMPLETE_STEP}
+            - {text: "Зайду позже", action: CLOSE}
+    rewards:
+      money: 1600

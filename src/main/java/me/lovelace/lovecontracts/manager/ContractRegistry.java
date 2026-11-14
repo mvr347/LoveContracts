@@ -68,6 +68,32 @@ public class ContractRegistry {
         plugin.getLogger().info("Loaded " + contracts.size() + " contract definitions");
     }
 
+    public void validateDefinitions(java.util.Map<String,Object> definitions) {
+        var yaml = new YamlConfiguration();
+        var root = yaml.createSection("contracts", definitions);
+        for (String id : root.getKeys(false)) parseContract(id, root.getConfigurationSection(id));
+        var old = new YamlConfiguration();
+        try {
+            old.load(new File(plugin.getDataFolder(), "contracts.yml"));
+            var oldGoals = new java.util.HashMap<String,Object>(); var newGoals = new java.util.HashMap<String,Object>();
+            var original = old.getConfigurationSection("contracts");
+            if (original != null) for (String id : original.getKeys(false)) oldGoals.put(id, conditionValues(original.getConfigurationSection(id+".condition")));
+            for (String id : root.getKeys(false)) newGoals.put(id, conditionValues(root.getConfigurationSection(id+".condition")));
+            var active = new java.util.HashSet<String>();
+            try (var c=plugin.getDatabase().getConnection(); var q=c.createStatement(); var rows=q.executeQuery("SELECT contract_id FROM player_contracts WHERE completed_at IS NULL AND failed_at IS NULL UNION SELECT substr(quest_id,7) FROM player_npc_quests WHERE status='ACTIVE' AND substr(quest_id,1,6)='story_'")) {
+                while(rows.next())active.add(rows.getString(1));
+            }
+            me.lovelace.lovecontracts.service.ActiveDefinitionGuard.validate(oldGoals,newGoals,active);
+        } catch (IllegalArgumentException error) { throw error; }
+        catch (Exception error) { throw new IllegalStateException("Cannot inspect active contracts", error); }
+    }
+
+    private java.util.Map<String,Object> conditionValues(ConfigurationSection section) {
+        var result=new java.util.LinkedHashMap<String,Object>();
+        if(section!=null)section.getValues(true).forEach((k,v)->{if(!(v instanceof ConfigurationSection))result.put(k,v);});
+        return result;
+    }
+
     private Contract parseContract(String id, ConfigurationSection section) {
         String displayName = section.getString("display-name", id);
         String description = section.getString("description", "");
@@ -94,6 +120,11 @@ public class ContractRegistry {
         Contract contract = new Contract(id, displayName, description, difficulty, type,
                 maxAcceptances, dailySpawns, weight, expirationMinutes, starter, enabled, rewards, penalties, requirement);
 
+        var conditionSection = section.getConfigurationSection("condition");
+        if (conditionSection != null && conditionSection.isConfigurationSection("location"))
+            contract.setTargetLocation(me.lovelace.lovecontracts.npc.model.QuestLocation.parse(conditionSection.getConfigurationSection("location").getValues(false)));
+        contract.setCompletionAchievement(section.getString("completion-achievement"));
+        contract.setRequiredAchievement(section.getString("requires-achievement"));
         contract.setCondition(parseCondition(contract, section.getConfigurationSection("condition")));
         return contract;
     }
@@ -118,7 +149,7 @@ public class ContractRegistry {
         if (section == null) return rewards;
 
         if (section.contains("money")) {
-            rewards.add(Reward.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.REWARD_SCALE), ratio));
+            rewards.add(Reward.money(EconomyConfig.read(plugin, section, "money", EconomyConfig.REWARD_SCALE), ratio).capped(plugin.getConfig().getLong("economy.contracts-v2.max-reward", 240)));
         }
         return rewards;
     }
@@ -154,12 +185,14 @@ public class ContractRegistry {
             }
             case "MineMaterial" -> {
                 Material material = Material.matchMaterial(section.getString("material", "STONE"));
-                yield new MineMaterialCondition(contract, material != null ? material : Material.STONE, count);
+                if (material == null) throw new IllegalArgumentException("Unknown material");
+                yield new MineMaterialCondition(contract, material, count);
             }
             case "CatchFish" -> new CatchFishCondition(contract, count);
             case "CraftItem" -> {
                 Material material = Material.matchMaterial(section.getString("material", "STICK"));
-                yield new CraftItemCondition(contract, material != null ? material : Material.STICK, count);
+                if (material == null) throw new IllegalArgumentException("Unknown material");
+                yield new CraftItemCondition(contract, material, count);
             }
             default -> throw new IllegalArgumentException("unknown condition type: " + type);
         };
@@ -176,7 +209,8 @@ public class ContractRegistry {
     }
 
     public List<Contract> getEnabled() {
-        return contracts.values().stream().filter(Contract::isEnabled).toList();
+        return contracts.values().stream().filter(Contract::isEnabled)
+                .filter(c -> plugin.getNpcQuestManager() == null || !plugin.getNpcQuestManager().isStoryTemplate(c.getId())).toList();
     }
 
     public Collection<Contract> getAll() {

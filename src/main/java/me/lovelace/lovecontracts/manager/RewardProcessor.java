@@ -40,6 +40,13 @@ public class RewardProcessor {
         }
         if (totalAmount <= 0) return;
 
+        giveRewards(player, contract, totalAmount);
+    }
+
+    /** Uses the exact amount reserved by the completion transaction. */
+    public void giveRewards(Player player, Contract contract, long totalAmount) {
+        if (player == null || contract == null || totalAmount <= 0) return;
+
         if (!player.isOnline()) {
             // The player quit between completion and this task: queue the payout so the reward
             // is delivered on next join instead of vanishing.

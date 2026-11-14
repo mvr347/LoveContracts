@@ -68,6 +68,9 @@ public abstract class ContractCondition implements Listener {
     }
 
     public final void incrementProgress(Player player, int amount) {
+        var area = contract.getTargetLocation();
+        var at = player.getLocation();
+        if (area != null && !area.contains(at.getWorld().getName(), at.getX(), at.getY(), at.getZ())) return;
         int newVal = progress.merge(player.getUniqueId(), amount, Integer::sum);
         saveProgressAsync(player.getUniqueId(), newVal);
     }

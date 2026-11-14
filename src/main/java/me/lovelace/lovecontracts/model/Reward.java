@@ -13,11 +13,17 @@ import dev.lovelace.lovecore.api.economy.LoveEconomy;
 public class Reward {
 
     private final double amount;
+    private final double ceiling;
     private final java.util.function.DoubleSupplier ratio;
 
     private Reward(double amount, java.util.function.DoubleSupplier ratio) {
+        this(amount, ratio, Double.MAX_VALUE);
+    }
+
+    private Reward(double amount, java.util.function.DoubleSupplier ratio, double ceiling) {
         this.amount = amount;
         this.ratio = ratio;
+        this.ceiling = ceiling;
     }
 
     public static Reward money(double amount) {
@@ -29,7 +35,11 @@ public class Reward {
         return new Reward(amount, ratio);
     }
 
-    public double getAmount() { return amount * ratio.getAsDouble(); }
+    public Reward capped(long ceiling) {
+        return new Reward(amount, ratio, ceiling > 0 ? ceiling : Double.MAX_VALUE);
+    }
+
+    public double getAmount() { return Math.min(ceiling, amount * ratio.getAsDouble()); }
 
     /** Сумма столбиком: по строке на номинал (MiniMessage с глифами), для лора меню. */
     public java.util.List<String> getDisplayLines() {

@@ -7,9 +7,11 @@ public class NpcQuestStep {
 
     public enum Type {
         CRAFT_ITEM,
+        CATCH_FISH,
         MINE_MATERIAL,
         KILL_ENTITY,
         VISIT_NPC,
+        VISIT_LOCATION,
         DELIVER_ITEM
     }
 
@@ -22,10 +24,29 @@ public class NpcQuestStep {
     private final int count;
     private final String description;
     private final NpcDialogueNode visitDialogue;
+    private final QuestLocation location;
+    private final java.util.Map<String, NpcDialogueNode> reactions;
+    public QuestLocation getLocation() { return location; }
+    public NpcDialogueNode dialogue(String mood) {
+        var variant = reactions.get(mood);
+        if (variant == null) return visitDialogue;
+        if (visitDialogue == null) return variant;
+        return new NpcDialogueNode(variant.getNodeId(),
+                variant.getTextLines().isEmpty() ? visitDialogue.getTextLines() : variant.getTextLines(),
+                variant.getOptions().isEmpty() ? visitDialogue.getOptions() : variant.getOptions());
+    }
 
     public NpcQuestStep(int stepNumber, Type type, Material material, EntityType entityType,
                         String targetNpcKey, String targetNpcName, int count, String description,
                         NpcDialogueNode visitDialogue) {
+        this(stepNumber, type, material, entityType, targetNpcKey, targetNpcName, count, description, visitDialogue, null, java.util.Map.of());
+    }
+
+    public NpcQuestStep(int stepNumber, Type type, Material material, EntityType entityType,
+                        String targetNpcKey, String targetNpcName, int count, String description,
+                        NpcDialogueNode visitDialogue, QuestLocation location, java.util.Map<String, NpcDialogueNode> reactions) {
+        this.location = location;
+        this.reactions = java.util.Map.copyOf(reactions);
         this.stepNumber = stepNumber;
         this.type = type != null ? type : Type.CRAFT_ITEM;
         this.material = material;

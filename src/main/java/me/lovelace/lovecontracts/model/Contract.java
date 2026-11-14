@@ -16,7 +16,15 @@ public class Contract {
     private final int expirationMinutes;
     private final boolean starter;
     private final boolean enabled;
+    private String completionAchievement, requiredAchievement;
+    public String getCompletionAchievement() { return completionAchievement; }
+    public void setCompletionAchievement(String id) { completionAchievement = id; }
+    public String getRequiredAchievement() { return requiredAchievement; }
+    public void setRequiredAchievement(String id) { requiredAchievement = id; }
     private ContractCondition condition;
+    private me.lovelace.lovecontracts.npc.model.QuestLocation targetLocation;
+    public me.lovelace.lovecontracts.npc.model.QuestLocation getTargetLocation() { return targetLocation; }
+    public void setTargetLocation(me.lovelace.lovecontracts.npc.model.QuestLocation target) { targetLocation = target; }
     private final List<Reward> rewards;
     private final List<Penalty> penalties;
     private final ContractRequirement requirement;
