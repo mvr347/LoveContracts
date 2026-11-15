@@ -157,7 +157,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
     private void reload(CommandSender sender) {
         plugin.reloadConfig();
         plugin.loadHeadsConfig();
-        plugin.getRegistry().loadFromConfig();
+        plugin.reloadContentDefinitions();
         plugin.getSignManager().load();
         plugin.getSignManager().updateAllSigns();
         sender.sendMessage(mm.deserialize("<green>✔ Конфигурация и heads.yml перезагружены — загружено " +

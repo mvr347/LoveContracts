@@ -263,3 +263,6 @@ Java 21, Paper 1.21.4+. Использует HikariCP + SQLite (шейдится
 ## Лицензия
 
 All rights reserved / private use.
+
+
+Развитие NPC и цепочек контрактов: [Контракты 2.0](docs/CONTRACTS_2.md).

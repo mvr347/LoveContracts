@@ -89,9 +89,10 @@ public class ContractManager {
                             if (contract.getCondition() != null) {
                                 int finalProgress = progress;
                                 Bukkit.getScheduler().runTask(plugin, () -> {
-                                    if (player.isOnline()) {
-                                        contract.getCondition().loadProgress(uuid, finalProgress);
-                                        contract.getCondition().register(player);
+                                    var current = plugin.getRegistry().getContract(contractId);
+                                    if (player.isOnline() && current != null && current.getCondition() != null) {
+                                        current.getCondition().loadProgress(uuid, finalProgress);
+                                        current.getCondition().register(player);
                                     }
                                 });
                             }
@@ -199,6 +200,8 @@ public class ContractManager {
         return disabledPlayers.contains(player.getUniqueId());
     }
 
+    public void invalidateCompletedCount(UUID uuid) { completedCountCache.remove(uuid); }
+
     public int getCompletedContractsCount(UUID uuid) {
         if (uuid == null) return 0;
         return completedCountCache.computeIfAbsent(uuid, this::fetchCompletedContractsCountFromDb);
@@ -207,8 +210,9 @@ public class ContractManager {
     private int fetchCompletedContractsCountFromDb(UUID uuid) {
         try (Connection conn = plugin.getDatabase().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                     "SELECT COUNT(*) FROM player_contracts WHERE player_uuid = ? AND completed_at IS NOT NULL")) {
+                     "SELECT (SELECT COUNT(*) FROM player_contracts WHERE player_uuid = ? AND completed_at IS NOT NULL) + COALESCE((SELECT SUM(completion_count) FROM player_npc_quests WHERE player_uuid = ?),0)")) {
             ps.setString(1, uuid.toString());
+            ps.setString(2, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getInt(1);
             }
@@ -276,6 +280,9 @@ public class ContractManager {
             return;
         }
 
+        if (!me.lovelace.lovecontracts.service.ContractAchievementRewards.allowed(player.getUniqueId(), contract.getRequiredAchievement())) {
+            Notify.event(player, mm.deserialize("<yellow>Сначала получите требуемое достижение.</yellow>"));return;
+        }
         if (plugin.getConfig().getBoolean("playstyle.block-kind-from-accepting", true)
                 && LoveCore.service(BehaviorLevels.class)
                         .map(levels -> levels.playstyleLevel(player.getUniqueId()) == BehaviorLevels.MAX_LEVEL)
@@ -312,6 +319,7 @@ public class ContractManager {
                     contract.getCondition().reset(player);
                     contract.getCondition().register(player);
                 }
+                if (plugin.getQuestSidebar() != null) plugin.getQuestSidebar().focus(player.getUniqueId(), "contract:" + contract.getId());
                 plugin.getMessageManager().notice(player, "messages.contract-accepted",
                         "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>",
                         java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
@@ -391,9 +399,8 @@ public class ContractManager {
 
     public void completeContract(Player player, Contract contract) {
         if (player == null || contract == null) return;
-        if (contract.getCondition() != null) {
-            contract.getCondition().unregister(player);
-        }
+        long reward = plugin.getConfig().getBoolean("rewards.money.enabled", true) ? Math.round(contract.getRewards().stream().mapToDouble(r -> r.getAmount()).sum()) : 0;
+        long incomeLimit = plugin.getConfig().getLong("economy.contracts-v2.rolling-income-limit", 1800);
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             boolean success = false;
@@ -407,10 +414,18 @@ public class ContractManager {
                     ps.setString(2, contract.getId());
                     rows = ps.executeUpdate();
                 }
+                if (rows > 0 && !me.lovelace.lovecontracts.util.ContractIncome.reserve(conn, player.getUniqueId(), reward, incomeLimit, System.currentTimeMillis())) {
+                    conn.rollback();
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (player.isOnline()) player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize("<yellow>Достигнут лимит заработка за 24 часа. Сдайте контракт позже — прогресс и награда сохранены.</yellow>"));
+                    });
+                    return;
+                }
                 if (rows > 0) {
                     upsertStat(conn, player.getUniqueId(), "daily_completed", 1);
                     upsertStat(conn, player.getUniqueId(), "total_completed", 1);
                     bumpStreak(conn, player.getUniqueId(), true);
+                    me.lovelace.lovecontracts.service.ContractAchievementRewards.enqueue(conn, player.getUniqueId(), contract.getCompletionAchievement());
                     conn.commit();
                     success = true;
                     loadStatsFor(player.getUniqueId(), false);
@@ -428,7 +443,8 @@ public class ContractManager {
 
             if (success) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    plugin.getRewardProcessor().giveRewards(player, contract);
+                    if (contract.getCondition() != null) contract.getCondition().unregister(player);
+                    plugin.getRewardProcessor().giveRewards(player, contract, reward);
                     plugin.getStatBus().ifPresent(bus -> bus.record(player.getUniqueId(), Metrics.CONTRACTS_COMPLETED, 1.0));
                     if (player.isOnline()) {
                         plugin.getMessageManager().important(player, "messages.contract-completed",
@@ -509,6 +525,12 @@ public class ContractManager {
                 plugin.getSyncManager().broadcastFail(player, contract);
             });
         });
+    }
+
+    /** No SQL: safe for the periodically refreshed quest sidebar. */
+    public List<Contract> cachedActiveContracts(UUID uuid) {
+        return activeContractCache.getOrDefault(uuid, Set.of()).stream().sorted()
+                .map(plugin.getRegistry()::getContract).filter(java.util.Objects::nonNull).toList();
     }
 
     public Contract getActiveContract(UUID uuid) {

@@ -6,11 +6,11 @@
 
     <groupId>me.lovelace</groupId>
     <artifactId>LoveContracts</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>LoveContracts</name>
-    <description>Daily contract system for Paper 1.21 (Witcher 3 style)</description>
+    <description>NPC story contracts and daily work for Paper 26.2</description>
 
     <properties>
         <java.version>25</java.version>
@@ -34,6 +34,10 @@
     </repositories>
 
     <dependencies>
+        <dependency>
+            <groupId>dev.lovelace</groupId><artifactId>loveessential-api</artifactId>
+            <version>2.0.0-SNAPSHOT</version><scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
@@ -70,7 +74,7 @@
         <dependency>
             <groupId>com.github.mvr347.LoveCore</groupId>
             <artifactId>lovecore-api</artifactId>
-            <version>d39a424e87</version>
+            <version>c4bebec8bf</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -79,6 +83,11 @@
         <finalName>LoveContracts</finalName>
         <defaultGoal>clean package</defaultGoal>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

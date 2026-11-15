@@ -21,19 +21,8 @@ public class NpcQuestDatabase implements AutoCloseable {
     }
 
     public void initialize() {
-        try (Connection conn = plugin.getDatabase().getConnection();
-             PreparedStatement ps = conn.prepareStatement("""
-                 CREATE TABLE IF NOT EXISTS player_npc_quests (
-                     player_uuid VARCHAR(36) NOT NULL,
-                     quest_id VARCHAR(64) NOT NULL,
-                     current_step INT NOT NULL DEFAULT 0,
-                     step_progress INT NOT NULL DEFAULT 0,
-                     status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
-                     last_completed_at TIMESTAMP NULL,
-                     PRIMARY KEY (player_uuid, quest_id)
-                 );
-                 """)) {
-            ps.executeUpdate();
+        try (Connection conn = plugin.getDatabase().getConnection()) {
+            NpcQuestStorage.initialize(conn);
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "Failed to initialize player_npc_quests table", e);
         }

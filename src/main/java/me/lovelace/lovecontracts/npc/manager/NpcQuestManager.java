@@ -48,9 +48,15 @@ public class NpcQuestManager implements Listener {
     }
 
     private final LoveContracts plugin;
+    private final Map<UUID, Map<String, Long>> completed = new HashMap<>();
+    private final Map<UUID, UUID> sessions = new HashMap<>();
+    private final Set<String> pending = new HashSet<>();
+    private final Map<String,String> completionAchievements = new HashMap<>(), requiredAchievements = new HashMap<>();
+    private final Set<String> convertedTemplates = new HashSet<>();
+    private final Map<String, me.lovelace.lovecontracts.model.ContractRequirement> requirements = new HashMap<>();
+    private final java.util.concurrent.ExecutorService writer = java.util.concurrent.Executors.newSingleThreadExecutor();
     private final MiniMessage mm = MiniMessage.miniMessage();
     private final Map<String, NpcQuest> questMap = new LinkedHashMap<>();
-    private final Map<String, List<NpcQuest>> npcQuestMap = new HashMap<>();
     private final Map<UUID, Map<String, ActiveQuestProgress>> activePlayerQuests = new ConcurrentHashMap<>();
 
     public NpcQuestManager(LoveContracts plugin, NpcQuestDatabase db) {
@@ -60,12 +66,16 @@ public class NpcQuestManager implements Listener {
     public void cleanupPlayer(UUID uuid) {
         if (uuid != null) {
             activePlayerQuests.remove(uuid);
+            completed.remove(uuid);
+            sessions.remove(uuid);
         }
     }
 
     public void loadFromConfig() {
         questMap.clear();
-        npcQuestMap.clear();
+        completionAchievements.clear(); requiredAchievements.clear();
+        convertedTemplates.clear();
+        requirements.clear();
 
         File file = new File(plugin.getDataFolder(), "npc_quests.yml");
         if (!file.exists()) {
@@ -75,25 +85,119 @@ public class NpcQuestManager implements Listener {
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         ConfigurationSection root = yaml.getConfigurationSection("npc_quests");
         if (root == null) {
-            plugin.getLogger().warning("npc_quests.yml has no 'npc_quests' section");
-            return;
+            plugin.getLogger().warning("npc_quests.yml has no 'npc_quests' section; loading additional stories only");
+            root = yaml.createSection("npc_quests");
         }
 
         for (String id : root.getKeys(false)) {
             ConfigurationSection sec = root.getConfigurationSection(id);
-            if (sec == null) continue;
+            if (sec == null || !sec.getBoolean("enabled", true)) continue;
             try {
                 NpcQuest quest = parseQuest(id, sec);
+                readAchievementLinks(id, sec);
                 questMap.put(id, quest);
-                if (quest.getNpcKey() != null) {
-                    npcQuestMap.computeIfAbsent(quest.getNpcKey(), k -> new ArrayList<>()).add(quest);
-                }
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "Failed to load NPC quest '" + id + "'", e);
             }
         }
 
+        File extra = new File(plugin.getDataFolder(), "npc_stories.yml");
+        if (!extra.exists()) plugin.saveResource("npc_stories.yml", false);
+        ConfigurationSection stories = YamlConfiguration.loadConfiguration(extra).getConfigurationSection("npc_quests");
+        if (stories != null) for (String id : stories.getKeys(false)) {
+            if (questMap.containsKey(id) || !stories.getBoolean(id + ".enabled", true)) continue;
+            try {
+                NpcQuest quest = parseQuest(id, stories.getConfigurationSection(id));
+                readAchievementLinks(id, stories.getConfigurationSection(id));
+                questMap.put(id, quest);
+            } catch (Exception error) { plugin.getLogger().log(Level.WARNING, "Invalid NPC story: " + id, error); }
+        }
+        loadComplexStories();
         plugin.getLogger().info("Loaded " + questMap.size() + " NPC chain quest definitions");
+    }
+
+    public boolean isStoryTemplate(String id) { return convertedTemplates.contains(id); }
+
+    /** Keep simple board work; turn successfully parsed complex templates into ordered NPC stories. */
+    private void loadComplexStories() {
+        if (!plugin.getConfig().getBoolean("stories.convert-complex-orders", true)) return;
+        ConfigurationSection root = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "contracts.yml")).getConfigurationSection("contracts");
+        if (root == null) return;
+        for (String id : root.getKeys(false)) {
+            ConfigurationSection section = root.getConfigurationSection(id);
+            if (section == null || !section.getBoolean("enabled", true) || section.getBoolean("starter", false)) continue;
+            String difficulty = section.getString("difficulty", "EASY");
+            boolean unique = section.getString("type", "REPEATING").equalsIgnoreCase("ONE_TIME");
+            if (!unique && !difficulty.equalsIgnoreCase("MEDIUM") && !difficulty.equalsIgnoreCase("HARD")) continue;
+            String storyId = "story_" + id;
+            if (questMap.containsKey(storyId)) { convertedTemplates.add(id); continue; }
+            try {
+                ConfigurationSection condition = section.getConfigurationSection("condition");
+                if (condition == null) continue;
+                NpcQuestStep.Type type = switch (condition.getString("type", "")) {
+                    case "MineMaterial" -> NpcQuestStep.Type.MINE_MATERIAL;
+                    case "CraftItem" -> NpcQuestStep.Type.CRAFT_ITEM;
+                    case "KillEntity" -> NpcQuestStep.Type.KILL_ENTITY;
+                    case "CatchFish" -> NpcQuestStep.Type.CATCH_FISH;
+                    default -> throw new IllegalArgumentException("Unsupported condition");
+                };
+                String giver = section.getString("story-npc-key", "@contractor");
+                String name = section.getString("display-name", id);
+                NpcDialogueNode greeting = new NpcDialogueNode("greeting", List.of(section.getString("description", name),
+                        "Сначала обсудим подробности, затем выполни работу и вернись с отчётом."), List.of(
+                        new NpcDialogueOption("Беру поручение", NpcDialogueOption.Action.ACCEPT_QUEST, null),
+                        new NpcDialogueOption("Позже", NpcDialogueOption.Action.CLOSE, null)));
+                NpcDialogueNode brief = new NpcDialogueNode("visit", List.of("Заказ: " + name,
+                        "Работа засчитывается только после этого разговора. После выполнения вернись за оплатой."),
+                        List.of(new NpcDialogueOption("Условия понятны", NpcDialogueOption.Action.COMPLETE_STEP, null)));
+                Material material = condition.contains("material") ? Material.valueOf(condition.getString("material")) : null;
+                EntityType entity = condition.contains("entity-type") ? EntityType.valueOf(condition.getString("entity-type")) : null;
+                if ((type == NpcQuestStep.Type.MINE_MATERIAL || type == NpcQuestStep.Type.CRAFT_ITEM) && material == null
+                        || type == NpcQuestStep.Type.KILL_ENTITY && entity == null) throw new IllegalArgumentException("Missing target");
+                int count = condition.getInt("count", 1);
+                List<NpcQuestStep> steps = List.of(
+                        new NpcQuestStep(1, NpcQuestStep.Type.VISIT_NPC, null, null, giver, "Заказчик", 1, "Обсудите условия с заказчиком", brief),
+                        new NpcQuestStep(2, type, material, entity, null, "", count,
+                            name + " — " + (material != null ? material : entity != null ? entity : "улов") + " × " + count, null,
+                            condition.isConfigurationSection("location") ? QuestLocation.parse(condition.getConfigurationSection("location").getValues(false)) : null, Map.of()),
+                        new NpcQuestStep(3, NpcQuestStep.Type.VISIT_NPC, null, null, giver, "Заказчик", 1, "Вернитесь к заказчику с отчётом", null));
+                questMap.putIfAbsent(storyId, new NpcQuest(storyId, giver, name, !unique, 1440,
+                        "greeting", Map.of("greeting", greeting), steps, parseRewards(section.getConfigurationSection("rewards"))));
+                ConfigurationSection req = section.getConfigurationSection("requirements");
+                if (req != null) requirements.put(storyId, new me.lovelace.lovecontracts.model.ContractRequirement(
+                        req.getInt("min-level", 0), req.getString("permission"), req.getInt("min-completed-contracts", 0)));
+                readAchievementLinks(storyId, section);
+                convertedTemplates.add(id);
+            } catch (RuntimeException error) {
+                plugin.getLogger().warning("Keeping complex order on ordinary board: " + id + ": " + error.getMessage());
+            }
+        }
+    }
+
+    private void readAchievementLinks(String id, ConfigurationSection section) {
+        String completed=section.getString("completion-achievement"), required=section.getString("requires-achievement");
+        if(completed!=null&&!completed.isBlank())completionAchievements.put(id,completed);
+        if(required!=null&&!required.isBlank())requiredAchievements.put(id,required);
+    }
+
+    public void validateDefinitions(java.util.Map<String,Object> definitions) {
+        var yaml = new YamlConfiguration();
+        var root = yaml.createSection("npc_quests", definitions);
+        for (String id : root.getKeys(false)) parseQuest(id, root.getConfigurationSection(id));
+        var old = new YamlConfiguration();
+        try {
+            old.load(new File(plugin.getDataFolder(), "npc_stories.yml"));
+            var oldGoals=new HashMap<String,Object>();var newGoals=new HashMap<String,Object>();
+            var original=old.getConfigurationSection("npc_quests");
+            if(original!=null)for(String id:original.getKeys(false))oldGoals.put(id,original.getList(id+".steps",List.of()));
+            for(String id:root.getKeys(false))newGoals.put(id,root.getList(id+".steps",List.of()));
+            Set<String> active=new HashSet<>();
+            try(var c=plugin.getDatabase().getConnection();var q=c.createStatement();var rows=q.executeQuery("SELECT DISTINCT quest_id FROM player_npc_quests WHERE status='ACTIVE'")){
+                while(rows.next())active.add(rows.getString(1));
+            }
+            me.lovelace.lovecontracts.service.ActiveDefinitionGuard.validate(oldGoals,newGoals,active);
+        } catch(IllegalArgumentException error){throw error;}
+        catch(Exception error){throw new IllegalStateException("Cannot inspect active stories",error);}
     }
 
     private NpcQuest parseQuest(String id, ConfigurationSection sec) {
@@ -125,6 +229,17 @@ public class NpcQuestManager implements Listener {
             }
         }
 
+        if (steps.isEmpty()) throw new IllegalArgumentException("Quest must have at least one step");
+        for (NpcQuestStep step : steps) {
+            if ((step.getType() == NpcQuestStep.Type.VISIT_NPC || step.getType() == NpcQuestStep.Type.DELIVER_ITEM)
+                    && step.getTargetNpcKey() == null) throw new IllegalArgumentException("Missing target NPC");
+            if ((step.getType() == NpcQuestStep.Type.CRAFT_ITEM || step.getType() == NpcQuestStep.Type.MINE_MATERIAL
+                    || step.getType() == NpcQuestStep.Type.DELIVER_ITEM) && step.getMaterial() == null)
+                throw new IllegalArgumentException("Missing material");
+            if (step.getType() == NpcQuestStep.Type.KILL_ENTITY && step.getEntityType() == null)
+                throw new IllegalArgumentException("Missing entity type");
+        }
+        if (!dialogues.containsKey(initialDialogue)) throw new IllegalArgumentException("Missing initial dialogue");
         return new NpcQuest(id, npcKey, name, repeatable, cooldown, initialDialogue, dialogues, steps, parseRewards(sec.getConfigurationSection("rewards")));
     }
 
@@ -133,7 +248,7 @@ public class NpcQuestManager implements Listener {
         List<NpcDialogueOption> options = new ArrayList<>();
         for (Map<?, ?> optMap : sec.getMapList("options")) {
             String text = getMapString(optMap, "text", "");
-            String actionStr = getMapString(optMap, "action", "CLOSE");
+            String actionStr = getMapString(optMap, "action", optMap.containsKey("next-node") ? "NEXT_NODE" : "CLOSE");
             String nextNode = optMap.containsKey("next-node") ? getMapString(optMap, "next-node", null) : null;
             NpcDialogueOption.Action action;
             try {
@@ -158,7 +273,7 @@ public class NpcQuestManager implements Listener {
         try {
             type = NpcQuestStep.Type.valueOf(typeStr);
         } catch (Exception e) {
-            type = NpcQuestStep.Type.CRAFT_ITEM;
+            throw new IllegalArgumentException("Unknown quest step type: " + typeStr);
         }
         String matStr = getMapString(map, "material", null);
         Material mat = null;
@@ -175,8 +290,17 @@ public class NpcQuestManager implements Listener {
         int count = Integer.parseInt(getMapString(map, "count", "1"));
         String desc = getMapString(map, "description", "");
 
-        NpcDialogueNode visitDialogue = null;
-        if (map.get("dialogue") instanceof Map<?, ?> dMap) {
+        NpcDialogueNode visitDialogue = map.get("dialogue") instanceof Map<?, ?> dialogue ? parseStepDialogue(dialogue) : null;
+        Map<String, NpcDialogueNode> reactions = new HashMap<>();
+        if (map.get("dialogue") instanceof Map<?, ?> dialogue && dialogue.get("reactions") instanceof Map<?, ?> variants)
+            variants.forEach((mood, value) -> { if (value instanceof Map<?, ?> node) reactions.put(mood.toString(), parseStepDialogue(node)); });
+        QuestLocation location = map.get("location") instanceof Map<?, ?> at ? QuestLocation.parse(at) : null;
+        if (type == NpcQuestStep.Type.VISIT_LOCATION && count != 1) throw new IllegalArgumentException("VISIT_LOCATION count must be 1");
+        if (type == NpcQuestStep.Type.VISIT_LOCATION && location == null) throw new IllegalArgumentException("VISIT_LOCATION needs location");
+        return new NpcQuestStep(number, type, mat, ent, targetNpcKey, targetNpcName, count, desc, visitDialogue, location, reactions);
+    }
+
+    private NpcDialogueNode parseStepDialogue(Map<?, ?> dMap) {
             List<String> lines = new ArrayList<>();
             if (dMap.get("text") instanceof List<?> tList) {
                 for (Object item : tList) {
@@ -188,17 +312,14 @@ public class NpcQuestManager implements Listener {
                 for (Object o : oList) {
                     if (o instanceof Map<?, ?> om) {
                         String text = getMapString(om, "text", "");
-                        String act = getMapString(om, "action", "COMPLETE_STEP");
+                        String act = getMapString(om, "action", om.containsKey("next-node") ? "NEXT_NODE" : "COMPLETE_STEP");
                         NpcDialogueOption.Action action;
                         try { action = NpcDialogueOption.Action.valueOf(act); } catch (Exception e) { action = NpcDialogueOption.Action.COMPLETE_STEP; }
-                        options.add(new NpcDialogueOption(text, action, null));
+                        options.add(new NpcDialogueOption(text, action, getMapString(om, "next-node", null)));
                     }
                 }
             }
-            visitDialogue = new NpcDialogueNode("visit", lines, options);
-        }
-
-        return new NpcQuestStep(number, type, mat, ent, targetNpcKey, targetNpcName, count, desc, visitDialogue);
+        return new NpcDialogueNode("visit", lines, options);
     }
 
     /** NPC quest rewards are physical LoveCore currency only — see {@link me.lovelace.lovecontracts.model.Reward}. */
@@ -208,219 +329,417 @@ public class NpcQuestManager implements Listener {
         if (sec.contains("money")) {
             rewards.add(me.lovelace.lovecontracts.model.Reward.money(
                     me.lovelace.lovecontracts.util.EconomyConfig.read(plugin, sec, "money",
-                            me.lovelace.lovecontracts.util.EconomyConfig.REWARD_SCALE)));
+                            me.lovelace.lovecontracts.util.EconomyConfig.REWARD_SCALE)).capped(plugin.getConfig().getLong("economy.contracts-v2.max-reward", 240)));
         }
         return rewards;
     }
 
     public List<NpcQuest> getQuestsForNpc(String npcKey) {
         String key = NpcSettings.normalizeKey(npcKey);
-        return key == null ? List.of() : npcQuestMap.getOrDefault(key, List.of());
+        return key == null ? List.of() : questMap.values().stream().filter(q -> matches(q.getNpcKey(), key)).toList();
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onJoin(PlayerJoinEvent event) {
-        loadPlayerActiveQuestsFromDb(event.getPlayer().getUniqueId());
+    private String resolveKey(String key) {
+        if (key != null && key.startsWith("@actor:")) {
+            var actor = plugin.getConfig().getConfigurationSection("npc-actors." + key.substring(7));
+            if (actor == null) return null;
+            String bound = actor.getString("npc-key");
+            if (bound != null) return bound.startsWith("@") ? null : NpcSettings.normalizeKey(bound);
+            String tag = actor.getString("tag-key"), value = actor.getString("tag-value");
+            if (tag == null || value == null) return null;
+            return plugin.getNpcBridge().provider().flatMap(p -> p.all().stream()
+                    .filter(n -> n.tag(tag).filter(value::equals).isPresent()).findFirst())
+                    .map(dev.lovelace.lovecore.api.npc.NpcHandle::key).orElse(null);
+        }
+        if ("@contractor".equals(key)) return plugin.getNpcBridge().boundKey();
+        if (key != null && key.startsWith("@brew:")) return plugin.getNpcBridge().provider()
+                .flatMap(p -> p.all().stream().filter(n -> n.tag("lovebrew.trader").filter(key.substring(6)::equals).isPresent()).findFirst())
+                .map(dev.lovelace.lovecore.api.npc.NpcHandle::key).orElse(null);
+        return key;
+    }
+    private boolean matches(String configured, String actual) {
+        return actual != null && actual.equals(resolveKey(configured));
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onQuit(PlayerQuitEvent event) {
-        cleanupPlayer(event.getPlayer().getUniqueId());
-    }
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) { loadPlayerActiveQuestsFromDb(event.getPlayer().getUniqueId()); }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) { cleanupPlayer(event.getPlayer().getUniqueId()); }
 
     public void loadPlayerActiveQuestsFromDb(UUID uuid) {
-        if (uuid == null) return;
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            Map<String, ActiveQuestProgress> map = new ConcurrentHashMap<>();
-            try (Connection conn = plugin.getDatabase().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(
-                         "SELECT quest_id, current_step, step_progress FROM player_npc_quests WHERE player_uuid = ? AND status = 'ACTIVE'")) {
-                ps.setString(1, uuid.toString());
-                try (ResultSet rs = ps.executeQuery()) {
+        UUID session = UUID.randomUUID();
+        sessions.put(uuid, session);
+        completed.remove(uuid);
+        activePlayerQuests.remove(uuid);
+        writer.execute(() -> {
+            Map<String, ActiveQuestProgress> active = new LinkedHashMap<>();
+            Map<String, Long> history = new HashMap<>();
+            try (Connection c = plugin.getDatabase().getConnection(); var q = c.prepareStatement(
+                    "SELECT quest_id,current_step,step_progress,status,COALESCE(strftime('%s',last_completed_at),0) FROM player_npc_quests WHERE player_uuid=?")) {
+                q.setString(1, uuid.toString());
+                try (var rs = q.executeQuery()) {
                     while (rs.next()) {
-                        String questId = rs.getString(1);
-                        int currentStep = rs.getInt(2);
-                        int stepProgress = rs.getInt(3);
-                        map.put(questId, new ActiveQuestProgress(currentStep, stepProgress));
+                        if (rs.getString(4).equals("ACTIVE")) active.put(rs.getString(1), new ActiveQuestProgress(rs.getInt(2), rs.getInt(3)));
+                        else history.put(rs.getString(1), rs.getLong(5) * 1000);
                     }
                 }
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to load active NPC quests for " + uuid, e);
-            }
-            if (!map.isEmpty()) {
-                activePlayerQuests.put(uuid, map);
-            } else {
-                activePlayerQuests.remove(uuid);
-            }
+                main(() -> {
+                    if (!session.equals(sessions.get(uuid))) return;
+                    activePlayerQuests.put(uuid, active);
+                    completed.put(uuid, history);
+                });
+            } catch (SQLException error) { failure(error); }
         });
+    }
+
+    private void main(Runnable action) { Bukkit.getScheduler().runTask(plugin, action); }
+    private void failure(Exception error) { plugin.getLogger().log(Level.WARNING, "NPC quest storage failed", error); }
+    private String lock(UUID player, String quest) { return player + ":" + quest; }
+    private ActiveQuestProgress state(Player player, NpcQuest quest) {
+        return activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).get(quest.getId());
+    }
+
+    public boolean canInteract(Player player, dev.lovelace.lovecore.api.npc.NpcHandle npc) {
+        if (!player.isOnline() || npc == null || !npc.providerId().equals(plugin.getNpcBridge().providerId())) return false;
+        return npc.entity().filter(e -> e.isValid() && e.getWorld().equals(player.getWorld()) && player.canSee(e)
+                && e.getLocation().distanceSquared(player.getLocation()) <= 36).isPresent();
+    }
+
+    private boolean available(Player player, NpcQuest quest) {
+        if (questMap.get(quest.getId()) != quest || plugin.getContractManager().isContractsDisabled(player)) return false;
+        if (!me.lovelace.lovecontracts.service.ContractAchievementRewards.allowed(player.getUniqueId(), requiredAchievements.get(quest.getId()))) return false;
+        Map<String, Long> history = completed.get(player.getUniqueId());
+        var requirement = requirements.get(quest.getId());
+        if (requirement != null && !requirement.isMet(player, plugin.getContractManager().getCompletedContractsCount(player.getUniqueId()))) return false;
+        return NpcQuestPolicy.available(history != null, state(player, quest) != null,
+                quest.isRepeatable(), history == null ? null : history.get(quest.getId()),
+                quest.getCooldownMinutes(), System.currentTimeMillis());
     }
 
     public void startQuest(Player player, NpcQuest quest) {
-        if (player == null || quest == null) return;
+        var issuer = plugin.getNpcBridge().provider().flatMap(p -> java.util.Optional.ofNullable(resolveKey(quest.getNpcKey())).flatMap(p::byKey)).orElse(null);
+        if (!canInteract(player, issuer)) return;
+        if (activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).size() + pending.stream().filter(k -> k.startsWith(player.getUniqueId() + ":")).count() >= 3) {
+            player.sendMessage(mm.deserialize("<yellow>Сначала завершите одну из трёх активных цепочек.</yellow>")); return;
+        }
+        if (!available(player, quest)) { player.sendMessage(mm.deserialize("<yellow>Контракт уже принят или ещё недоступен.</yellow>")); return; }
         UUID uuid = player.getUniqueId();
-
-        activePlayerQuests.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>())
-                .put(quest.getId(), new ActiveQuestProgress(0, 0));
-
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try (Connection conn = plugin.getDatabase().getConnection();
-                 PreparedStatement ps = conn.prepareStatement("""
-                     INSERT INTO player_npc_quests (player_uuid, quest_id, current_step, step_progress, status)
-                     VALUES (?, ?, 0, 0, 'ACTIVE')
-                     ON CONFLICT(player_uuid, quest_id) DO UPDATE SET
-                     current_step = 0, step_progress = 0, status = 'ACTIVE'
-                     """)) {
-                ps.setString(1, uuid.toString());
-                ps.setString(2, quest.getId());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to start NPC quest", e);
-            }
-
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                player.sendMessage(mm.deserialize("<green>Контракт принят:</green> <gold>" + quest.getDisplayName() + "</gold>"));
-                NpcQuestStep step = quest.getStep(0);
-                if (step != null) {
-                    player.sendMessage(mm.deserialize("<yellow>Этап 1:</yellow> <white>" + step.getDescription() + "</white>"));
+        String lock = lock(uuid, quest.getId());
+        if (!pending.add(lock)) return;
+        writer.execute(() -> {
+            boolean success = false;
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                success = me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.start(c, uuid, quest.getId(), quest.isRepeatable(), quest.getCooldownMinutes(), System.currentTimeMillis());
+            } catch (SQLException error) { failure(error); }
+            boolean accepted = success;
+            main(() -> {
+                pending.remove(lock);
+                if (!accepted) { if (player.isOnline()) player.sendMessage(mm.deserialize("<red>Контракт не принят. Попробуйте позже.</red>")); return; }
+                if (completed.containsKey(uuid)) activePlayerQuests.computeIfAbsent(uuid, k -> new LinkedHashMap<>()).put(quest.getId(), new ActiveQuestProgress(0, 0));
+                if (player.isOnline()) {
+                    if (plugin.getQuestSidebar() != null) plugin.getQuestSidebar().focus(uuid, "story:" + quest.getId());
+                    player.sendMessage(mm.deserialize("<green>Контракт принят: </green>" + quest.getDisplayName()));
+                    showCurrentStep(player, quest);
                 }
             });
         });
     }
 
-    public void advanceStep(Player player, NpcQuest quest) {
-        if (player == null || quest == null) return;
-        UUID uuid = player.getUniqueId();
-
-        Map<String, ActiveQuestProgress> userQuests = activePlayerQuests.get(uuid);
-        ActiveQuestProgress state = userQuests != null ? userQuests.get(quest.getId()) : null;
-        int currentStep = state != null ? state.getCurrentStep() : 0;
-
-        int nextStep = currentStep + 1;
-        if (nextStep >= quest.TotalSteps()) {
-            completeQuest(player, quest);
+    /** Quest interactions reserve this click before profession menus; other players are unaffected. */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onNpcClick(dev.lovelace.lovecore.api.npc.NpcClickEvent event) {
+        if (event.click() != dev.lovelace.lovecore.api.npc.NpcClick.RIGHT || event.npc() == null
+                || !event.npc().providerId().equals(plugin.getNpcBridge().providerId())) return;
+        Player player = event.getPlayer();
+        if (player.isSneaking()) return; // Deliberate access to the NPC's ordinary profession.
+        String key = event.npc().key();
+        if (!completed.containsKey(player.getUniqueId())) {
+            // Avoid opening a competing profession menu until quest state has loaded.
+            if (questMap.values().stream().anyMatch(q -> matches(q.getNpcKey(), key) || q.getSteps().stream().anyMatch(s -> matches(s.getTargetNpcKey(), key)))) {
+                event.setCancelled(true);
+                player.sendMessage(mm.deserialize("<yellow>Данные контрактов загружаются. Повторите разговор через секунду.</yellow>"));
+            }
             return;
         }
-
-        if (state != null) {
-            state.setCurrentStep(nextStep);
-            state.setStepProgress(0);
+        var conversations = new ArrayList<NpcQuest>();
+        for (var entry : activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).entrySet()) {
+            var quest = questMap.get(entry.getKey());
+            if (quest == null) continue;
+            var step = quest.getStep(entry.getValue().getCurrentStep());
+            if (step != null && (matches(step.getTargetNpcKey(), key)
+                    || step.getTargetNpcKey() == null && entry.getValue().getStepProgress() >= step.getCount()
+                    && matches(quest.getNpcKey(), key))) conversations.add(quest);
         }
-
-        int finalNextStep = nextStep;
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try (Connection conn = plugin.getDatabase().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(
-                         "UPDATE player_npc_quests SET current_step = ?, step_progress = 0 WHERE player_uuid = ? AND quest_id = ?")) {
-                ps.setInt(1, finalNextStep);
-                ps.setString(2, uuid.toString());
-                ps.setString(3, quest.getId());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to advance quest step", e);
-            }
-
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                NpcQuestStep step = quest.getStep(finalNextStep);
-                if (step != null) {
-                    player.sendMessage(mm.deserialize("<green>Этап выполнен!</green> <yellow>Следующий этап:</yellow> <white>" + step.getDescription() + "</white>"));
-                }
-            });
-        });
+        conversations.addAll(getQuestsForNpc(key).stream().filter(q -> available(player, q)).toList());
+        if (conversations.isEmpty()) return;
+        event.setCancelled(true);
+        if (conversations.size() == 1) openNpcInteraction(player, conversations.getFirst().getId());
+        else plugin.getNpcDialogueGUI().openOffers(player, conversations);
     }
 
-    private void completeQuest(Player player, NpcQuest quest) {
-        UUID uuid = player.getUniqueId();
-        Map<String, ActiveQuestProgress> userQuests = activePlayerQuests.get(uuid);
-        if (userQuests != null) {
-            userQuests.remove(quest.getId());
-            if (userQuests.isEmpty()) activePlayerQuests.remove(uuid);
+    public boolean isActive(Player player, NpcQuest quest) { return state(player, quest) != null; }
+
+    /** A character can discuss several ongoing stories and offer new work in the same menu. */
+    public void openNpcInteraction(Player player, String id) {
+        var quest = questMap.get(id);
+        if (quest == null) return;
+        var progress = state(player, quest);
+        if (progress == null) { openOffer(player, id); return; }
+        var step = quest.getStep(progress.getCurrentStep());
+        if (step == null) return;
+        String target = step.getTargetNpcKey();
+        if (target == null) {
+            if (progress.getStepProgress() < step.getCount()) return;
+            target = quest.getNpcKey();
         }
+        String key = resolveKey(target);
+        var npc = plugin.getNpcBridge().provider().flatMap(p -> Optional.ofNullable(key).flatMap(p::byKey)).orElse(null);
+        if (!canInteract(player, npc)) return;
+        if (plugin.getQuestSidebar() != null) plugin.getQuestSidebar().focus(player.getUniqueId(), "story:" + quest.getId());
+        if (step.getTargetNpcKey() == null) { advanceStep(player, quest, List.of()); return; }
+        NpcDialogueNode node = step.dialogue(mood(player));
+        if (node == null) node = new NpcDialogueNode("visit", List.of(step.getDescription()), List.of(
+                new NpcDialogueOption(step.getType() == NpcQuestStep.Type.DELIVER_ITEM ? "Передать припасы" : "Обсудить поручение", NpcDialogueOption.Action.COMPLETE_STEP, null),
+                new NpcDialogueOption("Позже", NpcDialogueOption.Action.CLOSE, null)));
+        plugin.getNpcDialogueGUI().open(player, quest, node, npc, progress.getCurrentStep());
+    }
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try (Connection conn = plugin.getDatabase().getConnection();
-                 PreparedStatement ps = conn.prepareStatement("""
-                     UPDATE player_npc_quests SET status = 'COMPLETED', last_completed_at = CURRENT_TIMESTAMP
-                     WHERE player_uuid = ? AND quest_id = ?
-                     """)) {
-                ps.setString(1, uuid.toString());
-                ps.setString(2, quest.getId());
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to complete NPC quest", e);
+    public void openOffer(Player player, String id) {
+        NpcQuest quest = questMap.get(id);
+        if (quest == null || !available(player, quest)) return;
+        var npc = plugin.getNpcBridge().provider().flatMap(p -> java.util.Optional.ofNullable(resolveKey(quest.getNpcKey())).flatMap(p::byKey)).orElse(null);
+        if (!canInteract(player, npc)) { player.sendMessage(mm.deserialize("<yellow>Подойдите к заказчику этого контракта.</yellow>")); return; }
+        String mood = mood(player);
+        NpcDialogueNode node = quest.getDialogueNode(mood);
+        if (node == null) node = quest.getDialogueNode(quest.getInitialDialogueNode());
+        plugin.getNpcDialogueGUI().open(player, quest, node, npc, -1);
+    }
+
+    private String mood(Player player) {
+        String mood = "neutral";
+        var bridge = new me.lovelace.lovecontracts.player.integration.LoveCoreBridge();
+        if (bridge.playstyleLevel(player.getUniqueId()) == 0) mood = "fearful";
+        else if (bridge.politenessLevel(player.getUniqueId()) >= 0 && bridge.politenessLevel(player.getUniqueId()) <= 1) mood = "skeptical";
+        else if (bridge.politenessLevel(player.getUniqueId()) >= 5 || bridge.isKindPlaystyle(player.getUniqueId())) mood = "friendly";
+        return mood;
+    }
+
+    public void confirmStep(Player player, NpcQuest quest, int expected, dev.lovelace.lovecore.api.npc.NpcHandle npc) {
+        ActiveQuestProgress state = state(player, quest);
+        if (questMap.get(quest.getId()) != quest || state == null || state.getCurrentStep() != expected || !canInteract(player, npc)) return;
+        NpcQuestStep step = quest.getStep(expected);
+        if (step == null || !matches(step.getTargetNpcKey(), npc.key())) return;
+        List<org.bukkit.inventory.ItemStack> taken = new ArrayList<>();
+        if (step.getType() == NpcQuestStep.Type.DELIVER_ITEM) {
+            int count = 0;
+            for (var item : player.getInventory().getStorageContents())
+                if (item != null && item.getType() == step.getMaterial() && !item.hasItemMeta()) count += item.getAmount();
+            if (count < step.getCount()) { player.sendMessage(mm.deserialize("<yellow>Нужны обычные предметы: " + step.getMaterial() + " × " + step.getCount() + ".</yellow>")); return; }
+            if (pending.contains(lock(player.getUniqueId(), quest.getId()))) return;
+            int remaining = step.getCount();
+            var storage = player.getInventory().getStorageContents();
+            for (int i = 0; i < storage.length && remaining > 0; i++) {
+                var item = storage[i];
+                if (item == null || item.getType() != step.getMaterial() || item.hasItemMeta()) continue;
+                int amount = Math.min(item.getAmount(), remaining);
+                taken.add(new org.bukkit.inventory.ItemStack(item.getType(), amount));
+                remaining -= amount;
+                item.setAmount(item.getAmount() - amount);
+                if (item.getAmount() == 0) storage[i] = null;
             }
+            player.getInventory().setStorageContents(storage);
+        } else if (step.getType() != NpcQuestStep.Type.VISIT_NPC) return;
+        advanceStep(player, quest, taken);
+    }
 
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                plugin.getRewardProcessor().giveRewards(player, new me.lovelace.lovecontracts.model.Contract(
-                        quest.getId(), quest.getDisplayName(), "", me.lovelace.lovecontracts.model.Difficulty.EASY,
-                        me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of()
-                ));
-                Notify.event(player, mm.deserialize("<green>Поздравляем! Контракт <gold>" + quest.getDisplayName() + "</gold> успешно выполнен!</green>"));
+    private void advanceStep(Player player, NpcQuest quest, List<org.bukkit.inventory.ItemStack> taken) {
+        ActiveQuestProgress state = state(player, quest);
+        if (state == null) return;
+        UUID uuid = player.getUniqueId();
+        String lock = lock(uuid, quest.getId());
+        if (!pending.add(lock)) return;
+        int expected = state.getCurrentStep(), next = expected + 1;
+        boolean finish = next == quest.TotalSteps();
+        long reward = plugin.getConfig().getBoolean("rewards.money.enabled", true) ? Math.round(quest.getRewards().stream().mapToDouble(r -> r.getAmount()).sum()) : 0;
+        long limit = plugin.getConfig().getLong("economy.contracts-v2.rolling-income-limit", 1800);
+        writer.execute(() -> {
+            boolean success = false, budget = true;
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                var result = me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.advance(c, uuid, quest.getId(), expected, next, finish, reward, limit, System.currentTimeMillis(), completionAchievements.get(quest.getId()));
+                success = result == me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.Result.SAVED;
+                budget = result != me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.Result.INCOME_LIMIT;
+            } catch (SQLException error) { failure(error); }
+            if (!success && !budget) {
+                try (Connection c = plugin.getDatabase().getConnection(); var q = c.prepareStatement("UPDATE player_npc_quests SET step_progress=MAX(step_progress,?) WHERE player_uuid=? AND quest_id=? AND current_step=? AND status='ACTIVE'")) {
+                    q.setInt(1, state.getStepProgress()); q.setString(2, uuid.toString()); q.setString(3, quest.getId()); q.setInt(4, expected); q.executeUpdate();
+                } catch (SQLException error) { failure(error); }
+            }
+            boolean saved = success, allowed = budget;
+            main(() -> {
+                pending.remove(lock);
+                if (!saved) {
+                    Player recipient = Bukkit.getPlayer(uuid);
+                    if (recipient == null) recipient = player;
+                    for (var stack : taken) for (var overflow : recipient.getInventory().addItem(stack).values()) recipient.getWorld().dropItemNaturally(recipient.getLocation(), overflow);
+                    if (!recipient.isOnline() && !taken.isEmpty()) recipient.saveData();
+                    if (recipient.isOnline()) recipient.sendMessage(mm.deserialize(allowed ? "<red>Не удалось сохранить этап. Повторите попытку.</red>" : "<yellow>Достигнут лимит заработка за 24 часа. Этап сохранён: сдайте его позже, награда не потеряна.</yellow>"));
+                    return;
+                }
+                var onlineState = activePlayerQuests.getOrDefault(uuid, Map.of());
+                if (finish) {
+                    plugin.getContractManager().invalidateCompletedCount(uuid);
+                    plugin.getStatBus().ifPresent(bus -> bus.record(uuid, "contracts.completed", 1));
+                    if (activePlayerQuests.containsKey(uuid)) onlineState.remove(quest.getId());
+                    if (completed.containsKey(uuid)) completed.get(uuid).put(quest.getId(), System.currentTimeMillis());
+                    var contract = new me.lovelace.lovecontracts.model.Contract(quest.getId(), quest.getDisplayName(), "", me.lovelace.lovecontracts.model.Difficulty.EASY,
+                        me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of());
+                    plugin.getRewardProcessor().giveRewards(player, contract, reward);
+                    if (player.isOnline()) player.sendMessage(mm.deserialize("<green>Цепочка завершена: </green>" + quest.getDisplayName()));
+                } else {
+                    ActiveQuestProgress current = onlineState.get(quest.getId());
+                    if (current != null) { current.setCurrentStep(next); current.setStepProgress(0); }
+                    if (player.isOnline()) showCurrentStep(player, quest);
+                }
             });
         });
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player)) return;
-        Material mat = event.getRecipe().getResult().getType();
-        int amount = event.getRecipe().getResult().getAmount();
-        checkProgress(player, NpcQuestStep.Type.CRAFT_ITEM, mat, null, amount);
+        if (!(event.getWhoClicked() instanceof Player player)
+                || player.getGameMode() == org.bukkit.GameMode.CREATIVE
+                || player.getGameMode() == org.bukkit.GameMode.SPECTATOR) return;
+        var result = event.getRecipe().getResult();
+        int amount = result.getAmount();
+        if (event.isShiftClick()) {
+            int crafts = Integer.MAX_VALUE;
+            for (var ingredient : event.getInventory().getMatrix())
+                if (ingredient != null && !ingredient.getType().isAir()) crafts = Math.min(crafts, ingredient.getAmount());
+            int capacity = 0;
+            for (var item : player.getInventory().getStorageContents()) {
+                if (item == null || item.getType().isAir()) capacity += result.getMaxStackSize();
+                else if (item.isSimilar(result)) capacity += Math.max(0, result.getMaxStackSize() - item.getAmount());
+            }
+            if (crafts == Integer.MAX_VALUE) return;
+            amount = Math.min(crafts, capacity / result.getAmount()) * result.getAmount();
+        } else if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+            var destination = player.getInventory().getItem(event.getHotbarButton());
+            if (destination != null && !destination.getType().isAir()) return;
+        } else {
+            var cursor = event.getCursor();
+            if (cursor != null && !cursor.getType().isAir() && (!cursor.isSimilar(result) || cursor.getAmount() + result.getAmount() > cursor.getMaxStackSize())) return;
+        }
+        if (amount > 0) checkProgress(player, NpcQuestStep.Type.CRAFT_ITEM, result.getType(), null, amount);
     }
-
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onMine(BlockBreakEvent event) {
-        if (plugin.getPlacedBlockTracker().isPlaced(event.getBlock())) return;
-        Player player = event.getPlayer();
-        checkProgress(player, NpcQuestStep.Type.MINE_MATERIAL, event.getBlock().getType(), null, 1);
+        if (!plugin.getPlacedBlockTracker().isPlaced(event.getBlock())) checkProgress(event.getPlayer(), NpcQuestStep.Type.MINE_MATERIAL, event.getBlock().getType(), null, 1);
     }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onKill(EntityDeathEvent event) {
-        Player killer = event.getEntity().getKiller();
-        if (killer == null) return;
-        checkProgress(killer, NpcQuestStep.Type.KILL_ENTITY, null, event.getEntityType(), 1);
+        if (event.getEntity().getKiller() != null) checkProgress(event.getEntity().getKiller(), NpcQuestStep.Type.KILL_ENTITY, null, event.getEntityType(), 1);
+    }
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onFish(org.bukkit.event.player.PlayerFishEvent event) {
+        if (event.getState() == org.bukkit.event.player.PlayerFishEvent.State.CAUGHT_FISH
+                && event.getCaught() instanceof org.bukkit.entity.Item)
+            checkProgress(event.getPlayer(), NpcQuestStep.Type.CATCH_FISH, null, null, 1);
     }
 
-    private void checkProgress(Player player, NpcQuestStep.Type stepType, Material mat, EntityType ent, int delta) {
-        UUID uuid = player.getUniqueId();
-        Map<String, ActiveQuestProgress> userQuests = activePlayerQuests.get(uuid);
-        if (userQuests == null || userQuests.isEmpty()) return; // MHM! Fast zero-cost check!
+    private void checkProgress(Player player, NpcQuestStep.Type type, Material material, EntityType entity, int delta) {
+        checkProgress(player, type, material, entity, delta, player.getLocation());
+    }
 
-        for (Map.Entry<String, ActiveQuestProgress> entry : new HashMap<>(userQuests).entrySet()) {
-            String questId = entry.getKey();
-            ActiveQuestProgress progressState = entry.getValue();
-            NpcQuest quest = questMap.get(questId);
-            if (quest == null) continue;
-
-            NpcQuestStep step = quest.getStep(progressState.getCurrentStep());
-            if (step != null && step.getType() == stepType) {
-                boolean matchMat = (mat == null || step.getMaterial() == mat);
-                boolean matchEnt = (ent == null || step.getEntityType() == ent);
-                if (matchMat && matchEnt) {
-                    int newProg = progressState.getStepProgress() + delta;
-                    progressState.setStepProgress(newProg);
-                    if (newProg >= step.getCount()) {
-                        advanceStep(player, quest);
-                    } else {
-                        updateProgress(uuid, quest.getId(), newProg);
-                    }
-                }
+    private void checkProgress(Player player, NpcQuestStep.Type type, Material material, EntityType entity, int delta, org.bukkit.Location at) {
+        for (var entry : new ArrayList<>(activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).entrySet())) {
+            NpcQuest quest = questMap.get(entry.getKey());
+            var state = entry.getValue();
+            if (quest == null || pending.contains(lock(player.getUniqueId(), quest.getId()))) continue;
+            NpcQuestStep step = quest.getStep(state.getCurrentStep());
+            if (step != null && step.getLocation() != null && !step.getLocation().contains(at.getWorld().getName(), at.getX(), at.getY(), at.getZ())) continue;
+            if (step == null || step.getType() != type || material != null && step.getMaterial() != material || entity != null && step.getEntityType() != entity) continue;
+            state.setStepProgress(Math.min(step.getCount(), state.getStepProgress() + delta));
+            if (state.getStepProgress() >= step.getCount()) advanceStep(player, quest, List.of());
+            else {
+                int progress = state.getStepProgress(), expected = state.getCurrentStep();
+                writer.execute(() -> {
+                    try (Connection c = plugin.getDatabase().getConnection(); var q = c.prepareStatement("UPDATE player_npc_quests SET step_progress=MAX(step_progress,?) WHERE player_uuid=? AND quest_id=? AND current_step=? AND status='ACTIVE'")) {
+                        q.setInt(1, progress); q.setString(2, player.getUniqueId().toString()); q.setString(3, quest.getId()); q.setInt(4, expected); q.executeUpdate();
+                    } catch (SQLException error) { failure(error); }
+                });
             }
         }
     }
 
-    private void updateProgress(UUID uuid, String questId, int progress) {
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try (Connection conn = plugin.getDatabase().getConnection();
-                 PreparedStatement ps = conn.prepareStatement(
-                         "UPDATE player_npc_quests SET step_progress = ? WHERE player_uuid = ? AND quest_id = ?")) {
-                ps.setInt(1, progress);
-                ps.setString(2, uuid.toString());
-                ps.setString(3, questId);
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.WARNING, "updateProgress failed", e);
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onMove(org.bukkit.event.player.PlayerMoveEvent event) {
+        if (event.getTo() == null || event.getFrom().getWorld().equals(event.getTo().getWorld())
+                && event.getFrom().getBlockX() == event.getTo().getBlockX()
+                && event.getFrom().getBlockY() == event.getTo().getBlockY()
+                && event.getFrom().getBlockZ() == event.getTo().getBlockZ()) return;
+        checkProgress(event.getPlayer(), NpcQuestStep.Type.VISIT_LOCATION, null, null, 1, event.getTo());
+    }
+
+    /** In-memory snapshot for LE; no database reads on the scoreboard timer. */
+    public List<me.lovelace.lovecontracts.service.QuestSidebarText.Objective> objectives(Player player) {
+        var result = new ArrayList<me.lovelace.lovecontracts.service.QuestSidebarText.Objective>();
+        for (var entry : activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).entrySet()) {
+            var quest = questMap.get(entry.getKey());
+            if (quest == null) continue;
+            var progress = entry.getValue();
+            var step = quest.getStep(progress.getCurrentStep());
+            if (step == null) continue;
+            String name = step.getTargetNpcName(), location = "", status = "Выполняйте поручение";
+            var area = step.getLocation();
+            if (area != null) {
+                location = area.address();
+                status = area.world().equals(player.getWorld().getName())
+                        ? "До цели: " + (int)Math.ceil(area.distance(player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ())) + " м" : "Перейдите в мир " + area.world();
             }
-        });
+            String target = step.getTargetNpcKey();
+            if (target == null && progress.getStepProgress() >= step.getCount()) { target = quest.getNpcKey(); name = "Заказчик"; }
+            if (target != null) {
+                String targetKey = target;
+                var npc = plugin.getNpcBridge().provider().flatMap(p -> java.util.Optional.ofNullable(resolveKey(targetKey)).flatMap(p::byKey)).orElse(null);
+                if (npc == null) status = "NPC сейчас недоступен";
+                else {
+                    if (name.isBlank()) name = npc.name();
+                    try {
+                        var at = npc.location();
+                        location = at.getWorld().getName() + " " + at.getBlockX() + ", " + at.getBlockY() + ", " + at.getBlockZ();
+                        status = !npc.spawned() ? "Сейчас отсутствует; вернитесь позже" : at.getWorld().equals(player.getWorld())
+                                ? "До NPC: " + (int)Math.ceil(at.distance(player.getLocation())) + " м" : "Перейдите в мир " + at.getWorld().getName();
+                    } catch (IllegalStateException error) { status = "Местоположение NPC недоступно"; }
+                }
+            }
+            int shown = progress.getStepProgress();
+            if (step.getType() == NpcQuestStep.Type.DELIVER_ITEM) {
+                shown = 0;
+                for (var item : player.getInventory().getStorageContents())
+                    if (item != null && item.getType() == step.getMaterial() && !item.hasItemMeta()) shown += item.getAmount();
+                shown = Math.min(shown, step.getCount());
+            }
+            result.add(new me.lovelace.lovecontracts.service.QuestSidebarText.Objective("story:" + quest.getId(),
+                    me.lovelace.lovecontracts.service.QuestSidebar.plain(quest.getDisplayName()),
+                    me.lovelace.lovecontracts.service.QuestSidebar.plain(step.getDescription()), progress.getCurrentStep() + 1,
+                    quest.TotalSteps(), shown, step.getCount(),
+                    me.lovelace.lovecontracts.service.QuestSidebar.plain(name), location, status));
+        }
+        return result;
+    }
+
+    private void showCurrentStep(Player player, NpcQuest quest) {
+        var progress = state(player, quest);
+        if (progress == null) return;
+        var step = quest.getStep(progress.getCurrentStep());
+        if (step != null) player.sendMessage(mm.deserialize("<yellow>Этап " + (progress.getCurrentStep() + 1)
+                + "/" + quest.TotalSteps() + ":</yellow> " + step.getDescription()));
+    }
+
+    public void close() {
+        writer.shutdown();
+        try { if (!writer.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) writer.shutdownNow(); }
+        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); writer.shutdownNow(); }
     }
 }

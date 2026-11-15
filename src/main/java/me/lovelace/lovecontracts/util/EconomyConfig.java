@@ -34,7 +34,10 @@ public final class EconomyConfig {
             final long before = scaled;
             scaled = CoinFormat.tryEconomy().map(e -> e.scaled(before)).orElse(before);
         }
-        return scaled;
+        // A separate new key also applies to upgraded servers whose reward-scale was explicitly 1.0.
+        double factor = plugin.getConfig().getDouble("economy.contracts-v2.reward-factor", 0.15);
+        if (!Double.isFinite(factor) || factor <= 0) factor = 0.15;
+        return Math.max(1L, Math.round(scaled * factor));
     }
 
     /** Шаги суммы награды в меню создания контракта (клик по кругу). */

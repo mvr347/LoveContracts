@@ -33,7 +33,7 @@ public class ContractNpcListener implements Listener {
      * Fired by LoveCore for every NPC provider, so clicks on NPCs of other providers (or other NPCs) are ignored here.
      * Right click hands in / cancels the active contract or opens the board; left click only opens the board.
      */
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onNpcClick(NpcClickEvent event) {
         if (!npcs.isBoundNpc(event.npc()))
             return;
@@ -54,11 +54,9 @@ public class ContractNpcListener implements Listener {
             boolean isCompleted = active.getCondition() != null && active.getCondition().isCompleted(player);
             if (isCompleted) {
                 plugin.getContractManager().completeContract(player, active);
-                Notify.important(player, mm.deserialize(
-                        "<green>✔ Вы отлично справились! Контракт успешно сдан NPC, награда получена.</green>"));
+
             } else {
-                plugin.getContractManager().cancelContract(player, active);
-                Notify.event(player, mm.deserialize("<yellow>Контракт отменен по вашему запросу у NPC.</yellow>"));
+                Notify.event(player, mm.deserialize("<yellow>Поручение ещё не выполнено. Прогресс: </yellow>" + (active.getCondition() == null ? "—" : active.getCondition().getProgressString(player))));
             }
         } else if (!tryReject(player)) {
             maybeSayAmbient(player);

@@ -37,6 +37,37 @@ import java.util.Optional;
 public final class LoveContracts extends JavaPlugin {
 
     private static LoveContracts instance;
+    private me.lovelace.lovecontracts.service.QuestSidebar questSidebar;
+    /** Reloads authored definitions without resetting player progress. Called on the server thread. */
+    public void validateContentDefinitions(String kind, java.util.Map<String,Object> definitions) {
+        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Main thread required");
+        if (kind.equals("contracts")) registry.validateDefinitions(definitions);
+        else if (kind.equals("stories")) npcQuestManager.validateDefinitions(definitions);
+        else throw new IllegalArgumentException("Unsupported catalogue");
+    }
+    public void reloadContentDefinitions() {
+        if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Main thread required");
+        var progress = new java.util.HashMap<java.util.UUID,java.util.Map<String,Integer>>();
+        for (var player : Bukkit.getOnlinePlayers()) {
+            var values = new java.util.HashMap<String,Integer>();
+            for (var contract : contractManager.cachedActiveContracts(player.getUniqueId()))
+                if (contract.getCondition() != null && contract.getCondition().isRegistered(player))
+                    values.put(contract.getId(), contract.getCondition().getProgress(player));
+            progress.put(player.getUniqueId(), values);
+        }
+        registry.loadFromConfig();
+        npcQuestManager.loadFromConfig();
+        for (var player : Bukkit.getOnlinePlayers()) {
+            for (var entry : progress.getOrDefault(player.getUniqueId(), java.util.Map.of()).entrySet()) {
+                var contract = registry.getContract(entry.getKey());
+                if (contract != null && contract.getCondition() != null) {
+                    contract.getCondition().loadProgress(player.getUniqueId(), entry.getValue());
+                    contract.getCondition().register(player);
+                }
+            }
+        }
+    }
+    public me.lovelace.lovecontracts.service.QuestSidebar getQuestSidebar() { return questSidebar; }
 
     private ContractDatabase database;
     private ContractRegistry registry;
@@ -77,6 +108,7 @@ public final class LoveContracts extends JavaPlugin {
         saveResourceIfMissing("contracts.yml");
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("npc_quests.yml");
+        saveResourceIfMissing("npc_stories.yml");
         refreshOutdatedData("contracts.yml");
         refreshOutdatedData("npc_quests.yml");
         loadHeadsConfig(); // сам сохраняет heads.yml при первом запуске, см. ниже
@@ -107,6 +139,7 @@ public final class LoveContracts extends JavaPlugin {
         npcQuestDatabase.initialize();
         npcQuestManager = new me.lovelace.lovecontracts.npc.manager.NpcQuestManager(this, npcQuestDatabase);
         npcQuestManager.loadFromConfig();
+        for (var player : Bukkit.getOnlinePlayers()) npcQuestManager.loadPlayerActiveQuestsFromDb(player.getUniqueId());
         npcDialogueGUI = new me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI(this);
 
         messageManager = new MessageManager(this);
@@ -163,6 +196,9 @@ public final class LoveContracts extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(npcQuestManager, this);
         Bukkit.getPluginManager().registerEvents(new PlayerContractListener(playerContractManager), this);
 
+        me.lovelace.lovecontracts.service.ContractAchievementRewards.startDelivery(this);
+        questSidebar = new me.lovelace.lovecontracts.service.QuestSidebar(this);
+        for (var player : Bukkit.getOnlinePlayers()) contractManager.loadActiveContractForPlayer(player);
         signManager.updateAllSigns();
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
@@ -319,6 +355,8 @@ public final class LoveContracts extends JavaPlugin {
     @Override
     public void onDisable() {
         HandlerList.unregisterAll(this);
+        if (questSidebar != null) questSidebar.close();
+        if (npcQuestManager != null) npcQuestManager.close();
         if (contractManager != null) contractManager.shutdown();
         if (registry != null) registry.shutdown();
         if (fineManager != null) fineManager.shutdown();
