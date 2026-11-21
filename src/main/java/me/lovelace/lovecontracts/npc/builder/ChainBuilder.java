@@ -82,6 +82,12 @@ public final class ChainBuilder {
     }
 
     private Result write(Map<String, ChainDraft> updated, String id) {
+        // chains.yml is rewritten whole from what parsed; a chain that failed to parse would be erased with it
+        ChainStore.Loaded current = manager().chainStore().read();
+        if (!current.errors().isEmpty()) {
+            return Result.fail("В chains.yml есть цепочка с ошибкой (" + current.errors().get(0)
+                    + "): исправьте файл, иначе она пропадёт при записи");
+        }
         try {
             manager().validateChainDefinitions(ChainStore.definitions(new ArrayList<>(updated.values())));
         } catch (IllegalArgumentException refused) {

@@ -21,6 +21,9 @@ public final class ChainDraft {
     private Object rewardRaw;
     /** Dialogues written by hand in chains.yml: kept as they are, so saving from the builder does not erase them. */
     private java.util.Map<String, Object> customDialogues;
+    /** Achievement keys kept through editing: the builder does not edit them, but saving must not drop them. */
+    private String requiredAchievement;
+    private String completionAchievement;
     private final List<StepDraft> steps = new ArrayList<>();
 
     public ChainDraft(String id) {
@@ -47,6 +50,11 @@ public final class ChainDraft {
     public java.util.Map<String, Object> customDialogues() { return customDialogues; }
     public void customDialogues(java.util.Map<String, Object> dialogues) { this.customDialogues = dialogues; }
 
+    public String requiredAchievement() { return requiredAchievement; }
+    public String completionAchievement() { return completionAchievement; }
+    public void requiredAchievement(String key) { this.requiredAchievement = key == null || key.isBlank() ? null : key.trim(); }
+    public void completionAchievement(String key) { this.completionAchievement = key == null || key.isBlank() ? null : key.trim(); }
+
     public boolean canAddStep() {
         return steps.size() < MAX_STEPS;
     }
@@ -68,6 +76,8 @@ public final class ChainDraft {
         copy.reward = reward;
         copy.rewardRaw = rewardRaw;
         copy.customDialogues = customDialogues;
+        copy.requiredAchievement = requiredAchievement;
+        copy.completionAchievement = completionAchievement;
         for (StepDraft step : steps) copy.steps.add(step.copy());
         return copy;
     }

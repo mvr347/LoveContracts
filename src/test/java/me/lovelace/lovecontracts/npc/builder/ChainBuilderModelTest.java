@@ -298,4 +298,24 @@ class ChainBuilderModelTest {
         assertFalse(ChainDraft.ID.matcher("Smith").matches());
         assertFalse(ChainDraft.ID.matcher("smith order").matches());
     }
+
+    @Test
+    void achievementLinksSurviveARoundTrip() {
+        ChainDraft chain = sample();
+        chain.requiredAchievement("start_key");
+        chain.completionAchievement("done_key");
+        org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
+        yaml.set("c", ChainDraftYaml.toMap(chain));
+        org.bukkit.configuration.file.YamlConfiguration reread = new org.bukkit.configuration.file.YamlConfiguration();
+        try {
+            reread.loadFromString(yaml.saveToString());
+        } catch (org.bukkit.configuration.InvalidConfigurationException e) {
+            throw new AssertionError(e);
+        }
+        ChainDraft back = ChainDraftYaml.fromSection("smith", reread.getConfigurationSection("c"));
+        assertEquals("start_key", back.requiredAchievement());
+        assertEquals("done_key", back.completionAchievement());
+        assertEquals("done_key", back.copyAs("smith_v2").completionAchievement());
+        assertFalse(ChainDraftYaml.toMap(sample()).containsKey("requires-achievement"));
+    }
 }

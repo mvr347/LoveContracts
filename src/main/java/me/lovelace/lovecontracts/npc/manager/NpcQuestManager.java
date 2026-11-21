@@ -444,6 +444,10 @@ public class NpcQuestManager implements Listener {
                     if (!session.equals(sessions.get(uuid))) return;
                     activePlayerQuests.put(uuid, active);
                     completed.put(uuid, history);
+                    // an open board showed these chains as LOADING; redraw it now that the state is known
+                    var board = plugin.getContractBoard();
+                    Player online = Bukkit.getPlayer(uuid);
+                    if (board != null && online != null) board.refresh(online);
                 });
             } catch (SQLException error) { failure(error); }
         });

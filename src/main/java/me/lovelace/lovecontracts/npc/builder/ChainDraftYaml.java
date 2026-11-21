@@ -31,6 +31,8 @@ public final class ChainDraftYaml {
         out.put("npc-key", chain.giverKey());
         out.put("repeatable", chain.repeatable());
         out.put("cooldown-minutes", chain.cooldownMinutes());
+        if (chain.requiredAchievement() != null) out.put("requires-achievement", chain.requiredAchievement());
+        if (chain.completionAchievement() != null) out.put("completion-achievement", chain.completionAchievement());
         out.put("initial-dialogue", GREETING_NODE);
         out.put("dialogues", chain.customDialogues() != null ? chain.customDialogues() : generatedDialogues());
         List<Map<String, Object>> steps = new ArrayList<>();
@@ -118,6 +120,8 @@ public final class ChainDraftYaml {
         chain.giverKey(key == null ? null : key.toString());
         chain.repeatable(sec.getBoolean("repeatable", true));
         chain.cooldownMinutes(sec.getInt("cooldown-minutes", 0));
+        chain.requiredAchievement(sec.getString("requires-achievement"));
+        chain.completionAchievement(sec.getString("completion-achievement"));
         ConfigurationSection rewards = sec.getConfigurationSection("rewards");
         if (rewards != null && rewards.contains("money")) {
             Object money = rewards.get("money");
