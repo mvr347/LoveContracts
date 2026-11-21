@@ -154,6 +154,7 @@ public final class ContractBoardGui extends BoardGui {
     private List<Control> headerControls() {
         List<Control> controls = new ArrayList<>();
         for (BoardTab t : BoardTab.values()) {
+            if (!board.tabAvailable(viewer, t)) continue;
             controls.add(new Control(tabButton(t), e -> switchTab(t)));
         }
         controls.add(new Control(filterButton(), e -> cycleFilter(e.isRightClick())));
@@ -162,7 +163,7 @@ public final class ContractBoardGui extends BoardGui {
     }
 
     private void switchTab(BoardTab target) {
-        if (target == tab) return;
+        if (target == tab || !board.tabAvailable(viewer, target)) return;
         tab = target;
         page = 0;
         refresh();

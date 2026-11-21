@@ -61,11 +61,34 @@ public final class ContractBoard implements Listener {
 
     private void launch(Player player, BoardTab tab, Set<String> onlyChains) {
         if (player == null || !player.isOnline()) return;
-        if (plugin.getContractManager().isContractsDisabled(player)) {
-            Notify.event(player, mm.deserialize("<red>Для вас доступ к контрактам отключен администратором.</red>"));
+        // The board is shared, the permissions are not: the daily contracts and chains need lovecontracts.use (and the
+        // admin toggle), the player-contract tabs need pcontracts.use. A tab the player may not use is never offered.
+        BoardTab target = tab;
+        if (!tabAvailable(player, target)) {
+            target = null;
+            for (BoardTab candidate : BoardTab.values()) {
+                if (tabAvailable(player, candidate)) {
+                    target = candidate;
+                    break;
+                }
+            }
+        }
+        if (target == null) {
+            if (plugin.getContractManager().isContractsDisabled(player)) {
+                Notify.event(player, mm.deserialize("<red>Для вас доступ к контрактам отключен администратором.</red>"));
+            }
             return;
         }
-        new ContractBoardGui(this, plugin, player, tab, onlyChains).begin();
+        new ContractBoardGui(this, plugin, player, target, target == BoardTab.CHAINS ? onlyChains : null).begin();
+    }
+
+    /** Whether the player may see and use a tab: each tab keeps the permission boundary of the menu it replaced. */
+    public boolean tabAvailable(Player player, BoardTab tab) {
+        return switch (tab) {
+            case SYSTEM, CHAINS -> player.hasPermission("lovecontracts.use")
+                    && !plugin.getContractManager().isContractsDisabled(player);
+            case PLAYERS, MINE -> player.hasPermission("pcontracts.use");
+        };
     }
 
     // ------------------------------------------------------------------ tracking
