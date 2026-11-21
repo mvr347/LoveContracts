@@ -324,7 +324,7 @@ public class ContractManager {
                         "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>",
                         java.util.Map.of("CONTRACT", strip(contract.getDisplayName())));
                 plugin.getSyncManager().broadcastAccept(player, contract);
-                plugin.getContractGUI().open(player);
+                plugin.getContractBoard().open(player);
             });
         });
     }

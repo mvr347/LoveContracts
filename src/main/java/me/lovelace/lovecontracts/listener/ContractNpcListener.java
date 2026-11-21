@@ -43,7 +43,7 @@ public class ContractNpcListener implements Listener {
         if (event.click() == NpcClick.LEFT) {
             if (!tryReject(player)) {
                 maybeSayAmbient(player);
-                plugin.getContractGUI().open(player);
+                plugin.getContractBoard().open(player);
             }
             return;
         }
@@ -60,7 +60,7 @@ public class ContractNpcListener implements Listener {
             }
         } else if (!tryReject(player)) {
             maybeSayAmbient(player);
-            plugin.getContractGUI().open(player);
+            plugin.getContractBoard().open(player);
         }
     }
 

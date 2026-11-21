@@ -13,13 +13,16 @@
 # Сервер со старым файлом (без ключа или с меньшим значением) при старте сохраняет свой messages.yml как
 # messages.yml.bak-<время> и берёт из jar только раздел gui: без этого новые тексты не дойдут до серверов.
 # Сообщения чата и команд (разделы messages, commands, ...) не трогаются, правки администратора там остаются.
-data-version: 3
+# 2026-11-21: версия 4. Единая доска контрактов (вкладки «Обычные», «Цепочки», «От игроков», «Мои»), окна
+# подтверждения для цепочек и отказов, новые тексты вкладок, цепочек и фильтров. Раздел gui берётся из jar заново
+# (прежний файл сохраняется как messages.yml.bak-<время>).
+data-version: 4
 
 gui:
   # Экранные заголовки окон (не лор предметов): стандарт их не меняет.
   title: "<gold>Доска контрактов</gold>"
   player-board-title: "<gold>Заказы игроков</gold>"
-  confirm-title: "<gold>Подтверждение контракта</gold>"
+  confirm-title: "<gold>Подтверждение</gold>"
 
   # Стиль gui-gen-6. LoreBlocks собирает отсюда разделитель, строки кликов и блок неактивной кнопки.
   # Клик — отдельная строка после разделителя, одно действие в строке: ЛКМ зелёный, ПКМ золотой, Shift+… жёлтый.
@@ -180,6 +183,113 @@ gui:
   my-status-cancelled: "<red>Отменён"
   my-status-expired: "<gray>Истёк"
 
+  # --- Единая доска контрактов (2026-11-21) ---
+  back-button: "<gray>« Назад"
+  empty-title: "<gray>Здесь пока ничего нет"
+  empty-subtitle: "<dark_gray>Пусто"
+  empty-hint-system: "<gray>Новые контракты появятся при следующей ротации"
+  empty-hint-chains: "<gray>Поручения появятся, когда вы подойдёте к заказчикам"
+  empty-hint-players: "<gray>Предложений от других игроков пока нет"
+  empty-hint-mine: "<gray>У вас пока нет контрактов с другими игроками"
+
+  # Вкладки: выбранная вкладка помечена «| Открыто» и свечением.
+  tab-subtitle: "<dark_gray>Вкладка доски"
+  tab-state-open: "<green>Открыто"
+  tab-count: "  <gray>Записей: <white>{count}"
+  tab:
+    system: "<gold>Обычные"
+    system-lore: "<gray>Ежедневные контракты сервера"
+    chains: "<gold>Цепочки"
+    chains-lore: "<gray>Многошаговые поручения жителей"
+    players: "<gold>От игроков"
+    players-lore: "<gray>Заказы других игроков"
+    mine: "<gold>Мои"
+    mine-lore: "<gray>Контракты с другими игроками, которые вы заказали или исполняете"
+  action-open-tab: "открыть вкладку"
+
+  # Цепочки NPC.
+  chain-subtitle: "<dark_gray>Цепочка поручений"
+  chain-giver: "  <gray>Заказчик: <white>{name}"
+  chain-now-npc: "  <gray>Сейчас к: <white>{name}"
+  chain-where: "  <gray>Где: <white>{where}"
+  chain-steps-count: "  <gray>Этапов: <white>{count}"
+  chain-repeat: "  <gray>Повтор: <white>через {time}"
+  chain-once: "  <gray>Выполняется один раз"
+  chain-step-done: "  <green>✓ <gray>{description}"
+  chain-step-current: "  <yellow>→ <white>{description}"
+  chain-step-pending: "  <dark_gray>{description}"
+  chain-step-more: "  <dark_gray>и ещё этапов: {count}"
+  chain-state-active: "<yellow>В процессе"
+  chain-state-cooldown: "<yellow>Перерыв"
+  chain-state-done: "<green>Выполнена"
+  chain-reason-limit: "Уже ведётся предельное число поручений ({max})"
+  chain-reason-cooldown: "Следующий заказ через {time}"
+  chain-reason-disabled: "Контракты для вас отключены администратором"
+  chain-reason-achievement: "Сначала завершите предыдущую цепочку"
+  chain-reason-requirements: "Не выполнены требования цепочки"
+  chain-reason-loading: "Данные загружаются, подождите секунду"
+  action-take-chain: "взять поручение"
+  action-chain-talk: "поговорить с заказчиком"
+  action-chain-continue: "продолжить поручение"
+  action-abandon-chain: "отказаться от поручения"
+
+  # Подтверждение принятия цепочки и отказов.
+  confirm-yes-chain: "<green>Принять поручение</green>"
+  confirm-yes-abandon: "<red>Отказаться</red>"
+  confirm-abandon-subtitle: "<dark_gray>Подтверждение отказа"
+  effect-chain-active: "  <green>+ <gray>Поручение станет вашим активным заданием"
+  effect-chain-limit: "  <gray>Одновременно можно вести до {max} поручений"
+  effect-abandon-progress: "  <red>− <gray>Прогресс будет потерян"
+  effect-abandon-chain: "  <gray>Поручение можно будет взять заново"
+  action-confirm-abandon: "подтвердить отказ"
+
+  # Вкладка «От игроков»: кнопка внизу подсказывает команды создания заказа.
+  create-own: "<gold>Создать заказ</gold>"
+  create-own-subtitle: "<dark_gray>Заказ игроку"
+  create-own-lore: "<gray>Заказ создаётся командой:"
+  create-own-command-deliver: "  <yellow>/pcontract create deliver"
+  create-own-command-kill: "  <yellow>/pcontract create kill"
+  create-own-command-custom: "  <yellow>/pcontract create custom"
+  action-create-own: "показать команды в чате"
+  create-own-usage-deliver: "<aqua>/pcontract create deliver [материал] [кол-во] [награда] [часы] [флаги] [описание]</aqua>"
+  create-own-usage-kill: "<aqua>/pcontract create kill [существо] [кол-во] [награда] [часы] [флаги] [описание]</aqua>"
+  create-own-usage-custom: "<aqua>/pcontract create custom [награда] [часы] [флаги] [описание]</aqua>"
+
+  # Диалог NPC: награда за всю цепочку.
+  npc-dialogue-reward: "<dark_gray>▪ <gray>Награда за всю цепочку:"
+
+  # Названия вариантов фильтров и сортировок новых вкладок.
+  modes:
+    chain-filter:
+      all: "Все"
+      available: "Доступные"
+      active: "Взятые"
+      cooldown: "Перерыв"
+      done: "Выполненные"
+    chain-sort:
+      default: "Как в списке"
+      reward-high: "От Б до М"
+      reward-low: "От М до Б"
+      steps: "Число этапов"
+    offer-filter:
+      all: "Все"
+      kill: "Охота"
+      deliver: "Доставка"
+      custom: "Особые"
+    offer-sort:
+      newest: "Сначала новые"
+      reward-high: "От Б до М"
+      reward-low: "От М до Б"
+      deadline: "Скоро истекают"
+    mine-filter:
+      all: "Все"
+      creator: "Я нанял"
+      executor: "Я исполняю"
+      running: "Не завершены"
+    mine-sort:
+      newest: "Сначала новые"
+      running-first: "Сначала активные"
+
 filters:
   all: "Все"
   easy: "Легкие"
@@ -217,6 +327,7 @@ commands:
   admin-help-footer: "<dark_gray>=========================================</dark_gray>"
 
 messages:
+  chain-where: "<yellow>Заказчик: <white>{NAME}</white> <gray>({WHERE})</gray></yellow>"
   contract-accepted: "<green>Вы приняли контракт:</green> <gold>{CONTRACT}</gold>"
   contract-completed: "<green>Выполнено:</green> <gold>{CONTRACT}</gold>"
   contract-failed: "<red>Провал:</red> <gold>{CONTRACT}</gold>"

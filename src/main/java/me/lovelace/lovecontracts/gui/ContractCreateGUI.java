@@ -261,7 +261,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
 
         if (slot == 18) { // Back button
             playerStates.remove(player.getUniqueId());
-            plugin.getContractGUI().open(player);
+            plugin.getContractBoard().open(player);
             return;
         }
 
@@ -305,7 +305,7 @@ public class ContractCreateGUI implements Listener, InventoryHolder {
 
             playerStates.remove(player.getUniqueId());
             Notify.event(player, mm.deserialize("<green>✔ Контракт успешно создан и добавлен на доску!</green>"));
-            plugin.getContractGUI().open(player);
+            plugin.getContractBoard().open(player);
         }
     }
 

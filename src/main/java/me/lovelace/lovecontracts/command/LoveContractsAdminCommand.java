@@ -130,7 +130,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             sender.sendMessage(mm.deserialize("<red>✖ Игрок не найден (должен быть в сети).</red>"));
             return;
         }
-        plugin.getContractGUI().open(target);
+        plugin.getContractBoard().open(target);
         sender.sendMessage(mm.deserialize("<green>✔ Главное меню контрактов открыто для " + target.getName() + "</green>"));
     }
 
@@ -312,7 +312,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             sender.sendMessage(mm.deserialize("<red>✖ Игрок не найден (должен быть в сети).</red>"));
             return;
         }
-        plugin.getContractGUI().open(target);
+        plugin.getContractBoard().open(target);
         sender.sendMessage(mm.deserialize("<green>✔ Открыто меню контрактов для " + target.getName() + "</green>"));
     }
 

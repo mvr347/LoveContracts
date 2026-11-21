@@ -381,7 +381,7 @@ public class NpcQuestManager implements Listener {
                 try (var rs = q.executeQuery()) {
                     while (rs.next()) {
                         if (rs.getString(4).equals("ACTIVE")) active.put(rs.getString(1), new ActiveQuestProgress(rs.getInt(2), rs.getInt(3)));
-                        else history.put(rs.getString(1), rs.getLong(5) * 1000);
+                        else if (!rs.getString(4).equals("ABANDONED")) history.put(rs.getString(1), rs.getLong(5) * 1000);
                     }
                 }
                 main(() -> {
@@ -420,7 +420,20 @@ public class NpcQuestManager implements Listener {
     public void startQuest(Player player, NpcQuest quest) {
         var issuer = plugin.getNpcBridge().provider().flatMap(p -> java.util.Optional.ofNullable(resolveKey(quest.getNpcKey())).flatMap(p::byKey)).orElse(null);
         if (!canInteract(player, issuer)) return;
-        if (activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).size() + pending.stream().filter(k -> k.startsWith(player.getUniqueId() + ":")).count() >= 3) {
+        begin(player, quest);
+    }
+
+    /**
+     * Takes a chain from the contract board: no NPC needs to be near. The first step of a chain is a talk with its
+     * giver anyway, so the story is not skipped; every other check (availability, the limit, the database) is the same.
+     */
+    public void startFromBoard(Player player, NpcQuest quest) {
+        if (player == null || quest == null || questMap.get(quest.getId()) != quest) return;
+        begin(player, quest);
+    }
+
+    private void begin(Player player, NpcQuest quest) {
+        if (activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).size() + pending.stream().filter(k -> k.startsWith(player.getUniqueId() + ":")).count() >= MAX_ACTIVE_CHAINS) {
             player.sendMessage(mm.deserialize("<yellow>Сначала завершите одну из трёх активных цепочек.</yellow>")); return;
         }
         if (!available(player, quest)) { player.sendMessage(mm.deserialize("<yellow>Контракт уже принят или ещё недоступен.</yellow>")); return; }
@@ -441,6 +454,7 @@ public class NpcQuestManager implements Listener {
                     if (plugin.getQuestSidebar() != null) plugin.getQuestSidebar().focus(uuid, "story:" + quest.getId());
                     player.sendMessage(mm.deserialize("<green>Контракт принят: </green>" + quest.getDisplayName()));
                     showCurrentStep(player, quest);
+                    plugin.getContractBoard().refresh(player);
                 }
             });
         });
@@ -475,7 +489,108 @@ public class NpcQuestManager implements Listener {
         if (conversations.isEmpty()) return;
         event.setCancelled(true);
         if (conversations.size() == 1) openNpcInteraction(player, conversations.getFirst().getId());
-        else plugin.getNpcDialogueGUI().openOffers(player, conversations);
+        else plugin.getContractBoard().openChains(player, conversations.stream().map(NpcQuest::getId).toList());
+    }
+
+    /** How many chains a player may carry at once. */
+    public static final int MAX_ACTIVE_CHAINS = 3;
+
+    /** Every loaded chain with its state for this player, in the order of the definition files. */
+    public List<ChainView> viewsFor(Player player) {
+        List<ChainView> views = new ArrayList<>(questMap.size());
+        for (NpcQuest quest : questMap.values()) views.add(viewOf(player, quest));
+        return views;
+    }
+
+    public NpcQuest getQuest(String id) { return questMap.get(id); }
+
+    public int activeCount(Player player) {
+        return activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).size();
+    }
+
+    public ChainView viewOf(Player player, NpcQuest quest) {
+        var progress = state(player, quest);
+        if (progress != null) {
+            return new ChainView(quest, ChainStatus.ACTIVE, progress.getCurrentStep(), progress.getStepProgress(), 0, LockReason.NONE);
+        }
+        Map<String, Long> history = completed.get(player.getUniqueId());
+        if (history == null) return new ChainView(quest, ChainStatus.LOADING, 0, 0, 0, LockReason.NONE);
+        if (plugin.getContractManager().isContractsDisabled(player)) {
+            return new ChainView(quest, ChainStatus.LOCKED, 0, 0, 0, LockReason.DISABLED);
+        }
+        if (!me.lovelace.lovecontracts.service.ContractAchievementRewards.allowed(player.getUniqueId(), requiredAchievements.get(quest.getId()))) {
+            return new ChainView(quest, ChainStatus.LOCKED, 0, 0, 0, LockReason.ACHIEVEMENT);
+        }
+        var requirement = requirements.get(quest.getId());
+        if (requirement != null && !requirement.isMet(player, plugin.getContractManager().getCompletedContractsCount(player.getUniqueId()))) {
+            return new ChainView(quest, ChainStatus.LOCKED, 0, 0, 0, LockReason.REQUIREMENTS);
+        }
+        Long last = history.get(quest.getId());
+        if (last == null) return new ChainView(quest, ChainStatus.AVAILABLE, 0, 0, 0, LockReason.NONE);
+        if (!quest.isRepeatable()) return new ChainView(quest, ChainStatus.DONE, 0, 0, 0, LockReason.NONE);
+        long left = last + quest.getCooldownMinutes() * 60_000L - System.currentTimeMillis();
+        return left > 0
+                ? new ChainView(quest, ChainStatus.COOLDOWN, 0, 0, left, LockReason.NONE)
+                : new ChainView(quest, ChainStatus.AVAILABLE, 0, 0, 0, LockReason.NONE);
+    }
+
+    /** Name of the NPC a step or the whole chain points at, with its position; empty strings when it is not known. */
+    public record Whereabouts(String name, String where) {
+    }
+
+    /** Whom the player has to talk to now for an active chain, or the giver of a chain that is not taken yet. */
+    public Whereabouts whereabouts(Player player, NpcQuest quest) {
+        String target = quest.getNpcKey();
+        String fallbackName = "";
+        var progress = state(player, quest);
+        if (progress != null) {
+            var step = quest.getStep(progress.getCurrentStep());
+            if (step != null) {
+                fallbackName = step.getTargetNpcName();
+                if (step.getTargetNpcKey() != null) target = step.getTargetNpcKey();
+            }
+        }
+        String key = resolveKey(target);
+        var npc = plugin.getNpcBridge().provider().flatMap(p -> Optional.ofNullable(key).flatMap(p::byKey)).orElse(null);
+        if (npc == null) return new Whereabouts(fallbackName, "");
+        String name = npc.name() == null || npc.name().isBlank() ? fallbackName : MiniMessage.miniMessage().stripTags(npc.name());
+        try {
+            var at = npc.location();
+            return new Whereabouts(name, at.getWorld().getName() + " " + at.getBlockX() + ", " + at.getBlockY() + ", " + at.getBlockZ());
+        } catch (RuntimeException unavailable) {
+            return new Whereabouts(name, "");
+        }
+    }
+
+    /** Gives up an active chain: no reward, no cooldown; it can be taken again at once. */
+    public void abandon(Player player, NpcQuest quest) {
+        if (player == null || quest == null) return;
+        UUID uuid = player.getUniqueId();
+        if (state(player, quest) == null) return;
+        String lock = lock(uuid, quest.getId());
+        if (!pending.add(lock)) return;
+        writer.execute(() -> {
+            boolean saved = false;
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                saved = me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.abandon(c, uuid, quest.getId());
+            } catch (SQLException error) { failure(error); }
+            boolean ok = saved;
+            main(() -> {
+                pending.remove(lock);
+                if (ok) {
+                    var active = activePlayerQuests.get(uuid);
+                    if (active != null) active.remove(quest.getId());
+                    var history = completed.get(uuid);
+                    if (history != null) history.remove(quest.getId());
+                }
+                Player online = Bukkit.getPlayer(uuid);
+                if (online == null) return;
+                online.sendMessage(mm.deserialize(ok
+                        ? "<yellow>Вы отказались от поручения: </yellow>" + quest.getDisplayName()
+                        : "<red>Не удалось отказаться от поручения. Повторите попытку.</red>"));
+                if (plugin.getContractBoard() != null) plugin.getContractBoard().refresh(online);
+            });
+        });
     }
 
     public boolean isActive(Player player, NpcQuest quest) { return state(player, quest) != null; }
@@ -601,6 +716,7 @@ public class NpcQuestManager implements Listener {
                     if (current != null) { current.setCurrentStep(next); current.setStepProgress(0); }
                     if (player.isOnline()) showCurrentStep(player, quest);
                 }
+                if (player.isOnline()) plugin.getContractBoard().refresh(player);
             });
         });
     }

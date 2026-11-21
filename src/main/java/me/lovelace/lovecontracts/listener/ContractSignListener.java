@@ -45,7 +45,7 @@ public class ContractSignListener implements Listener {
         Action action = event.getAction();
         if (action == Action.LEFT_CLICK_BLOCK) {
             // Left click -> Open full contract board
-            plugin.getContractGUI().open(player);
+            plugin.getContractBoard().open(player);
             return;
         }
 
@@ -54,8 +54,7 @@ public class ContractSignListener implements Listener {
             List<Contract> active = plugin.getContractManager().getActiveContracts();
             if (slot < active.size()) {
                 Contract contract = active.get(slot);
-                ItemStack preview = plugin.getContractGUI().contractItem(contract, player);
-                plugin.getConfirmGUI().open(player, contract, preview);
+                plugin.getContractBoard().confirmAccept(player, contract, () -> plugin.getContractBoard().open(player));
             } else {
                 plugin.getContractCreateGUI().open(player);
             }
