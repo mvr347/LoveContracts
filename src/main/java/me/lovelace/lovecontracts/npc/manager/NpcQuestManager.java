@@ -201,7 +201,7 @@ public class NpcQuestManager implements Listener {
     }
 
     private NpcQuest parseQuest(String id, ConfigurationSection sec) {
-        // npc-key is the provider key; npc-id is the pre-provider spelling (numeric Citizens id) and stays readable.
+        // npc-key is the provider key; npc-id is the pre-provider spelling (a numeric id) and stays readable.
         String npcKey = NpcSettings.readKey(sec.get("npc-key"), sec.get("npc-id"));
         String name = sec.getString("display-name", id);
         boolean repeatable = sec.getBoolean("repeatable", true);

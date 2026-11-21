@@ -6,7 +6,7 @@
 
 ## 1. Ежедневная доска контрактов (`/contracts`)
 
-Раз в сутки (по умолчанию в 00:00) плагин выбирает пул активных контрактов из `contracts.yml` (взвешенный случайный выбор по редкости: easy/medium/hard), и игроки принимают их через `/contracts`, доску на NPC (Citizens или LoveEssential) или обычную табличку. У каждого контракта есть условие выполнения (убить мобов, добыть руду, поймать рыбу, скрафтить предмет), награда и штраф за провал/истечение срока.
+Раз в сутки (по умолчанию в 00:00) плагин выбирает пул активных контрактов из `contracts.yml` (взвешенный случайный выбор по редкости: easy/medium/hard), и игроки принимают их через `/contracts`, доску на NPC (LoveEssential) или обычную табличку. У каждого контракта есть условие выполнения (убить мобов, добыть руду, поймать рыбу, скрафтить предмет), награда и штраф за провал/истечение срока.
 
 Награда и штраф — исключительно физическая валюта через `LoveCore.LoveEconomy` (тот же кошелёк, что и во всей экосистеме); предметы, опыт и репутация наградой/штрафом не выдаются. Без LoveCore денежные награды/штрафы просто пропускаются.
 
@@ -29,7 +29,7 @@
 - `fail <player> <contractId>` — принудительно засчитать провал
 - `stats <player>` — открыть статистику другого игрока
 - `reset <player>` — сбросить дневные счётчики игрока
-- `diag` — диагностика (загруженные контракты, активные сейчас, статус LoveCore/PlaceholderAPI/Citizens)
+- `diag` — диагностика (загруженные контракты, активные сейчас, статус LoveCore/PlaceholderAPI/LoveEssential)
 
 ### Пермишины
 
@@ -140,17 +140,14 @@ gui:
 
 54-слотовая доска (`/contracts`): вкладки All/Accepted/Completed/Failed/Statistics, до 21 контракта на экране одновременно. Кнопка обновления и статистика игрока — отдельное меню (`/contracts stats`).
 
-#### NPC (Citizens / LoveEssential)
+#### NPC (LoveEssential)
 
 ```yaml
-integrations:
-  npc-provider: global   # global (как в integrations.provider LoveCore) | citizens | loveessential
-
 npc:
   enabled: true
   info-update-interval: 10
   # Привязывается через /lovecontractsadmin npc (посмотреть на NPC перед командой).
-  # Ключ NPC строкой: для citizens — числовой id ("5"), для loveessential — ext-xxxxxxxx.
+  # Ключ NPC LoveEssential строкой: ext-xxxxxxxx, имя или номер NPC ("5"). Других провайдеров NPC нет.
   # Пусто = NPC не привязан, доска всё равно доступна через /contracts и таблички.
   # Старый числовой npc.id при запуске переносится в npc.key автоматически.
   key: ""
@@ -257,7 +254,7 @@ Java 21, Paper 1.21.4+. Использует HikariCP + SQLite (шейдится
 ### Мягкие зависимости (плагин работает и без них)
 
 - **LoveCore** — денежные награды/штрафы `/contracts` и эскроу `/pcontract` через `LoveEconomy`; без него эти операции с золотом молча пропускаются или недоступны (контракты без золота — работают)
-- **Citizens** или **LoveEssential** (через LoveCore, `integrations.npc-provider`) — NPC доски контрактов (`/lovecontractsadmin npc`)
+- **LoveEssential** (через LoveCore) — NPC доски контрактов (`/lovecontractsadmin npc`) и NPC-цепочки
 - **PlaceholderAPI** — плейсхолдеры статистики
 
 ## Лицензия
