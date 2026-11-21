@@ -57,11 +57,23 @@ public class NpcQuestManager implements Listener {
     private final java.util.concurrent.ExecutorService writer = java.util.concurrent.Executors.newSingleThreadExecutor();
     private final MiniMessage mm = MiniMessage.miniMessage();
     private final Map<String, NpcQuest> questMap = new LinkedHashMap<>();
+    /** Chains that came from chains.yml, the file of the in-game builder (the only ones the builder may rewrite). */
+    private final Set<String> builderIds = new HashSet<>();
+    private final me.lovelace.lovecontracts.npc.builder.ChainStore chainStore;
     private final Map<UUID, Map<String, ActiveQuestProgress>> activePlayerQuests = new ConcurrentHashMap<>();
 
     public NpcQuestManager(LoveContracts plugin, NpcQuestDatabase db) {
         this.plugin = plugin;
+        this.chainStore = new me.lovelace.lovecontracts.npc.builder.ChainStore(plugin.getDataFolder());
     }
+
+    public me.lovelace.lovecontracts.npc.builder.ChainStore chainStore() { return chainStore; }
+
+    /** Whether the chain lives in chains.yml, so the builder may edit and delete it. */
+    public boolean isBuilderChain(String id) { return builderIds.contains(id); }
+
+    /** Every loaded chain, in loading order: the hand-written files first, then the builder's. */
+    public Collection<NpcQuest> allQuests() { return java.util.Collections.unmodifiableCollection(questMap.values()); }
 
     public void cleanupPlayer(UUID uuid) {
         if (uuid != null) {
@@ -76,6 +88,7 @@ public class NpcQuestManager implements Listener {
         completionAchievements.clear(); requiredAchievements.clear();
         convertedTemplates.clear();
         requirements.clear();
+        builderIds.clear();
 
         File file = new File(plugin.getDataFolder(), "npc_quests.yml");
         if (!file.exists()) {
@@ -111,6 +124,23 @@ public class NpcQuestManager implements Listener {
                 readAchievementLinks(id, stories.getConfigurationSection(id));
                 questMap.put(id, quest);
             } catch (Exception error) { plugin.getLogger().log(Level.WARNING, "Invalid NPC story: " + id, error); }
+        }
+        // chains.yml belongs to the in-game builder; a hand-written chain with the same id wins
+        if (chainStore.file().exists()) {
+            ConfigurationSection built = YamlConfiguration.loadConfiguration(chainStore.file()).getConfigurationSection("npc_quests");
+            if (built != null) for (String id : built.getKeys(false)) {
+                if (questMap.containsKey(id)) {
+                    plugin.getLogger().warning("chains.yml: chain '" + id + "' is shadowed by a chain with the same id in npc_quests.yml or npc_stories.yml");
+                    continue;
+                }
+                if (!built.getBoolean(id + ".enabled", true)) continue;
+                try {
+                    NpcQuest quest = parseQuest(id, built.getConfigurationSection(id));
+                    readAchievementLinks(id, built.getConfigurationSection(id));
+                    questMap.put(id, quest);
+                    builderIds.add(id);
+                } catch (Exception error) { plugin.getLogger().log(Level.WARNING, "Invalid chain in chains.yml: " + id, error); }
+            }
         }
         loadComplexStories();
         plugin.getLogger().info("Loaded " + questMap.size() + " NPC chain quest definitions");
@@ -178,6 +208,32 @@ public class NpcQuestManager implements Listener {
         String completed=section.getString("completion-achievement"), required=section.getString("requires-achievement");
         if(completed!=null&&!completed.isBlank())completionAchievements.put(id,completed);
         if(required!=null&&!required.isBlank())requiredAchievements.put(id,required);
+    }
+
+    /**
+     * Checks chains the builder is about to write to chains.yml: every one must parse like a hand-written chain, and a chain
+     * somebody is on right now must keep its steps (the same guard as for npc_stories.yml). Throws
+     * {@link IllegalArgumentException} with a sentence for the admin.
+     */
+    public void validateChainDefinitions(java.util.Map<String, Object> definitions) {
+        var yaml = new YamlConfiguration();
+        var root = yaml.createSection("npc_quests", definitions);
+        for (String id : root.getKeys(false)) parseQuest(id, root.getConfigurationSection(id));
+        var oldGoals = new HashMap<String, Object>();
+        var newGoals = new HashMap<String, Object>();
+        if (chainStore.file().exists()) {
+            var original = YamlConfiguration.loadConfiguration(chainStore.file()).getConfigurationSection("npc_quests");
+            if (original != null) for (String id : original.getKeys(false)) oldGoals.put(id, original.getList(id + ".steps", List.of()));
+        }
+        for (String id : root.getKeys(false)) newGoals.put(id, root.getList(id + ".steps", List.of()));
+        Set<String> active = new HashSet<>();
+        try (var c = plugin.getDatabase().getConnection(); var q = c.createStatement();
+             var rows = q.executeQuery("SELECT DISTINCT quest_id FROM player_npc_quests WHERE status='ACTIVE'")) {
+            while (rows.next()) active.add(rows.getString(1));
+        } catch (SQLException error) {
+            throw new IllegalStateException("Cannot inspect active chains", error);
+        }
+        me.lovelace.lovecontracts.service.ActiveDefinitionGuard.validate(oldGoals, newGoals, active);
     }
 
     public void validateDefinitions(java.util.Map<String,Object> definitions) {

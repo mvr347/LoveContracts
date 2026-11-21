@@ -149,6 +149,11 @@ public final class ContractBoard implements Listener {
                 messages().text("gui.confirm-no"), noLines(), onConfirm, onCancel));
     }
 
+    /** A confirmation with the caller's own texts (the builder's "delete this chain"). */
+    public void confirmCustom(Player player, String yesName, List<String> yesLines, Runnable onConfirm, Runnable onCancel) {
+        confirm(player, yesName, yesLines, onConfirm, onCancel);
+    }
+
     /** Taking a daily contract: what it does, what it needs and what it pays. */
     public void confirmAccept(Player player, Contract contract, Runnable onCancel) {
         MessageManager messages = messages();

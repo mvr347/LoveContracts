@@ -38,8 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 /**
  * The one 54-slot contract board (gui_gen RULE 8). Header: slot 0 the NPC head, slots 2-7 four tabs plus the filter
@@ -271,24 +269,6 @@ public final class ContractBoardGui extends BoardGui {
         }
         page = 0;
         render();
-    }
-
-    // ------------------------------------------------------------------ paged content
-
-    /** Cards in the work zone, 21 per page; an empty list shows the "nothing here" card. */
-    private <T> void paged(List<T> items, Function<T, ItemStack> card, BiConsumer<T, InventoryClickEvent> click, String emptyHint) {
-        int[] slots = BoardLayout.contentSlots(inventory.getSize());
-        int pages = (items.size() + slots.length - 1) / slots.length;
-        int current = pager(pages);
-        if (items.isEmpty()) {
-            emptyCard(emptyHint);
-            return;
-        }
-        int from = current * slots.length;
-        for (int i = 0; i < slots.length && from + i < items.size(); i++) {
-            T item = items.get(from + i);
-            button(slots[i], card.apply(item), e -> click.accept(item, e));
-        }
     }
 
     // ------------------------------------------------------------------ tab: daily contracts

@@ -20,7 +20,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.LongConsumer;
 
 /**
  * Base of the 54-slot contract menus (gui_gen RULE 8): the glass frame, header controls spread over slots 2-7, the
@@ -69,17 +72,71 @@ public abstract class BoardGui implements BoardMenu {
         return inventory;
     }
 
+    /** Window size: 54 for boards and lists; a menu with a single work row may use 27 or 36 (RULE 1). */
+    protected int size() {
+        return 54;
+    }
+
     /** Creates the inventory, draws the menu and opens it. */
     protected void show() {
-        this.inventory = Bukkit.createInventory(this, 54, title());
+        this.inventory = Bukkit.createInventory(this, size(), title());
         render();
         viewer.openInventory(inventory);
+    }
+
+    // ------------------------------------------------------------------ chat input
+
+    /** Draws the menu afresh and opens it again: after a chat prompt or a window that was opened over it. */
+    protected void redraw() {
+        if (!viewer.isOnline()) return;
+        render();
+        viewer.openInventory(inventory);
+    }
+
+    /** Closes the window, asks for a line in chat, hands it to {@code onText} and opens the menu again. */
+    protected void askText(String messageKey, Consumer<String> onText) {
+        viewer.closeInventory();
+        plugin.getChatPrompts().ask(viewer, messageKey, text -> {
+            onText.accept(text);
+            redraw();
+        }, this::redraw);
+    }
+
+    /**
+     * Like {@link #askText}, but the menu is not opened again after an answer: {@code onText} opens whatever comes next.
+     * A cancel or a timeout still returns to this menu.
+     */
+    protected void askThen(String messageKey, Consumer<String> onText) {
+        viewer.closeInventory();
+        plugin.getChatPrompts().ask(viewer, messageKey, onText, this::redraw);
+    }
+
+    /** Like {@link #askText} for a whole number between {@code min} and {@code max}; a wrong answer just reopens the menu. */
+    protected void askNumber(String messageKey, long min, long max, LongConsumer onValue) {
+        askText(messageKey, text -> {
+            String digits = text.replace(" ", "").replace("_", "");
+            if (!digits.matches("\\d{1,12}")) {
+                viewer.sendMessage(MM.deserialize(t("gui.prompt-invalid-number")));
+                return;
+            }
+            long value = Long.parseLong(digits);
+            if (value < min || value > max) {
+                viewer.sendMessage(MM.deserialize(t("gui.prompt-out-of-range", Map.of("min", String.valueOf(min), "max", String.valueOf(max)))));
+                return;
+            }
+            onValue.accept(value);
+        });
     }
 
     // ------------------------------------------------------------------ texts
 
     protected MessageManager messages() {
         return plugin.getMessageManager();
+    }
+
+    /** Text of a messages key, for helpers of other classes that only hold a menu. */
+    public String messagesText(String key) {
+        return messages().text(key);
     }
 
     protected String t(String key) {
@@ -174,6 +231,22 @@ public abstract class BoardGui implements BoardMenu {
                     e -> { page++; render(); });
         }
         return page;
+    }
+
+    /** Cards in the work zone, 21 per page; an empty list shows the "nothing here" card with the hint under {@code emptyHintKey}. */
+    protected <T> void paged(List<T> items, Function<T, ItemStack> card, BiConsumer<T, InventoryClickEvent> click, String emptyHintKey) {
+        int[] slots = BoardLayout.contentSlots(inventory.getSize());
+        int pages = (items.size() + slots.length - 1) / slots.length;
+        int current = pager(pages);
+        if (items.isEmpty()) {
+            emptyCard(emptyHintKey);
+            return;
+        }
+        int from = current * slots.length;
+        for (int i = 0; i < slots.length && from + i < items.size(); i++) {
+            T item = items.get(from + i);
+            button(slots[i], card.apply(item), e -> click.accept(item, e));
+        }
     }
 
     /** The "nothing here yet" card in the middle of the work zone of an empty list. */

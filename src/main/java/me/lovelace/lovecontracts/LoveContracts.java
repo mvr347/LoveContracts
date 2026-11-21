@@ -74,6 +74,8 @@ public final class LoveContracts extends JavaPlugin {
     private RewardProcessor rewardProcessor;
     private SyncManager syncManager;
     private ContractBoard contractBoard;
+    private me.lovelace.lovecontracts.service.ChatPromptService chatPrompts;
+    private me.lovelace.lovecontracts.npc.builder.ChainBuilder chainBuilder;
     private BoardGuiListener boardGuiListener;
     private me.lovelace.lovecontracts.gui.ContractCreateGUI contractCreateGUI;
     private ContractRotationTask rotationTask;
@@ -151,6 +153,8 @@ public final class LoveContracts extends JavaPlugin {
         contractManager = new ContractManager(this);
         signManager = new me.lovelace.lovecontracts.manager.ContractSignManager(this);
         contractBoard = new ContractBoard(this);
+        chatPrompts = new me.lovelace.lovecontracts.service.ChatPromptService(this);
+        chainBuilder = new me.lovelace.lovecontracts.npc.builder.ChainBuilder(this);
         boardGuiListener = new BoardGuiListener(this);
         contractCreateGUI = new me.lovelace.lovecontracts.gui.ContractCreateGUI(this);
 
@@ -181,6 +185,7 @@ public final class LoveContracts extends JavaPlugin {
         registerNpcListener();
         Bukkit.getPluginManager().registerEvents(boardGuiListener, this);
         Bukkit.getPluginManager().registerEvents(contractBoard, this);
+        Bukkit.getPluginManager().registerEvents(chatPrompts, this);
         Bukkit.getPluginManager().registerEvents(contractCreateGUI, this);
         Bukkit.getPluginManager().registerEvents(placedBlockTracker, this);
         Bukkit.getPluginManager().registerEvents(npcQuestManager, this);
@@ -410,6 +415,8 @@ public final class LoveContracts extends JavaPlugin {
     public RewardProcessor getRewardProcessor() { return rewardProcessor; }
     public SyncManager getSyncManager() { return syncManager; }
     public ContractBoard getContractBoard() { return contractBoard; }
+    public me.lovelace.lovecontracts.service.ChatPromptService getChatPrompts() { return chatPrompts; }
+    public me.lovelace.lovecontracts.npc.builder.ChainBuilder getChainBuilder() { return chainBuilder; }
     public BoardGuiListener getBoardGuiListener() { return boardGuiListener; }
     public me.lovelace.lovecontracts.gui.ContractCreateGUI getContractCreateGUI() { return contractCreateGUI; }
     public PlayerContractDatabase getPlayerContractDatabase() { return playerContractDatabase; }
