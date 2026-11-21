@@ -26,12 +26,10 @@ public class PlayerQuitListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         if (event.getPlayer() == null) return;
         var uuid = event.getPlayer().getUniqueId();
-        if (plugin.getContractGUI() != null) plugin.getContractGUI().cleanupPlayer(uuid);
+        if (plugin.getContractBoard() != null) plugin.getContractBoard().cleanupPlayer(uuid);
+        if (plugin.getBoardGuiListener() != null) plugin.getBoardGuiListener().cleanupPlayer(uuid);
         if (plugin.getContractCreateGUI() != null) plugin.getContractCreateGUI().cleanupPlayer(uuid);
-        if (plugin.getConfirmGUI() != null) plugin.getConfirmGUI().cleanupPlayer(uuid);
         if (plugin.getContractManager() != null) plugin.getContractManager().cleanupPlayer(uuid);
-        if (plugin.getPlayerContractBoardGUI() != null) plugin.getPlayerContractBoardGUI().cleanupPlayer(uuid);
-        if (plugin.getPlayerContractMyGUI() != null) plugin.getPlayerContractMyGUI().cleanupPlayer(uuid);
         if (plugin.getPlayerContractManager() != null) plugin.getPlayerContractManager().cleanupPlayer(uuid);
         if (plugin.getNpcQuestManager() != null) plugin.getNpcQuestManager().cleanupPlayer(uuid);
     }

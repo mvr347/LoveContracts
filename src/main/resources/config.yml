@@ -130,24 +130,17 @@ gui:
     failed: "REDSTONE"
     stats: "BOOK"
 
-# Интеграции (2026-10-22): какой плагин поставляет NPC. Идентификатор провайдера берётся из LoveCore
-# (NpcProvider): citizens — NPC Citizens (как и было раньше), loveessential — собственные NPC LoveEssential.
-# Зачем переключатель: NPC доски можно держать в LoveEssential без Citizens на сервере. Неизвестное значение
-# читается как citizens (с предупреждением в логе); если выбранный провайдер не установлен, NPC доски
-# отключается, плагин работает.
-# 2026-10-23: значение global (по умолчанию) следует общему переключателю integrations.provider в config.yml
-# LoveCore: external - Citizens, loveessential - LoveEssential, один выбор сразу для всех плагинов. Пока в
-# ядре стоит external, поведение прежнее (citizens). Явное citizens или loveessential перекрывает общий
-# выбор. Уже сохранённое на сервере `citizens` остаётся явным: чтобы следовать ядру, замените его на `global`.
-integrations:
-  npc-provider: global
+# 2026-11-21: секция integrations.npc-provider удалена. NPC доски и цепочек теперь поставляет только
+# LoveEssential (Citizens и прочие провайдеры не поддерживаются): выбирать больше не из чего. Оставленный на
+# сервере ключ integrations.npc-provider игнорируется, плагин один раз пишет об этом в лог.
 
 # NPC доски контрактов
 npc:
   enabled: true
   info-update-interval: 10
-  # 2026-10-22: ключ NPC выбранного провайдера (строка). Для citizens это числовой id, записанный текстом
-  # ("5"), для loveessential — его собственный id вида ext-xxxxxxxx. Пустая строка = NPC не привязан,
+  # 2026-10-22: ключ NPC LoveEssential (строка): его id вида ext-xxxxxxxx, имя либо номер NPC из /npc list,
+  # записанный текстом ("5"). 2026-11-21: провайдер теперь один, поэтому ключ всегда читается как NPC
+  # LoveEssential. Пустая строка = NPC не привязан,
   # доска всё равно доступна через /contracts и таблички. Привязывается командой /lovecontractsadmin npc.
   # Старый числовой ключ npc.id при запуске переносится сюда сам (-1 = не привязан), значение не теряется.
   key: ""

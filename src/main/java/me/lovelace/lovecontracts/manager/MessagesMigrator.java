@@ -19,6 +19,8 @@ public final class MessagesMigrator {
             // v2: GUI lore and names in the gui-gen-6 standard (style.*, gui.*)
             List.of("gui"),
             // v3 (2026-11-05): slot 0 of the board is the common NPC head with its description
+            List.of("gui"),
+            // v4 (2026-11-21): one board with four tabs, confirmation windows for chains and giving up
             List.of("gui"));
 
     private MessagesMigrator() {

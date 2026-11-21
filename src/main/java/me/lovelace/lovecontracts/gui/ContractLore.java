@@ -14,16 +14,16 @@ import java.util.Map;
  * Lore fragments shared by the contract menus (board and accept confirmation): the requirement rows and the coin rows
  * of rewards and penalties. The texts are messages.yml keys; this class only fills their placeholders.
  */
-final class ContractLore {
+public final class ContractLore {
 
     private final MessageManager messages;
 
-    ContractLore(MessageManager messages) {
+    public ContractLore(MessageManager messages) {
         this.messages = messages;
     }
 
     /** Rows of the requirement section: ✓ when met, ✕ with the numbers when not. Empty without a requirement. */
-    List<String> requirementRows(Player player, ContractRequirement requirement, int completedCount) {
+    public List<String> requirementRows(Player player, ContractRequirement requirement, int completedCount) {
         List<String> rows = new ArrayList<>();
         if (requirement == null) {
             return rows;
@@ -50,7 +50,7 @@ final class ContractLore {
     }
 
     /** Coin lines as section rows: two spaces in front. The coin glyph already starts with {@code <white>}. */
-    static List<String> coinRows(List<String> coinLines) {
+    public static List<String> coinRows(List<String> coinLines) {
         List<String> rows = new ArrayList<>(coinLines.size());
         for (String line : coinLines) {
             rows.add("  " + line);
@@ -58,12 +58,17 @@ final class ContractLore {
         return rows;
     }
 
-    static List<String> rewardLines(Contract contract) {
+    public static List<String> rewardLines(Contract contract) {
         return contract.getRewards().stream().flatMap(r -> r.getDisplayLines().stream()).toList();
     }
 
+    /** Coin lines of a list of rewards (the reward of a whole NPC chain). */
+    public static List<String> rewardLines(List<me.lovelace.lovecontracts.model.Reward> rewards) {
+        return rewards.stream().flatMap(r -> r.getDisplayLines().stream()).toList();
+    }
+
     /** Penalty lines; a starter contract shows none, and neither does one without a penalty. */
-    static List<String> penaltyLines(Contract contract) {
+    public static List<String> penaltyLines(Contract contract) {
         if (contract.isStarter()) {
             return List.of();
         }
@@ -73,7 +78,7 @@ final class ContractLore {
                 .toList();
     }
 
-    static boolean hasPenalty(Contract contract) {
+    public static boolean hasPenalty(Contract contract) {
         return !penaltyLines(contract).isEmpty();
     }
 

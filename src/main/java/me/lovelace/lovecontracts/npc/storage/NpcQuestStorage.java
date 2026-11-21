@@ -38,11 +38,27 @@ public final class NpcQuestStorage {
                 INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status)
                 VALUES(?,?,0,0,'ACTIVE') ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
                 current_step=0,step_progress=0,status='ACTIVE'
-                WHERE player_npc_quests.status='COMPLETED' AND ?=1
-                AND CAST(strftime('%s', last_completed_at) AS INTEGER) * 1000 <= ?
+                WHERE player_npc_quests.status='ABANDONED'
+                OR (player_npc_quests.status='COMPLETED' AND ?=1
+                AND CAST(strftime('%s', last_completed_at) AS INTEGER) * 1000 <= ?)
                 """)) {
             q.setString(1, player.toString()); q.setString(2, id);
             q.setBoolean(3, repeatable); q.setLong(4, now - Math.max(0, cooldown) * 60_000L);
+            return q.executeUpdate() == 1;
+        }
+    }
+
+    /**
+     * Gives up an active chain: no reward and no cooldown. The row stays as {@code ABANDONED} so the chain can be
+     * taken again at once ({@link #start} restarts it). Returns false when the chain was not active.
+     */
+    public static boolean abandon(Connection c, UUID player, String id) throws SQLException {
+        try (var q = c.prepareStatement("""
+                UPDATE player_npc_quests SET status='ABANDONED',current_step=0,step_progress=0
+                WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'
+                """)) {
+            q.setString(1, player.toString());
+            q.setString(2, id);
             return q.executeUpdate() == 1;
         }
     }

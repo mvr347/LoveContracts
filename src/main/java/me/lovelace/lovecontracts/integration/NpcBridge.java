@@ -11,9 +11,9 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * The only place that talks to the NPC provider chosen by {@code integrations.npc-provider}. The provider is
- * resolved on every use because providers register late (LoveCore, LoveEssential load around this plugin).
- * A missing provider is reported with one warning and only disables the NPC feature.
+ * The only place that talks to the NPC provider (LoveEssential). The provider is resolved on every use because
+ * it registers late (LoveCore, LoveEssential load around this plugin). A missing provider is reported with one
+ * warning and only disables the NPC feature.
  */
 public final class NpcBridge {
 
@@ -22,7 +22,7 @@ public final class NpcBridge {
     private final Consumer<String> warn;
 
     private String warnedAbout;
-    private boolean warnedUnknownValue;
+    private String warnedIgnoredValue;
 
     public NpcBridge(Supplier<ConfigurationSection> config, Consumer<String> warn) {
         this(config, NpcBridge::lookupViaLoveCore, warn);
@@ -43,32 +43,27 @@ public final class NpcBridge {
         }
     }
 
-    /** The configured provider id; an unknown value is reported once and treated as {@code citizens}. */
-    public synchronized String providerId() {
-        Object raw = config.get().get(NpcSettings.PROVIDER_PATH, null);
-        if (!NpcSettings.followsGlobal(raw) && !NpcSettings.isKnownProvider(raw)) {
-            if (!warnedUnknownValue) {
-                warnedUnknownValue = true;
-                warn.accept(NpcSettings.PROVIDER_PATH + ": unknown value '" + raw + "' (expected global, citizens or "
-                        + "loveessential), using citizens");
-            }
-        } else {
-            warnedUnknownValue = false;
-        }
-        return NpcSettings.providerId(raw);
+    /** The provider id: always LoveEssential. */
+    public String providerId() {
+        return NpcSettings.PROVIDER_ID;
     }
 
-    /** The configured provider, or empty (with one warning naming it) when it is not registered. */
+    /** The NPC provider, or empty (with one warning) when LoveEssential is not registered. */
     public synchronized Optional<NpcProvider> provider() {
+        String ignored = NpcSettings.ignoredProviderValue(config.get());
+        if (ignored != null && !ignored.equals(warnedIgnoredValue)) {
+            warnedIgnoredValue = ignored;
+            warn.accept(NpcSettings.LEGACY_PROVIDER_PATH + ": value '" + ignored + "' is ignored, NPCs come from "
+                    + "LoveEssential only; remove the key from config.yml");
+        }
         String id = providerId();
         Optional<NpcProvider> found = lookup.apply(id);
         if (found.isPresent()) {
             warnedAbout = null;
         } else if (!id.equals(warnedAbout)) {
             warnedAbout = id;
-            warn.accept("NPC provider '" + id + "' is not available (is LoveCore"
-                    + (NpcSettings.LOVEESSENTIAL.equals(id) ? " / LoveEssential" : " / Citizens") + " installed and enabled?);"
-                    + " the contract-board NPC is disabled until it appears");
+            warn.accept("NPC provider '" + id + "' is not available (are LoveCore and LoveEssential installed and "
+                    + "enabled?); the contract-board NPC is disabled until it appears");
         }
         return found;
     }
@@ -82,14 +77,9 @@ public final class NpcBridge {
         return NpcSettings.boundKey(config.get());
     }
 
-    /** True when the click event concerns the bound contract-board NPC of the configured provider. */
+    /** True when the click event concerns the bound contract-board NPC. */
     public boolean isBoundNpc(NpcHandle npc) {
-        // NpcClickEvent comes from every provider at once: others are ignored without touching the registry.
         String key = boundKey();
-        return key != null && npc != null && NpcSettings.isBound(npc, providerIdQuiet(), key);
-    }
-
-    private String providerIdQuiet() {
-        return NpcSettings.providerId(config.get().get(NpcSettings.PROVIDER_PATH, null));
+        return key != null && npc != null && NpcSettings.isBound(npc, key);
     }
 }

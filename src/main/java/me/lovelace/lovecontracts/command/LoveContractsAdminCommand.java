@@ -35,7 +35,7 @@ import java.util.logging.Level;
 public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "reload", "rotate", "create", "npc", "sign", "gui", "complete", "fail", "stats", "reset", "toggle", "help");
+            "reload", "rotate", "create", "npc", "sign", "gui", "chains", "complete", "fail", "stats", "reset", "toggle", "help");
     private static final List<String> GUI_ACTIONS = List.of("open");
     private static final List<String> SIGN_SUBCOMMANDS = List.of("bind", "unbind", "list");
     private static final List<String> PLAYER_ARG_SUBCOMMANDS = List.of("complete", "fail", "stats", "reset", "toggle");
@@ -67,6 +67,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             case "npc" -> npc(sender);
             case "sign" -> sign(sender, args);
             case "gui" -> gui(sender, args);
+            case "chains" -> chains(sender);
             case "complete" -> completeOrFail(sender, args, true);
             case "fail" -> completeOrFail(sender, args, false);
             case "stats" -> stats(sender, args);
@@ -76,6 +77,15 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             default -> sendHelp(sender);
         }
         return true;
+    }
+
+    /** The in-game chain builder: needs a player, the menus are inventories. */
+    private void chains(CommandSender sender) {
+        if (!(sender instanceof org.bukkit.entity.Player player)) {
+            sender.sendMessage(mm.deserialize("<red>Команда доступна только игрокам.</red>"));
+            return;
+        }
+        new me.lovelace.lovecontracts.npc.builder.gui.ChainListGui(plugin, player).open();
     }
 
     private void sendHelp(CommandSender sender) {
@@ -94,6 +104,8 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                 "<aqua>/lovecontractsadmin rotate</aqua> <gray>- Принудительно ротировать контракты</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin npc</aqua> <gray>- Привязать NPC контрактов (по взгляду или выбору)</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin chains</aqua> <gray>- Конструктор цепочек поручений</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin gui open <игрок></aqua> <gray>- Открыть игроку главное меню контрактов</gray>"));
         sender.sendMessage(mm.deserialize(
@@ -130,7 +142,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             sender.sendMessage(mm.deserialize("<red>✖ Игрок не найден (должен быть в сети).</red>"));
             return;
         }
-        plugin.getContractGUI().open(target);
+        plugin.getContractBoard().open(target);
         sender.sendMessage(mm.deserialize("<green>✔ Главное меню контрактов открыто для " + target.getName() + "</green>"));
     }
 
@@ -312,7 +324,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             sender.sendMessage(mm.deserialize("<red>✖ Игрок не найден (должен быть в сети).</red>"));
             return;
         }
-        plugin.getContractGUI().open(target);
+        plugin.getContractBoard().open(target);
         sender.sendMessage(mm.deserialize("<green>✔ Открыто меню контрактов для " + target.getName() + "</green>"));
     }
 

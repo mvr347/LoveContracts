@@ -31,14 +31,14 @@ class NpcSettingsTest {
     }
 
     @Test
-    void providerIdIsCaseInsensitiveAndFallsBackToCitizens() {
-        assertEquals("loveessential", NpcSettings.providerId(" LoveEssential "));
-        assertEquals("citizens", NpcSettings.providerId("citizens"));
-        assertEquals("citizens", NpcSettings.providerId(null));
-        assertEquals("citizens", NpcSettings.providerId(""));
-        assertEquals("citizens", NpcSettings.providerId("cmi"));
-        assertFalse(NpcSettings.isKnownProvider("cmi"));
-        assertTrue(NpcSettings.isKnownProvider("CITIZENS"));
+    void leftoverProviderValuesAreReportedButNeverUsed() {
+        assertEquals("loveessential", NpcSettings.PROVIDER_ID);
+        assertEquals("citizens", NpcSettings.ignoredProviderValue(yaml("integrations:\n  npc-provider: citizens\n")));
+        assertEquals("cmi", NpcSettings.ignoredProviderValue(yaml("integrations:\n  npc-provider: ' cmi '\n")));
+        assertNull(NpcSettings.ignoredProviderValue(yaml("integrations:\n  npc-provider: global\n")));
+        assertNull(NpcSettings.ignoredProviderValue(yaml("integrations:\n  npc-provider: LoveEssential\n")));
+        assertNull(NpcSettings.ignoredProviderValue(yaml("integrations:\n  npc-provider: ''\n")));
+        assertNull(NpcSettings.ignoredProviderValue(yaml("npc:\n  key: \"5\"\n")));
     }
 
     @Test
@@ -116,12 +116,12 @@ class NpcSettingsTest {
     }
 
     @Test
-    void bindingMatchesOnlyTheConfiguredProviderAndKey() {
-        assertTrue(NpcSettings.isBound(handle("citizens", "5"), "citizens", "5"));
-        assertFalse(NpcSettings.isBound(handle("loveessential", "5"), "citizens", "5"), "other provider's NPC");
-        assertFalse(NpcSettings.isBound(handle("citizens", "6"), "citizens", "5"));
-        assertFalse(NpcSettings.isBound(handle("citizens", "5"), "citizens", null));
-        assertTrue(NpcSettings.isBound(handle("loveessential", "ext-1"), "loveessential", "ext-1"));
+    void bindingMatchesOnlyLoveEssentialAndTheBoundKey() {
+        assertTrue(NpcSettings.isBound(handle("loveessential", "5"), "5"), "numeric aliases stay valid");
+        assertTrue(NpcSettings.isBound(handle("loveessential", "ext-1"), "ext-1"));
+        assertFalse(NpcSettings.isBound(handle("citizens", "5"), "5"), "foreign provider's NPC");
+        assertFalse(NpcSettings.isBound(handle("loveessential", "6"), "5"));
+        assertFalse(NpcSettings.isBound(handle("loveessential", "5"), null));
     }
 
     @Test

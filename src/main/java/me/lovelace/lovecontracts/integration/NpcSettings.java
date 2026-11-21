@@ -1,62 +1,47 @@
 package me.lovelace.lovecontracts.integration;
 
-import dev.lovelace.lovecore.api.LoveCore;
 import dev.lovelace.lovecore.api.npc.NpcHandle;
-import dev.lovelace.lovecore.api.provider.ProviderKind;
+import dev.lovelace.lovecore.api.provider.Providers;
 import org.bukkit.configuration.ConfigurationSection;
 
-import java.util.Locale;
-import java.util.Set;
-
 /**
- * Pure parsing of the NPC-related settings: which provider is configured and which NPC key is bound.
+ * Pure parsing of the NPC-related settings: which NPC key is bound.
  * Kept free of any server calls so it can be unit-tested.
  */
 public final class NpcSettings {
 
-    public static final String PROVIDER_PATH = "integrations.npc-provider";
+    /** The only supported NPC provider: LoveEssential. */
+    public static final String PROVIDER_ID = Providers.LOVE_ESSENTIAL;
+    /**
+     * 2026-11-21: the provider switch was removed (LoveEssential is the only provider). The old key is only read
+     * to tell an admin that a leftover value is ignored.
+     */
+    public static final String LEGACY_PROVIDER_PATH = "integrations.npc-provider";
     public static final String KEY_PATH = "npc.key";
-    /** Pre-provider config: the numeric Citizens id, {@code -1} meaning "not bound". */
+    /** Pre-provider config: the numeric NPC id, {@code -1} meaning "not bound". LoveEssential resolves numeric keys. */
     public static final String LEGACY_ID_PATH = "npc.id";
-
-    public static final String CITIZENS = "citizens";
-    public static final String LOVEESSENTIAL = "loveessential";
-    public static final Set<String> KNOWN_PROVIDERS = Set.of(CITIZENS, LOVEESSENTIAL);
 
     private NpcSettings() {
     }
 
-    /** True when the raw config value names a provider this plugin knows (case-insensitive). */
-    public static boolean isKnownProvider(Object raw) {
-        return raw != null && KNOWN_PROVIDERS.contains(raw.toString().trim().toLowerCase(Locale.ROOT));
-    }
-
-    /** Config value that follows {@code integrations.provider} of LoveCore. */
-    public static final String GLOBAL = "global";
-
-    /** True for an absent, blank or {@code global} value: the provider is then the global choice of LoveCore. */
-    public static boolean followsGlobal(Object raw) {
-        return raw == null || raw.toString().isBlank() || GLOBAL.equalsIgnoreCase(raw.toString().trim());
-    }
-
     /**
-     * Provider id from the config value. {@code global}, absent or blank follows {@code integrations.provider}
-     * of LoveCore (without LoveCore: {@code citizens}); a known id wins; an unknown value falls back to
-     * {@code citizens}.
+     * The leftover {@code integrations.npc-provider} value that is being ignored, or {@code null} when the key is
+     * absent or already names LoveEssential ({@code global} and blank also count as harmless).
      */
-    public static String providerId(Object raw) {
-        if (followsGlobal(raw)) {
-            try {
-                return LoveCore.providerId(ProviderKind.NPC, GLOBAL);
-            } catch (LinkageError coreMissingOrOld) {
-                return CITIZENS;
-            }
+    public static String ignoredProviderValue(ConfigurationSection config) {
+        Object raw = config.get(LEGACY_PROVIDER_PATH, null);
+        if (raw == null) {
+            return null;
         }
-        return isKnownProvider(raw) ? raw.toString().trim().toLowerCase(Locale.ROOT) : CITIZENS;
+        String text = raw.toString().trim();
+        if (text.isEmpty() || text.equalsIgnoreCase("global") || text.equalsIgnoreCase(PROVIDER_ID)) {
+            return null;
+        }
+        return text;
     }
 
     /**
-     * Normalises an NPC key read from yaml. A number (legacy Citizens id, written as int or text) becomes its
+     * Normalises an NPC key read from yaml. A number (a legacy numeric id or a LoveEssential NPC number, written as int or text) becomes its
      * canonical decimal text; a negative number is the legacy "not bound" marker. Blank means no key.
      *
      * @return the key, or {@code null} when nothing is bound
@@ -110,10 +95,10 @@ public final class NpcSettings {
         return true;
     }
 
-    /** Whether a clicked NPC is the bound one of the configured provider. */
-    public static boolean isBound(NpcHandle npc, String providerId, String boundKey) {
+    /** Whether a clicked NPC is the bound LoveEssential one. */
+    public static boolean isBound(NpcHandle npc, String boundKey) {
         return npc != null && boundKey != null
-                && providerId.equalsIgnoreCase(npc.providerId())
+                && PROVIDER_ID.equalsIgnoreCase(npc.providerId())
                 && boundKey.equals(normalizeKey(npc.key()));
     }
 

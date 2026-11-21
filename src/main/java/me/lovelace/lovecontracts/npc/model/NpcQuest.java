@@ -11,7 +11,7 @@ import java.util.Map;
 public class NpcQuest {
 
     private final String id;
-    /** Key of the quest-giver NPC in the configured provider (numeric Citizens id as text), or null. */
+    /** Key of the quest-giver NPC in LoveEssential (id, name or NPC number as text), or null. */
     private final String npcKey;
     private final String displayName;
     private final boolean repeatable;

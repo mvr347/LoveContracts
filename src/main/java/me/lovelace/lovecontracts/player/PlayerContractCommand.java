@@ -2,8 +2,8 @@ package me.lovelace.lovecontracts.player;
 
 import me.lovelace.lovecontracts.util.CoinFormat;
 import me.lovelace.lovecontracts.LoveContracts;
-import me.lovelace.lovecontracts.player.gui.PlayerContractBoardGUI;
-import me.lovelace.lovecontracts.player.gui.PlayerContractMyGUI;
+import me.lovelace.lovecontracts.gui.board.BoardTab;
+import me.lovelace.lovecontracts.gui.board.ContractBoard;
 import me.lovelace.lovecontracts.player.manager.CreateContractRequest;
 import me.lovelace.lovecontracts.player.manager.PlayerContractManager;
 import me.lovelace.lovecontracts.player.model.PlayerContractObjectiveType;
@@ -35,16 +35,13 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
 
     private final LoveContracts plugin;
     private final PlayerContractManager manager;
-    private final PlayerContractBoardGUI boardGui;
-    private final PlayerContractMyGUI myGui;
+    private final ContractBoard board;
     private final MiniMessage mm = MiniMessage.miniMessage();
 
-    public PlayerContractCommand(LoveContracts plugin, PlayerContractManager manager,
-                                  PlayerContractBoardGUI boardGui, PlayerContractMyGUI myGui) {
+    public PlayerContractCommand(LoveContracts plugin, PlayerContractManager manager, ContractBoard board) {
         this.plugin = plugin;
         this.manager = manager;
-        this.boardGui = boardGui;
-        this.myGui = myGui;
+        this.board = board;
     }
 
     @Override
@@ -63,13 +60,13 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            boardGui.open(player);
+            board.open(player, BoardTab.PLAYERS);
             return true;
         }
 
         switch (args[0].toLowerCase()) {
-            case "board" -> boardGui.open(player);
-            case "my" -> myGui.open(player);
+            case "board" -> board.open(player, BoardTab.PLAYERS);
+            case "my" -> board.open(player, BoardTab.MINE);
             case "create" -> handleCreate(player, args);
             case "accept" -> withResolvedId(player, args, 1, id -> manager.accept(player, id).thenAccept(r -> reply(player, r.message())));
             case "turnin" -> withResolvedId(player, args, 1, id -> manager.turnInDelivery(player, id).thenAccept(r -> reply(player, r.message())));

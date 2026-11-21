@@ -34,12 +34,12 @@ public class ContractCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            plugin.getContractGUI().open(player);
+            plugin.getContractBoard().open(player);
             return true;
         }
 
         switch (args[0].toLowerCase()) {
-            case "stats" -> plugin.getContractGUI().open(player);
+            case "stats" -> plugin.getContractBoard().open(player);
             case "abandon" -> {
                 if (args.length < 2) {
                     player.sendMessage(mm.deserialize("<red>Использование: /contracts abandon <id></red>"));
@@ -47,7 +47,7 @@ public class ContractCommand implements CommandExecutor, TabCompleter {
                 }
                 player.sendMessage(mm.deserialize("<yellow>Отмена контракта пока не реализована.</yellow>"));
             }
-            default -> plugin.getContractGUI().open(player);
+            default -> plugin.getContractBoard().open(player);
         }
         return true;
     }
