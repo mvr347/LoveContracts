@@ -21,8 +21,8 @@ public class SyncManager {
 
     public void syncGUIForPlayer(Player player) {
         if (player == null || !player.isOnline()) return;
-        if (plugin.getContractGUI().isOpen(player)) {
-            plugin.getContractGUI().refresh(player);
+        if (plugin.getContractBoard().isOpen(player)) {
+            plugin.getContractBoard().refresh(player);
         }
     }
 

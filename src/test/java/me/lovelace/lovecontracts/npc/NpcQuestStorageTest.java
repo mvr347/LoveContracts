@@ -56,4 +56,40 @@ class NpcQuestStorageTest {
             assertFalse(NpcQuestStorage.start(c, player, "one", false, 0, 86_400_000));
         }
     }
+
+    @Test void abandonedChainCanBeTakenAgainAtOnceWithoutRewardOrCooldown() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.start(c, player, "inn", false, 0, 0), "a one-time chain");
+            assertEquals(SAVED, NpcQuestStorage.advance(c, player, "inn", 0, 1, false, 240, 1800, 0));
+
+            assertTrue(NpcQuestStorage.abandon(c, player, "inn"));
+            assertFalse(NpcQuestStorage.abandon(c, player, "inn"), "only an active chain can be given up");
+            assertEquals(STALE, NpcQuestStorage.advance(c, player, "inn", 1, 2, true, 240, 1800, 0),
+                    "an abandoned chain cannot be finished by a stale dialogue");
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT SUM(amount) FROM contract_income")) {
+                assertTrue(rs.next()); assertEquals(0, rs.getLong(1), "giving up pays nothing");
+            }
+
+            assertTrue(NpcQuestStorage.start(c, player, "inn", false, 0, 1), "even a one-time chain restarts after giving up");
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT status,current_step,step_progress FROM player_npc_quests")) {
+                assertTrue(rs.next());
+                assertEquals("ACTIVE", rs.getString(1));
+                assertEquals(0, rs.getInt(2));
+                assertEquals(0, rs.getInt(3));
+            }
+        }
+    }
+
+    @Test void completedOneTimeChainStaysCompletedAndCannotBeAbandoned() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.start(c, player, "once", false, 0, 0));
+            assertEquals(SAVED, NpcQuestStorage.advance(c, player, "once", 0, 1, true, 100, 1800, 0));
+            assertFalse(NpcQuestStorage.abandon(c, player, "once"));
+            assertFalse(NpcQuestStorage.start(c, player, "once", false, 0, 1), "a one-time chain is not repeatable");
+        }
+    }
 }
