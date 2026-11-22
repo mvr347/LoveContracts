@@ -38,6 +38,10 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     private final ContractBoard board;
     private final MiniMessage mm = MiniMessage.miniMessage();
 
+    /** Subcommands that settle an existing contract; they keep working while the player-contract UI is hidden. */
+    private static final java.util.Set<String> MANAGEMENT_ACTIONS =
+            java.util.Set.of("accept", "turnin", "submit", "cancel", "abandon", "review", "info");
+
     public PlayerContractCommand(LoveContracts plugin, PlayerContractManager manager, ContractBoard board) {
         this.plugin = plugin;
         this.manager = manager;
@@ -59,7 +63,11 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         if (!player.hasPermission("pcontracts.use")) {
             return true;
         }
-        if (!board.playerContractsVisible()) {
+        // Hiding the UI must not strand contracts that are already running: only the entry points (board, my, create)
+        // are closed, the management actions stay available until those contracts settle.
+        String sub = args.length == 0 ? "board" : args[0].toLowerCase();
+        if (!board.playerContractsVisible() && (sub.equals("board") || sub.equals("my") || sub.equals("create")
+                || sub.equals("help") || !MANAGEMENT_ACTIONS.contains(sub))) {
             player.sendMessage(mm.deserialize("<red>Контракты между игроками временно недоступны.</red>"));
             return true;
         }
@@ -280,10 +288,12 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        if (!sender.hasPermission("pcontracts.use") || !board.playerContractsVisible()) return List.of();
+        if (!sender.hasPermission("pcontracts.use")) return List.of();
 
         List<String> options = new ArrayList<>();
-        if (args.length == 1) {
+        if (args.length == 1 && !board.playerContractsVisible()) {
+            options.addAll(MANAGEMENT_ACTIONS);
+        } else if (args.length == 1) {
             options.addAll(List.of("board", "my", "create", "accept", "turnin", "submit",
                     "cancel", "review", "info", "help"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("create")) {
