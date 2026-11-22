@@ -19,6 +19,9 @@ class ChainBuilderModelTest {
         ChainDraft chain = new ChainDraft("smith_order");
         chain.displayName("<gold>Заказ кузнеца</gold>");
         chain.giverKey("ext-1a2b3c4d");
+        chain.tier(me.lovelace.lovecontracts.model.Difficulty.MEDIUM);
+        chain.timeLimitMinutes(90);
+        chain.summary("Помогите кузнецу с заказом.");
         chain.repeatable(true);
         chain.cooldownMinutes(30);
         chain.reward(300);
@@ -46,7 +49,7 @@ class ChainBuilderModelTest {
         chain.steps().add(deliver);
 
         StepDraft go = new StepDraft(NpcQuestStep.Type.VISIT_LOCATION);
-        go.area(new QuestLocation("world_nether", 10, 70, 10, 8));
+        go.area(new QuestLocation("world", 10, 70, 10, 8));
         chain.steps().add(go);
         return chain;
     }
@@ -80,6 +83,9 @@ class ChainBuilderModelTest {
         assertNotNull(back);
         assertEquals("<gold>Заказ кузнеца</gold>", back.displayName());
         assertEquals("ext-1a2b3c4d", back.giverKey());
+        assertEquals(me.lovelace.lovecontracts.model.Difficulty.MEDIUM, back.tier());
+        assertEquals(90, back.timeLimitMinutes());
+        assertEquals("Помогите кузнецу с заказом.", back.summary());
         assertTrue(back.repeatable());
         assertEquals(30, back.cooldownMinutes());
         assertEquals(300, back.reward());
@@ -100,7 +106,7 @@ class ChainBuilderModelTest {
         assertEquals("ext-5e6f7a8b", deliver.targetNpcKey());
         assertEquals("Трактирщик", deliver.targetNpcName());
 
-        assertEquals(new QuestLocation("world_nether", 10, 70, 10, 8), back.steps().get(4).area());
+        assertEquals(new QuestLocation("world", 10, 70, 10, 8), back.steps().get(4).area());
     }
 
     @Test

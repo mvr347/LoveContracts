@@ -21,6 +21,8 @@ public final class MessagesMigrator {
             // v3 (2026-11-05): slot 0 of the board is the common NPC head with its description
             List.of("gui"),
             // v4 (2026-11-21): one board with four tabs, confirmation windows for chains and giving up
+            List.of("gui"),
+            // v5 (2026-11-22): unified errands board, short card lore, variable rewards
             List.of("gui"));
 
     private MessagesMigrator() {

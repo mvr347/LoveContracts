@@ -3,17 +3,15 @@ package me.lovelace.lovecontracts.gui.board;
 import me.lovelace.lovecontracts.LoveContracts;
 import me.lovelace.lovecontracts.gui.BoardModes.ChainFilter;
 import me.lovelace.lovecontracts.gui.BoardModes.ChainSort;
-import me.lovelace.lovecontracts.gui.BoardModes.FilterMode;
 import me.lovelace.lovecontracts.gui.BoardModes.MineFilter;
 import me.lovelace.lovecontracts.gui.BoardModes.MineSort;
 import me.lovelace.lovecontracts.gui.BoardModes.Mode;
 import me.lovelace.lovecontracts.gui.BoardModes.OfferFilter;
 import me.lovelace.lovecontracts.gui.BoardModes.OfferSort;
-import me.lovelace.lovecontracts.gui.BoardModes.SortMode;
 import me.lovelace.lovecontracts.gui.LoreBlocks;
 import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
 import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
-import me.lovelace.lovecontracts.model.Contract;
+import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.model.Reward;
 import me.lovelace.lovecontracts.npc.manager.NpcQuestManager;
 import me.lovelace.lovecontracts.npc.model.ChainStatus;
@@ -37,28 +35,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 /**
- * The one 54-slot contract board (gui_gen RULE 8). Header: slot 0 the NPC head, slots 2-7 four tabs plus the filter
- * and sort of the current tab; Row1 glass; content paged in the work zone; footer with the extra button of the tab and
- * Close. One instance is one open board, it is its own inventory holder.
+ * The one 54-slot contract board (gui_gen RULE 8). Header: slot 0 the NPC head, slots 2-7 the visible tabs plus the
+ * filter and sort of the current tab; Row1 glass; content paged in the work zone; footer with Close (and extra when needed).
  */
 public final class ContractBoardGui extends BoardGui {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
 
     private final ContractBoard board;
-    private final SystemCards systemCards;
     private final ChainCards chainCards;
     private final PlayerCards playerCards;
 
     private BoardTab tab;
-    /** Set when an NPC with several conversations opened the board: only these chains are listed. */
+    /** Set when an NPC with several conversations opened the board: only these quests are listed. */
     private final Set<String> onlyChains;
 
-    private FilterMode systemFilter = FilterMode.ALL;
-    private SortMode systemSort = SortMode.ALL;
     private ChainFilter chainFilter = ChainFilter.ALL;
     private ChainSort chainSort = ChainSort.DEFAULT;
     private OfferFilter offerFilter = OfferFilter.ALL;
@@ -74,25 +67,22 @@ public final class ContractBoardGui extends BoardGui {
         this.board = board;
         this.tab = tab;
         this.onlyChains = onlyChains;
-        this.systemCards = new SystemCards(plugin);
         this.chainCards = new ChainCards(plugin);
         this.playerCards = new PlayerCards(plugin);
     }
 
     @Override
     protected Component title() {
-        return messages().getComponent("gui.title", "<gold>Доска контрактов</gold>");
+        return messages().getComponent("gui.title", "<gold>Доска поручений</gold>");
     }
 
     // ------------------------------------------------------------------ opening and refreshing
 
-    /** Loads what the first tab needs (player contracts come from the database), then opens the window. */
     void begin() {
         board.register(this);
         load(this::show);
     }
 
-    /** True while this board is the window the viewer has open. */
     boolean isShown() {
         return inventory != null && viewer.isOnline() && viewer.getOpenInventory().getTopInventory().getHolder() == this;
     }
@@ -101,14 +91,12 @@ public final class ContractBoardGui extends BoardGui {
         return tab == BoardTab.PLAYERS || tab == BoardTab.MINE;
     }
 
-    /** Redraws in place, reading the database again for the player tabs. */
     void refresh() {
         load(() -> {
             if (isShown()) render();
         });
     }
 
-    /** Opens this board again after a confirmation window; the data is read afresh. */
     private void reopen() {
         board.register(this);
         load(() -> {
@@ -118,7 +106,6 @@ public final class ContractBoardGui extends BoardGui {
         });
     }
 
-    /** Runs {@code then} on the main thread once the current tab's data is in. */
     private void load(Runnable then) {
         switch (tab) {
             case PLAYERS -> plugin.getPlayerContractManager().listOpenFor(viewer).thenAccept(list ->
@@ -142,20 +129,24 @@ public final class ContractBoardGui extends BoardGui {
         button(0, npcHeader(), null);
         controls(headerControls());
         switch (tab) {
-            case SYSTEM -> renderSystem();
-            case CHAINS -> renderChains();
+            case QUESTS -> renderQuests();
             case PLAYERS -> renderPlayers();
             case MINE -> renderMine();
         }
-        // The board is the root menu, so there is no Back: the glass stays.
         footer(null);
     }
 
     private List<Control> headerControls() {
         List<Control> controls = new ArrayList<>();
+        List<BoardTab> availableTabs = new ArrayList<>();
         for (BoardTab t : BoardTab.values()) {
-            if (!board.tabAvailable(viewer, t)) continue;
-            controls.add(new Control(tabButton(t), e -> switchTab(t)));
+            if (board.tabAvailable(viewer, t)) availableTabs.add(t);
+        }
+        // When only QUESTS is available (player contracts hidden), showing filter + sort directly keeps the header clean.
+        if (availableTabs.size() > 1) {
+            for (BoardTab t : availableTabs) {
+                controls.add(new Control(tabButton(t), e -> switchTab(t)));
+            }
         }
         controls.add(new Control(filterButton(), e -> cycleFilter(e.isRightClick())));
         controls.add(new Control(sortButton(), e -> cycleSort(e.isRightClick())));
@@ -185,8 +176,7 @@ public final class ContractBoardGui extends BoardGui {
             lines.addAll(LoreBlocks.clicks(messages()::getRaw, Hint.of(Click.LEFT, t("gui.action-open-tab"))));
         }
         String base64 = switch (t) {
-            case SYSTEM -> HeadUtil.getHeadTexture("tab-system", HeadTextures.STARTER_QUEST);
-            case CHAINS -> HeadUtil.getHeadTexture("tab-chains", HeadTextures.PRESET);
+            case QUESTS -> HeadUtil.getHeadTexture("tab-quests", HeadTextures.PRESET);
             case PLAYERS -> HeadUtil.getHeadTexture("tab-players", HeadTextures.COUNT);
             case MINE -> HeadUtil.getHeadTexture("tab-mine", HeadTextures.REWARD);
         };
@@ -195,11 +185,9 @@ public final class ContractBoardGui extends BoardGui {
         return item;
     }
 
-    /** How many entries a tab has; null when that is not known without a database read. */
     private String tabCount(BoardTab t) {
         return switch (t) {
-            case SYSTEM -> String.valueOf(plugin.getContractManager().getActiveContracts().size());
-            case CHAINS -> String.valueOf(plugin.getNpcQuestManager().viewsFor(viewer).stream()
+            case QUESTS -> String.valueOf(plugin.getNpcQuestManager().viewsFor(viewer).stream()
                     .filter(v -> v.status() == ChainStatus.AVAILABLE || v.status() == ChainStatus.ACTIVE).count());
             case PLAYERS -> t == tab ? String.valueOf(visibleOffers().size()) : null;
             case MINE -> t == tab ? String.valueOf(mine.size()) : null;
@@ -211,8 +199,7 @@ public final class ContractBoardGui extends BoardGui {
     private ItemStack filterButton() {
         String base64 = HeadUtil.getHeadTexture("filter", HeadTextures.FILTER);
         return switch (tab) {
-            case SYSTEM -> cycleButton(base64, t("gui.filter-title"), FilterMode.values(), systemFilter);
-            case CHAINS -> cycleButton(base64, t("gui.filter-title"), ChainFilter.values(), chainFilter);
+            case QUESTS -> cycleButton(base64, t("gui.filter-title"), ChainFilter.values(), chainFilter);
             case PLAYERS -> cycleButton(base64, t("gui.filter-title"), OfferFilter.values(), offerFilter);
             case MINE -> cycleButton(base64, t("gui.filter-title"), MineFilter.values(), mineFilter);
         };
@@ -221,17 +208,12 @@ public final class ContractBoardGui extends BoardGui {
     private ItemStack sortButton() {
         String base64 = HeadUtil.getHeadTexture("sort", HeadTextures.SORT);
         return switch (tab) {
-            case SYSTEM -> cycleButton(base64, t("gui.sort-title"), SortMode.values(), systemSort);
-            case CHAINS -> cycleButton(base64, t("gui.sort-title"), ChainSort.values(), chainSort);
+            case QUESTS -> cycleButton(base64, t("gui.sort-title"), ChainSort.values(), chainSort);
             case PLAYERS -> cycleButton(base64, t("gui.sort-title"), OfferSort.values(), offerSort);
             case MINE -> cycleButton(base64, t("gui.sort-title"), MineSort.values(), mineSort);
         };
     }
 
-    /**
-     * Members-menu style switch: the name shows the current option, the list marks it with ▶, and the two click lines
-     * below say where the next and the previous option are.
-     */
     private <E extends Enum<E> & Mode> ItemStack cycleButton(String base64, String title, E[] options, E current) {
         List<String> names = new ArrayList<>(options.length);
         for (E option : options) names.add(messages().getRaw(option.messageKey(), option.fallback()));
@@ -252,8 +234,7 @@ public final class ContractBoardGui extends BoardGui {
 
     private void cycleFilter(boolean backwards) {
         switch (tab) {
-            case SYSTEM -> systemFilter = backwards ? systemFilter.prev() : systemFilter.next();
-            case CHAINS -> chainFilter = backwards ? chainFilter.prev() : chainFilter.next();
+            case QUESTS -> chainFilter = backwards ? chainFilter.prev() : chainFilter.next();
             case PLAYERS -> offerFilter = backwards ? offerFilter.prev() : offerFilter.next();
             case MINE -> mineFilter = backwards ? mineFilter.prev() : mineFilter.next();
         }
@@ -263,8 +244,7 @@ public final class ContractBoardGui extends BoardGui {
 
     private void cycleSort(boolean backwards) {
         switch (tab) {
-            case SYSTEM -> systemSort = backwards ? systemSort.prev() : systemSort.next();
-            case CHAINS -> chainSort = backwards ? chainSort.prev() : chainSort.next();
+            case QUESTS -> chainSort = backwards ? chainSort.prev() : chainSort.next();
             case PLAYERS -> offerSort = backwards ? offerSort.prev() : offerSort.next();
             case MINE -> mineSort = backwards ? mineSort.prev() : mineSort.next();
         }
@@ -272,77 +252,21 @@ public final class ContractBoardGui extends BoardGui {
         render();
     }
 
-    // ------------------------------------------------------------------ tab: daily contracts
+    // ------------------------------------------------------------------ tab: unified quests
 
-    private void renderSystem() {
-        List<Contract> list = systemCards.apply(plugin.getContractManager().getActiveContracts(), viewer, systemFilter, systemSort);
-        paged(list, c -> systemCards.contractItem(c, viewer), this::systemClick, "gui.empty-hint-system");
-        Contract active = plugin.getContractManager().getActiveContract(viewer.getUniqueId());
-        if (active != null) {
-            button(BoardLayout.extraSlot(inventory.getSize()), systemCards.currentContractButton(viewer, active),
-                    e -> activeClick(active, e));
-        }
-    }
-
-    private void systemClick(Contract contract, InventoryClickEvent event) {
-        UUID uuid = viewer.getUniqueId();
-        var manager = plugin.getContractManager();
-        // completed or failed: nothing to do
-        if (manager.getCompletedTodayContractIds(uuid).contains(contract.getId())
-                || manager.getFailedContractIds(uuid).contains(contract.getId())) return;
-        if (manager.getActiveContractIds(uuid).contains(contract.getId())) {
-            activeClick(contract, event);
-            return;
-        }
-        if (manager.hasActiveContract(uuid)) {
-            Notify.event(viewer, MM.deserialize("<red>Вы уже выполняете контракт! Одновременно можно взять только один контракт.</red>"));
-            return;
-        }
-        if (contract.getRequirement() != null
-                && !contract.getRequirement().isMet(viewer, manager.getCompletedContractsCount(uuid))) {
-            Notify.event(viewer, MM.deserialize("<red>Вы не соответствуете требованиям этого контракта!</red>"));
-            return;
-        }
-        board.confirmAccept(viewer, contract, this::reopen);
-    }
-
-    /** A taken contract: left click hands it in when it is done, right click gives it up (after a confirmation). */
-    private void activeClick(Contract contract, InventoryClickEvent event) {
-        boolean done = contract.getCondition() != null && contract.getCondition().isCompleted(viewer);
-        if (event.isRightClick()) {
-            List<String> losses = new ArrayList<>(List.of("gui.effect-abandon-progress"));
-            if (me.lovelace.lovecontracts.gui.ContractLore.hasPenalty(contract)) losses.add("gui.effect-penalty");
-            board.confirmAbandon(viewer, contract.getDisplayName(), losses, () -> {
-                plugin.getContractManager().cancelContract(viewer, contract);
-                reopen();
-            }, this::reopen);
-        } else if (event.isLeftClick()) {
-            if (done) {
-                plugin.getContractManager().completeContract(viewer, contract);
-                render();
-            } else {
-                String progress = contract.getCondition() != null ? contract.getCondition().getProgressString(viewer) : "";
-                Notify.event(viewer, MM.deserialize("<yellow>Контракт еще не выполнен. Прогресс: " + progress + "</yellow>"));
-            }
-        }
-    }
-
-    // ------------------------------------------------------------------ tab: NPC chains
-
-    private void renderChains() {
+    private void renderQuests() {
         NpcQuestManager manager = plugin.getNpcQuestManager();
         boolean atLimit = manager.activeCount(viewer) >= NpcQuestManager.MAX_ACTIVE_CHAINS;
         List<ChainView> views = new ArrayList<>();
         for (ChainView view : manager.viewsFor(viewer)) {
             if (onlyChains != null && !onlyChains.contains(view.quest().getId())) continue;
-            if (chainFilter.accepts(view.status())) views.add(view);
+            if (chainFilter.accepts(view)) views.add(view);
         }
         views.sort(chainOrder());
-        paged(views, v -> chainCards.card(viewer, v, atLimit), (v, e) -> chainClick(v, e, atLimit), "gui.empty-hint-chains");
+        paged(views, v -> chainCards.card(viewer, v, atLimit), (v, e) -> chainClick(v, e, atLimit), "gui.empty-hint-quests");
     }
 
     private Comparator<ChainView> chainOrder() {
-        // what the player can act on comes first, then waiting, locked and finished ones
         Comparator<ChainView> byStatus = Comparator.comparingInt(v -> switch (v.status()) {
             case ACTIVE -> 0;
             case AVAILABLE -> 1;
@@ -352,9 +276,17 @@ public final class ContractBoardGui extends BoardGui {
         });
         return switch (chainSort) {
             case DEFAULT -> byStatus;
+            case DIFFICULTY -> byStatus.thenComparingInt(v -> tierRank(v.quest().getTier()));
             case REWARD_HIGH -> byStatus.thenComparing(Comparator.comparingDouble((ChainView v) -> rewardOf(v.quest())).reversed());
             case REWARD_LOW -> byStatus.thenComparingDouble(v -> rewardOf(v.quest()));
-            case STEPS -> byStatus.thenComparing(Comparator.comparingInt((ChainView v) -> v.quest().TotalSteps()).reversed());
+        };
+    }
+
+    private static int tierRank(Difficulty tier) {
+        return switch (tier) {
+            case STARTER, EASY -> 0;
+            case MEDIUM -> 1;
+            case HARD -> 2;
         };
     }
 
@@ -393,10 +325,6 @@ public final class ContractBoardGui extends BoardGui {
         }
     }
 
-    /**
-     * "Talk to the giver" from the board: tells where the NPC stands, makes the chain the one the sidebar follows and
-     * opens the conversation when the player is close enough (the quest manager asks them to come closer otherwise).
-     */
     private void talkToGiver(NpcQuest quest) {
         NpcQuestManager manager = plugin.getNpcQuestManager();
         NpcQuestManager.Whereabouts spot = manager.whereabouts(viewer, quest);
@@ -443,7 +371,6 @@ public final class ContractBoardGui extends BoardGui {
                 }));
     }
 
-    /** Footer button of the offers tab: contracts between players are created with a command. */
     private ItemStack createHelpButton() {
         List<String> lines = new ArrayList<>();
         lines.add(t("gui.create-own-subtitle"));

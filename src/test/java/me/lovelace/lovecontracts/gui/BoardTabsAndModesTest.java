@@ -8,7 +8,12 @@ import me.lovelace.lovecontracts.gui.BoardModes.Mode;
 import me.lovelace.lovecontracts.gui.BoardModes.OfferFilter;
 import me.lovelace.lovecontracts.gui.BoardModes.OfferSort;
 import me.lovelace.lovecontracts.gui.board.BoardTab;
+import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.npc.model.ChainStatus;
+import me.lovelace.lovecontracts.npc.model.ChainView;
+import me.lovelace.lovecontracts.npc.model.LockReason;
+import me.lovelace.lovecontracts.npc.model.NpcQuest;
+import me.lovelace.lovecontracts.npc.model.RewardTiers;
 import me.lovelace.lovecontracts.player.model.PlayerContractObjectiveType;
 import me.lovelace.lovecontracts.player.model.PlayerContractStatus;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -19,6 +24,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,11 +39,10 @@ class BoardTabsAndModesTest {
     }
 
     @Test
-    void theBoardHasFourTabsAndTheyFillTheHeaderTogetherWithFilterAndSort() {
-        assertEquals(4, BoardTab.values().length);
-        assertEquals(BoardTab.SYSTEM, BoardTab.values()[0], "the daily contracts come first");
-        // four tabs + filter + sort = six controls = all of slots 2-7, on every tab, so tabs never jump
-        assertEquals(6, BoardTab.values().length + 2);
+    void theBoardHasThreeTabsWithQuestsFirstAndFitsHeaderControls() {
+        assertEquals(3, BoardTab.values().length);
+        assertEquals(BoardTab.QUESTS, BoardTab.values()[0], "unified quests come first");
+        assertTrue(BoardTab.values().length + 2 <= 6, "tabs + filter + sort fit inside slots 2-7");
     }
 
     @Test
@@ -75,7 +80,7 @@ class BoardTabsAndModesTest {
     }
 
     @Test
-    void chainFilterShowsLockedAndLoadingChainsOnlyUnderAll() {
+    void chainFilterShowsLockedAndLoadingChainsOnlyUnderAllAndFiltersByTier() {
         for (ChainStatus status : ChainStatus.values()) assertTrue(ChainFilter.ALL.accepts(status));
         assertFalse(ChainFilter.AVAILABLE.accepts(ChainStatus.LOCKED));
         assertFalse(ChainFilter.AVAILABLE.accepts(ChainStatus.LOADING));
@@ -84,6 +89,13 @@ class BoardTabsAndModesTest {
         assertTrue(ChainFilter.COOLDOWN.accepts(ChainStatus.COOLDOWN));
         assertTrue(ChainFilter.DONE.accepts(ChainStatus.DONE));
         assertFalse(ChainFilter.DONE.accepts(ChainStatus.COOLDOWN));
+
+        NpcQuest med = new NpcQuest("m", "@contractor", "Med", true, 60, "greeting", Map.of(), List.of(), List.of(),
+                Difficulty.MEDIUM, 90, "Summary", RewardTiers.DEFAULT);
+        ChainView view = new ChainView(med, ChainStatus.AVAILABLE, 0, 0, 0, LockReason.NONE);
+        assertTrue(ChainFilter.MEDIUM.accepts(view));
+        assertFalse(ChainFilter.EASY.accepts(view));
+        assertFalse(ChainFilter.HARD.accepts(view));
     }
 
     @Test

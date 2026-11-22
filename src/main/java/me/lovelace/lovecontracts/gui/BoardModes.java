@@ -1,5 +1,9 @@
 package me.lovelace.lovecontracts.gui;
 
+import me.lovelace.lovecontracts.model.Difficulty;
+import me.lovelace.lovecontracts.npc.model.ChainStatus;
+import me.lovelace.lovecontracts.npc.model.ChainView;
+
 /**
  * Filter and sort modes of the contract board plus their cycling logic.
  * Pure (no Bukkit access) so the wrap-around behaviour is unit-testable.
@@ -68,9 +72,12 @@ public final class BoardModes {
         String fallback();
     }
 
-    /** Filter of the chains tab. */
+    /** Filter of the unified quests tab (difficulty and status). */
     public enum ChainFilter implements Mode {
         ALL("all", "Все"),
+        EASY("easy", "Лёгкие"),
+        MEDIUM("medium", "Средние"),
+        HARD("hard", "Сложные"),
         AVAILABLE("available", "Доступные"),
         ACTIVE("active", "Взятые"),
         COOLDOWN("cooldown", "Перерыв"),
@@ -89,24 +96,36 @@ public final class BoardModes {
         public ChainFilter next() { return cycle(values(), this, 1); }
         public ChainFilter prev() { return cycle(values(), this, -1); }
 
-        /** Whether a chain in this state shows under the filter. A locked or loading chain shows only under ALL. */
-        public boolean accepts(me.lovelace.lovecontracts.npc.model.ChainStatus status) {
+        /** Whether a quest in this state shows under the filter. A locked or loading quest shows only under ALL. */
+        public boolean accepts(ChainStatus status) {
+            return switch (this) {
+                case ALL, EASY, MEDIUM, HARD -> true;
+                case AVAILABLE -> status == ChainStatus.AVAILABLE;
+                case ACTIVE -> status == ChainStatus.ACTIVE;
+                case COOLDOWN -> status == ChainStatus.COOLDOWN;
+                case DONE -> status == ChainStatus.DONE;
+            };
+        }
+
+        public boolean accepts(ChainView view) {
+            if (view == null || view.quest() == null) return false;
+            Difficulty tier = view.quest().getTier();
             return switch (this) {
                 case ALL -> true;
-                case AVAILABLE -> status == me.lovelace.lovecontracts.npc.model.ChainStatus.AVAILABLE;
-                case ACTIVE -> status == me.lovelace.lovecontracts.npc.model.ChainStatus.ACTIVE;
-                case COOLDOWN -> status == me.lovelace.lovecontracts.npc.model.ChainStatus.COOLDOWN;
-                case DONE -> status == me.lovelace.lovecontracts.npc.model.ChainStatus.DONE;
+                case EASY -> tier == Difficulty.EASY || tier == Difficulty.STARTER;
+                case MEDIUM -> tier == Difficulty.MEDIUM;
+                case HARD -> tier == Difficulty.HARD;
+                default -> accepts(view.status());
             };
         }
     }
 
-    /** Sort of the chains tab. */
+    /** Sort of the unified quests tab. */
     public enum ChainSort implements Mode {
         DEFAULT("default", "Как в списке"),
+        DIFFICULTY("difficulty", "Сложность"),
         REWARD_HIGH("reward-high", "От Б до М"),
-        REWARD_LOW("reward-low", "От М до Б"),
-        STEPS("steps", "Число этапов");
+        REWARD_LOW("reward-low", "От М до Б");
 
         private final String key;
         private final String fallback;

@@ -1,12 +1,14 @@
 package me.lovelace.lovecontracts.gui.board;
 
 import me.lovelace.lovecontracts.LoveContracts;
-import me.lovelace.lovecontracts.gui.ContractLore;
 import me.lovelace.lovecontracts.gui.LoreBlocks;
 import me.lovelace.lovecontracts.gui.LoreBlocks.Click;
 import me.lovelace.lovecontracts.gui.LoreBlocks.Hint;
 import me.lovelace.lovecontracts.manager.MessageManager;
+import me.lovelace.lovecontracts.model.Difficulty;
+import me.lovelace.lovecontracts.model.Reward;
 import me.lovelace.lovecontracts.npc.manager.NpcQuestManager;
+import me.lovelace.lovecontracts.npc.model.ChainStatus;
 import me.lovelace.lovecontracts.npc.model.ChainView;
 import me.lovelace.lovecontracts.npc.model.NpcQuest;
 import me.lovelace.lovecontracts.npc.model.NpcQuestStep;
@@ -23,13 +25,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Cards of the NPC chains tab: one card per chain, whatever state the player is in for it. */
+/** Short, clear cards of the unified quests board (gui-gen-6 compliant). */
 final class ChainCards {
 
-    /** Steps listed in a card; a longer chain ends with an «и ещё N» row so the tooltip stays readable. */
-    static final int MAX_STEP_ROWS = 8;
-
     private static final MiniMessage MM = MiniMessage.miniMessage();
+    private static final int SUMMARY_WRAP = 40;
 
     private final LoveContracts plugin;
 
@@ -58,7 +58,6 @@ final class ChainCards {
         return MM.escapeTags(value == null ? "" : value);
     }
 
-    /** What a click on this chain's card does; the board turns it into the real action. */
     enum Kind { TAKE, ACTIVE, BLOCKED }
 
     static Kind kindOf(ChainView view, boolean atLimit) {
@@ -72,31 +71,50 @@ final class ChainCards {
     ItemStack card(Player player, ChainView view, boolean atLimit) {
         NpcQuest quest = view.quest();
         NpcQuestManager manager = plugin.getNpcQuestManager();
-        NpcQuestManager.Whereabouts spot = manager.whereabouts(player, quest);
 
         List<String> lines = new ArrayList<>();
-        lines.add(text("gui.chain-subtitle"));
+        String tierLabel = tierName(quest.getTier());
+        if (quest.getTimeLimitMinutes() > 0) {
+            lines.add(text("gui.quest-timed-subtitle", Map.of(
+                    "tier", tierLabel,
+                    "time", DurationText.format(quest.getTimeLimitMinutes() * 60_000L))));
+        } else {
+            lines.add(text("gui.quest-subtitle", Map.of("tier", tierLabel)));
+        }
         lines.add("");
-        lines.add(text("gui.section-conditions"));
-        if (!spot.name().isBlank()) {
-            lines.add(text(view.status() == me.lovelace.lovecontracts.npc.model.ChainStatus.ACTIVE ? "gui.chain-now-npc" : "gui.chain-giver",
-                    Map.of("name", safe(spot.name()))));
+
+        String summary = quest.getSummary();
+        if (summary.isBlank() && quest.TotalSteps() > 0) {
+            summary = quest.getStep(0).getDescription();
         }
-        if (!spot.where().isBlank()) {
-            lines.add(text("gui.chain-where", Map.of("where", safe(spot.where()))));
+        for (String wrapped : wrap(summary, SUMMARY_WRAP)) {
+            lines.add(text("gui.quest-summary-line", Map.of("line", safe(wrapped))));
         }
-        lines.add(text("gui.chain-steps-count", Map.of("count", String.valueOf(quest.TotalSteps()))));
-        lines.add(quest.isRepeatable()
-                ? text("gui.chain-repeat", Map.of("time", DurationText.format(quest.getCooldownMinutes() * 60_000L)))
-                : text("gui.chain-once"));
+
+        if (view.status() == ChainStatus.ACTIVE) {
+            NpcQuestStep current = quest.getStep(view.currentStep());
+            if (current != null) {
+                lines.add("");
+                lines.add(text("gui.quest-goal", Map.of("goal", safe(current.getDescription()))));
+                addProgress(lines, view);
+            }
+            if (quest.getTimeLimitMinutes() > 0) {
+                long left = manager.timeLeftMillis(player, quest);
+                lines.add(text("gui.quest-time-left", Map.of("time", DurationText.format(left))));
+            }
+        }
 
         lines.add("");
-        lines.add(text("gui.section-steps"));
-        addSteps(lines, view);
-
-        lines.add("");
-        lines.add(text("gui.section-reward"));
-        lines.addAll(ContractLore.coinRows(ContractLore.rewardLines(quest.getRewards())));
+        long baseReward = Math.round(quest.getRewards().stream().mapToDouble(Reward::getAmount).sum());
+        double maxMult = plugin.getConfig().getDouble("economy.reward-tiers.max-multiplier", 1.5);
+        long maxReward = quest.getRewardTiers().maxReward(baseReward, maxMult);
+        if (maxReward > baseReward) {
+            lines.add(text("gui.quest-reward-variable", Map.of(
+                    "base", CoinFormat.format(baseReward),
+                    "max", CoinFormat.format(maxReward))));
+        } else {
+            lines.add(text("gui.quest-reward-base", Map.of("base", CoinFormat.format(baseReward))));
+        }
 
         String name = quest.getDisplayName();
         String base64;
@@ -104,7 +122,6 @@ final class ChainCards {
             case ACTIVE -> {
                 base64 = HeadUtil.getHeadTexture("active-quest", HeadTextures.STARTER_QUEST);
                 name = text("gui.item-name-state", Map.of("name", quest.getDisplayName(), "state", text("gui.chain-state-active")));
-                addProgress(lines, view);
                 lines.add("");
                 lines.add(text("gui.contract-status-in-progress"));
                 lines.addAll(LoreBlocks.clicks(style(),
@@ -112,7 +129,7 @@ final class ChainCards {
                         Hint.of(Click.SHIFT_RIGHT, text("gui.action-abandon-chain"))));
             }
             case AVAILABLE -> {
-                base64 = HeadUtil.getHeadTexture("chain", HeadTextures.DIFFICULTY_MEDIUM);
+                base64 = tierTexture(quest.getTier());
                 if (atLimit) {
                     base64 = HeadUtil.getHeadTexture("locked", HeadTextures.LOCKED);
                     name = LoreBlocks.disabledName(style(), quest.getDisplayName());
@@ -148,6 +165,22 @@ final class ChainCards {
         return HeadUtil.createBase64Head(base64, name, components(player, lines));
     }
 
+    private String tierName(Difficulty tier) {
+        return switch (tier) {
+            case STARTER, EASY -> text("gui.quest-tier-easy");
+            case MEDIUM -> text("gui.quest-tier-medium");
+            case HARD -> text("gui.quest-tier-hard");
+        };
+    }
+
+    private String tierTexture(Difficulty tier) {
+        return switch (tier) {
+            case STARTER, EASY -> HeadUtil.getHeadTexture("easy", HeadTextures.DIFFICULTY_EASY);
+            case MEDIUM -> HeadUtil.getHeadTexture("medium", HeadTextures.DIFFICULTY_MEDIUM);
+            case HARD -> HeadUtil.getHeadTexture("hard", HeadTextures.DIFFICULTY_HARD);
+        };
+    }
+
     private String lockReason(ChainView view) {
         return switch (view.lockReason()) {
             case DISABLED -> text("gui.chain-reason-disabled");
@@ -157,36 +190,32 @@ final class ChainCards {
         };
     }
 
-    /** Step rows: done ones green with a check, the current one highlighted, the rest dimmed. */
-    private void addSteps(List<String> lines, ChainView view) {
-        NpcQuest quest = view.quest();
-        boolean active = view.status() == me.lovelace.lovecontracts.npc.model.ChainStatus.ACTIVE;
-        int total = quest.TotalSteps();
-        int shown = Math.min(total, MAX_STEP_ROWS);
-        // keep the current step in view when a long chain is partly done
-        int from = active ? Math.max(0, Math.min(view.currentStep() - 1, total - shown)) : 0;
-        if (from > 0) lines.add(text("gui.chain-step-more", Map.of("count", String.valueOf(from))));
-        for (int i = from; i < from + shown; i++) {
-            NpcQuestStep step = quest.getStep(i);
-            String description = safe(step.getDescription().isBlank() ? step.getType().name() : step.getDescription());
-            String key = !active ? "gui.chain-step-pending"
-                    : i < view.currentStep() ? "gui.chain-step-done"
-                    : i == view.currentStep() ? "gui.chain-step-current" : "gui.chain-step-pending";
-            lines.add(text(key, Map.of("description", description)));
-        }
-        int hidden = total - from - shown;
-        if (hidden > 0) lines.add(text("gui.chain-step-more", Map.of("count", String.valueOf(hidden))));
-    }
-
     /** Counter and bar of a counted step (kill 15, craft 16); a talk or visit step has nothing to count. */
     private void addProgress(List<String> lines, ChainView view) {
         NpcQuestStep step = view.quest().getStep(view.currentStep());
         if (step == null || step.getCount() <= 1) return;
-        lines.add("");
-        lines.add(text("gui.section-progress"));
         lines.add(text("gui.contract-progress", Map.of(
                 "current", String.valueOf(view.stepProgress()), "required", String.valueOf(step.getCount()))));
         lines.add(text("gui.progress-bar", Map.of("bar", LoreBar.bar(view.stepProgress(), step.getCount()))));
+    }
+
+    static List<String> wrap(String text, int maxWidth) {
+        if (text == null || text.isBlank()) return List.of();
+        String remaining = text.replaceAll("\\s+", " ").trim();
+        List<String> out = new ArrayList<>();
+        while (!remaining.isEmpty()) {
+            int len = remaining.codePointCount(0, remaining.length());
+            if (len <= maxWidth) {
+                out.add(remaining);
+                break;
+            }
+            int end = remaining.offsetByCodePoints(0, maxWidth);
+            int space = remaining.lastIndexOf(' ', end);
+            if (space > 8) end = space;
+            out.add(remaining.substring(0, end).trim());
+            remaining = remaining.substring(end).stripLeading();
+        }
+        return out;
     }
 
     private static List<Component> components(Player player, List<String> lines) {

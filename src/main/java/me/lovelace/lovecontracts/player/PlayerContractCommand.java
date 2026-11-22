@@ -59,6 +59,10 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         if (!player.hasPermission("pcontracts.use")) {
             return true;
         }
+        if (!plugin.getConfig().getBoolean("player-contracts.ui-enabled", false)) {
+            player.sendMessage(mm.deserialize("<yellow>Контракты между игроками временно недоступны.</yellow>"));
+            return true;
+        }
         if (args.length == 0) {
             board.open(player, BoardTab.PLAYERS);
             return true;

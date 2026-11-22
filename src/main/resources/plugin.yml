@@ -19,10 +19,10 @@ commands:
     permission: lovecontracts.admin
     permission-message: ""
   contracts:
-    description: Open contract board / view stats (Admin fallback)
-    usage: /contracts [stats|abandon <id>]
+    description: Open contract board / toggle questboard
+    usage: /contracts [questboard [on|off]|stats|abandon <id>]
     aliases: [contract, контракты]
-    permission: lovecontracts.admin
+    permission: lovecontracts.use
     permission-message: ""
   pcontract:
     description: Player-to-player contracts

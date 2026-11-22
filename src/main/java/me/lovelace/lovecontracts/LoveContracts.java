@@ -109,6 +109,7 @@ public final class LoveContracts extends JavaPlugin {
         saveResourceIfMissing("npc_stories.yml");
         refreshOutdatedData("contracts.yml");
         refreshOutdatedData("npc_quests.yml");
+        refreshOutdatedData("npc_stories.yml");
         loadHeadsConfig(); // сам сохраняет heads.yml при первом запуске, см. ниже
 
         try {
@@ -202,11 +203,13 @@ public final class LoveContracts extends JavaPlugin {
         }
 
         rotationTask = new ContractRotationTask(this);
-        scheduleRotationTask();
+        if (getConfig().getBoolean("rotation.enabled", false)) {
+            scheduleRotationTask();
+            contractManager.startRotationTask();
+        }
         expirationTask = new ContractExpirationTask(this);
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, expirationTask, 20L * 60, 20L * 60);
-
-        contractManager.startRotationTask();
+        Bukkit.getScheduler().runTaskTimer(this, () -> npcQuestManager.checkExpirations(), 20L * 60, 20L * 60);
 
         playerContractExpirationTask = new PlayerContractExpirationTask(playerContractManager);
         long pcontractIntervalTicks = 20L * 60 * getConfig().getInt("player-contracts.expiration-check-interval-minutes", 5);
@@ -214,7 +217,7 @@ public final class LoveContracts extends JavaPlugin {
                 pcontractIntervalTicks, pcontractIntervalTicks);
 
         getLogger().info("LoveContracts v" + getPluginMeta().getVersion() + " enabled — "
-                + registry.size() + " contracts loaded");
+                + npcQuestManager.allQuests().size() + " quests loaded");
     }
 
     /**

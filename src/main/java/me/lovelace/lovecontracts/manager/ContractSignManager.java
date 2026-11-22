@@ -1,8 +1,8 @@
 package me.lovelace.lovecontracts.manager;
 
 import me.lovelace.lovecontracts.LoveContracts;
-import me.lovelace.lovecontracts.model.Contract;
 import me.lovelace.lovecontracts.model.Difficulty;
+import me.lovelace.lovecontracts.npc.model.NpcQuest;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -145,14 +145,14 @@ public class ContractSignManager {
         Block block = loc.getBlock();
         if (!(block.getState() instanceof Sign sign)) return;
 
-        List<Contract> active = plugin.getContractManager().getActiveContracts();
-        Contract contract = (slot < active.size()) ? active.get(slot) : null;
+        List<NpcQuest> quests = new ArrayList<>(plugin.getNpcQuestManager().allQuests());
+        NpcQuest quest = (slot >= 0 && slot < quests.size()) ? quests.get(slot) : null;
 
         SignSide side = sign.getSide(Side.FRONT);
-        side.line(0, mm.deserialize("<gradient:#55FF55:#55FFFF><b>[Контракт #" + (slot + 1) + "]</b></gradient>"));
+        side.line(0, mm.deserialize("<gradient:#55FF55:#55FFFF><b>[Поручение #" + (slot + 1) + "]</b></gradient>"));
 
-        if (contract != null) {
-            String rawTitle = LegacyComponentSerializer.legacySection().serialize(mm.deserialize(contract.getDisplayName()));
+        if (quest != null) {
+            String rawTitle = LegacyComponentSerializer.legacySection().serialize(mm.deserialize(quest.getDisplayName()));
             if (rawTitle.startsWith("§")) {
                 rawTitle = rawTitle.substring(2);
             }
@@ -160,11 +160,11 @@ public class ContractSignManager {
                 rawTitle = rawTitle.substring(0, 15);
             }
             side.line(1, Component.text("§e" + rawTitle));
-            side.line(2, Component.text("§7" + formatDiff(contract.getDifficulty())));
+            side.line(2, Component.text("§7" + formatDiff(quest.getTier())));
             side.line(3, Component.text("§aПКМ: Взять"));
         } else {
-            side.line(1, Component.text("§7[Нет контракта]"));
-            side.line(2, Component.text("§eПКМ: Создать"));
+            side.line(1, Component.text("§7[Нет поручения]"));
+            side.line(2, Component.text("§eПКМ: Доска"));
             side.line(3, Component.text("§bЛКМ: Все квесты"));
         }
 

@@ -1,5 +1,6 @@
 package me.lovelace.lovecontracts.npc.builder;
 
+import me.lovelace.lovecontracts.model.Difficulty;
 import me.lovelace.lovecontracts.npc.model.NpcQuestStep;
 import me.lovelace.lovecontracts.npc.model.QuestLocation;
 import org.bukkit.configuration.ConfigurationSection;
@@ -29,6 +30,9 @@ public final class ChainDraftYaml {
         out.put("enabled", chain.enabled());
         out.put("display-name", chain.displayName());
         out.put("npc-key", chain.giverKey());
+        out.put("tier", chain.tier().name());
+        if (chain.timeLimitMinutes() > 0) out.put("time-limit-minutes", chain.timeLimitMinutes());
+        if (!chain.summary().isEmpty()) out.put("summary", chain.summary());
         out.put("repeatable", chain.repeatable());
         out.put("cooldown-minutes", chain.cooldownMinutes());
         if (chain.requiredAchievement() != null) out.put("requires-achievement", chain.requiredAchievement());
@@ -43,6 +47,9 @@ public final class ChainDraftYaml {
             out.put("rewards", Map.of("money", chain.rewardRaw()));
         } else if (chain.reward() > 0) {
             out.put("rewards", Map.of("money", chain.reward()));
+        }
+        if (chain.rewardTiersRaw() != null && !chain.rewardTiersRaw().isEmpty()) {
+            out.put("reward-tiers", chain.rewardTiersRaw());
         }
         return out;
     }
@@ -119,6 +126,9 @@ public final class ChainDraftYaml {
         chain.displayName(sec.getString("display-name", id));
         Object key = sec.get("npc-key");
         chain.giverKey(key == null ? null : key.toString());
+        chain.tier(parseDifficulty(sec.getString("tier")));
+        chain.timeLimitMinutes(sec.getInt("time-limit-minutes", 0));
+        chain.summary(sec.getString("summary", ""));
         chain.repeatable(sec.getBoolean("repeatable", true));
         chain.cooldownMinutes(sec.getInt("cooldown-minutes", 0));
         chain.enabled(sec.getBoolean("enabled", true));
@@ -131,6 +141,10 @@ public final class ChainDraftYaml {
             if (money instanceof Number number) chain.reward(number.longValue());
             else if (money != null) chain.rewardRaw(money);
         }
+        ConfigurationSection rewardTiers = sec.getConfigurationSection("reward-tiers");
+        if (rewardTiers != null) {
+            chain.rewardTiersRaw(rewardTiers.getValues(false));
+        }
         ConfigurationSection dialogues = sec.getConfigurationSection("dialogues");
         if (dialogues != null && !isGenerated(dialogues)) chain.customDialogues(dialogues.getValues(false));
         List<?> steps = sec.getList("steps");
@@ -140,6 +154,15 @@ public final class ChainDraftYaml {
             }
         }
         return chain;
+    }
+
+    private static Difficulty parseDifficulty(String raw) {
+        if (raw == null || raw.isBlank()) return Difficulty.EASY;
+        try {
+            return Difficulty.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return Difficulty.EASY;
+        }
     }
 
     /** The conversation the builder writes itself: re-saving must not turn it into "hand-written" one. */

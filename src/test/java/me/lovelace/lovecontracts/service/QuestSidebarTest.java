@@ -59,17 +59,19 @@ class QuestSidebarTest {
         assertNull(QuestSidebarText.select(List.of(), "second"));
         assertEquals(List.of(), QuestSidebarText.lines(null, 0));
     }
-    @Test void sidebarIncludesTaskProgressAndNpcAddressWithinMinecraftLimit() {
+    @Test void compactSidebarIncludesTitleGoalBarTimeAndRewardWithinLimit() {
         var objective = objective("story");
         var lines = QuestSidebarText.lines(objective, 2);
-        assertTrue(lines.size() <= 15);
-        assertTrue(lines.contains("Прогресс: 3/8"));
-        assertTrue(lines.stream().anyMatch(s -> s.contains("Травница")));
-        assertTrue(lines.stream().anyMatch(s -> s.contains("world 10, 64, 20")));
-        assertTrue(lines.contains("Других поручений: 2"));
+        assertTrue(lines.size() <= 8, "compact sidebar should stay short: " + lines);
+        assertTrue(lines.stream().anyMatch(s -> s.contains("Помощь деревне")));
+        assertTrue(lines.stream().anyMatch(s -> s.contains("3") && s.contains("8")));
+        assertTrue(lines.stream().anyMatch(s -> s.contains("█")), "16-cell progress bar");
+        assertTrue(lines.stream().anyMatch(s -> s.contains("45 мин")));
+        assertTrue(lines.stream().anyMatch(s -> s.contains("180 монет")));
+        assertTrue(lines.stream().anyMatch(s -> s.contains("Ещё поручений: <gray>2")));
     }
     private QuestSidebarText.Objective objective(String id) {
-        return new QuestSidebarText.Objective(id, "Помощь деревне", "Принесите травнице грибы для лечения стражника",
-                2, 4, 3, 8, "Травница", "world 10, 64, 20", "До NPC: 100 м");
+        return new QuestSidebarText.Objective(id, "Помощь деревне", "Принесите травнице грибы",
+                2, 4, 3, 8, "45 мин", "180 монет");
     }
 }

@@ -16,11 +16,12 @@
 # 2026-11-21: версия 4. Единая доска контрактов (вкладки «Обычные», «Цепочки», «От игроков», «Мои»), окна
 # подтверждения для цепочек и отказов, новые тексты вкладок, цепочек и фильтров. Раздел gui берётся из jar заново
 # (прежний файл сохраняется как messages.yml.bak-<время>).
-data-version: 4
+# 2026-11-22: версия 5. Единая вкладка «Поручения», короткие карточки поручений и вариативные награды.
+data-version: 5
 
 gui:
   # Экранные заголовки окон (не лор предметов): стандарт их не меняет.
-  title: "<gold>Доска контрактов</gold>"
+  title: "<gold>Доска поручений</gold>"
   player-board-title: "<gold>Заказы игроков</gold>"
   confirm-title: "<gold>Подтверждение</gold>"
 
@@ -81,9 +82,9 @@ gui:
   next-page: "<gray>Следующая страница »"
   close-button: "<red>Закрыть"
   # 2026-11-05: слот 0 — общая голова NPC и короткое описание доски.
-  npc-head-name: "<gold>Доска контрактов"
+  npc-head-name: "<gold>Доска поручений"
   npc-head-sub: "<dark_gray>Задания для игроков"
-  npc-head-line1: "<gray>Берите контракты, выполняйте условия"
+  npc-head-line1: "<gray>Берите поручения, выполняйте условия"
   npc-head-line2: "<gray>и получайте награду."
 
   # Переключатель фильтра и сортировки: в названии «Фильтр | Текущий», ▶ отмечает только текущий вариант.
@@ -183,12 +184,11 @@ gui:
   my-status-cancelled: "<red>Отменён"
   my-status-expired: "<gray>Истёк"
 
-  # --- Единая доска контрактов (2026-11-21) ---
+  # --- Единая доска поручений (2026-11-22) ---
   back-button: "<gray>« Назад"
   empty-title: "<gray>Здесь пока ничего нет"
   empty-subtitle: "<dark_gray>Пусто"
-  empty-hint-system: "<gray>Новые контракты появятся при следующей ротации"
-  empty-hint-chains: "<gray>Поручения появятся, когда вы подойдёте к заказчикам"
+  empty-hint-quests: "<gray>Поручения появятся, когда вы подойдёте к заказчикам"
   empty-hint-players: "<gray>Предложений от других игроков пока нет"
   empty-hint-mine: "<gray>У вас пока нет контрактов с другими игроками"
 
@@ -197,28 +197,25 @@ gui:
   tab-state-open: "<green>Открыто"
   tab-count: "  <gray>Записей: <white>{count}"
   tab:
-    system: "<gold>Обычные"
-    system-lore: "<gray>Ежедневные контракты сервера"
-    chains: "<gold>Цепочки"
-    chains-lore: "<gray>Многошаговые поручения жителей"
+    quests: "<gold>Поручения"
+    quests-lore: "<gray>Поручения жителей и задания сервера"
     players: "<gold>От игроков"
     players-lore: "<gray>Заказы других игроков"
     mine: "<gold>Мои"
     mine-lore: "<gray>Контракты с другими игроками, которые вы заказали или исполняете"
   action-open-tab: "открыть вкладку"
 
-  # Цепочки NPC.
-  chain-subtitle: "<dark_gray>Цепочка поручений"
-  chain-giver: "  <gray>Заказчик: <white>{name}"
-  chain-now-npc: "  <gray>Сейчас к: <white>{name}"
-  chain-where: "  <gray>Где: <white>{where}"
-  chain-steps-count: "  <gray>Этапов: <white>{count}"
-  chain-repeat: "  <gray>Повтор: <white>через {time}"
-  chain-once: "  <gray>Выполняется один раз"
-  chain-step-done: "  <green>✓ <gray>{description}"
-  chain-step-current: "  <yellow>→ <white>{description}"
-  chain-step-pending: "  <dark_gray>{description}"
-  chain-step-more: "  <dark_gray>и ещё этапов: {count}"
+  # Короткие карточки поручений.
+  quest-tier-easy: "Лёгкое"
+  quest-tier-medium: "Среднее"
+  quest-tier-hard: "Сложное"
+  quest-subtitle: "<dark_gray>{tier}"
+  quest-timed-subtitle: "<dark_gray>{tier} — срок: {time}"
+  quest-summary-line: "<gray>{line}"
+  quest-goal: "<gray>Цель: <white>{goal}"
+  quest-time-left: "<gray>Осталось: <white>{time}"
+  quest-reward-base: "<gray>Награда: <white>{base}"
+  quest-reward-variable: "<gray>Награда: <white>{base} <dark_gray>(до <white>{max}<dark_gray>)"
   chain-state-active: "<yellow>В процессе"
   chain-state-cooldown: "<yellow>Перерыв"
   chain-state-done: "<green>Выполнена"
@@ -226,7 +223,7 @@ gui:
   chain-reason-cooldown: "Следующий заказ через {time}"
   chain-reason-disabled: "Контракты для вас отключены администратором"
   chain-reason-achievement: "Сначала завершите предыдущую цепочку"
-  chain-reason-requirements: "Не выполнены требования цепочки"
+  chain-reason-requirements: "Не выполнены требования поручения"
   chain-reason-loading: "Данные загружаются, подождите секунду"
   action-take-chain: "взять поручение"
   action-chain-talk: "поговорить с заказчиком"
@@ -258,19 +255,22 @@ gui:
   # Диалог NPC: награда за всю цепочку.
   npc-dialogue-reward: "<dark_gray>▪ <gray>Награда за всю цепочку:"
 
-  # Названия вариантов фильтров и сортировок новых вкладок.
+  # Названия вариантов фильтров и сортировок вкладок.
   modes:
     chain-filter:
       all: "Все"
+      easy: "Лёгкие"
+      medium: "Средние"
+      hard: "Сложные"
       available: "Доступные"
       active: "Взятые"
       cooldown: "Перерыв"
       done: "Выполненные"
     chain-sort:
       default: "Как в списке"
+      difficulty: "Сложность"
       reward-high: "От Б до М"
       reward-low: "От М до Б"
-      steps: "Число этапов"
     offer-filter:
       all: "Все"
       kill: "Охота"
@@ -464,8 +464,8 @@ difficulties:
 commands:
   no-permission: "<red>У вас нет прав для выполнения этой команды.</red>"
   help-header: "<dark_gray>========== <aqua>LoveContracts Помощь</aqua> ==========</dark_gray>"
-  help-contracts: "<aqua>/contracts</aqua> <gray>- открыть доску контрактов</gray>"
-  help-pcontract: "<aqua>/pcontract</aqua> <gray>- личные контракты между игроками</gray>"
+  help-contracts: "<aqua>/contracts</aqua> <gray>- открыть доску поручений</gray>"
+  help-pcontract: "<gray>Контракты между игроками временно недоступны.</gray>"
   help-admin: "<aqua>/lovecontractsadmin</aqua> <gray>- административные команды</gray>"
   help-footer: "<dark_gray>=========================================</dark_gray>"
   admin-help-header: "<dark_gray>========== <aqua>LoveContracts Admin</aqua> ==========</dark_gray>"

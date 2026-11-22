@@ -178,4 +178,37 @@ class NpcQuestStorageTest {
             assertTrue(NpcQuestStorage.inspect(c, UUID.randomUUID()).isEmpty());
         }
     }
+
+    @Test void expirationDeathBonusesAndQuestboardPrefsPersistCorrectly() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.loadQuestboardEnabled(c, player), "enabled by default");
+            NpcQuestStorage.saveQuestboardEnabled(c, player, false);
+            assertFalse(NpcQuestStorage.loadQuestboardEnabled(c, player));
+
+            assertTrue(NpcQuestStorage.start(c, player, "timed", false, 0, 1_000L));
+            NpcQuestStorage.addBonusInteraction(c, player, "timed");
+            NpcQuestStorage.addSurplus(c, player, "timed", 10);
+            assertEquals(1, NpcQuestStorage.markDeath(c, player));
+            try (var q = c.createStatement(); var rs = q.executeQuery(
+                    "SELECT started_at,no_deaths,bonus_interactions,surplus_delivered FROM player_npc_quests")) {
+                assertTrue(rs.next());
+                assertEquals(1_000L, rs.getLong(1));
+                assertEquals(0, rs.getInt(2));
+                assertEquals(1, rs.getInt(3));
+                assertEquals(10, rs.getInt(4));
+            }
+            assertTrue(NpcQuestStorage.expire(c, player, "timed"));
+            assertTrue(NpcQuestStorage.start(c, player, "timed", false, 0, 2_000L), "expired quest can be retaken");
+            try (var q = c.createStatement(); var rs = q.executeQuery(
+                    "SELECT started_at,no_deaths,bonus_interactions,surplus_delivered FROM player_npc_quests")) {
+                assertTrue(rs.next());
+                assertEquals(2_000L, rs.getLong(1));
+                assertEquals(1, rs.getInt(2));
+                assertEquals(0, rs.getInt(3));
+                assertEquals(0, rs.getInt(4));
+            }
+        }
+    }
 }

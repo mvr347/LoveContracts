@@ -1,7 +1,11 @@
 package me.lovelace.lovecontracts.npc.builder;
 
+import me.lovelace.lovecontracts.model.Difficulty;
+
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /** A chain being edited in the builder: the header, the reward and the ordered steps. Free of server classes. */
@@ -14,13 +18,18 @@ public final class ChainDraft {
     private String id;
     private String displayName;
     private String giverKey;
+    private Difficulty tier = Difficulty.EASY;
+    private int timeLimitMinutes = 0;
+    private String summary = "";
     private boolean repeatable = true;
     private int cooldownMinutes = 1440;
     private long reward;
     /** A reward written by hand in a form the builder does not edit (for example {@code "3i"}); kept until the reward is changed. */
     private Object rewardRaw;
+    /** Reward tiers written by hand in chains.yml: kept when saving from the builder. */
+    private Map<String, Object> rewardTiersRaw;
     /** Dialogues written by hand in chains.yml: kept as they are, so saving from the builder does not erase them. */
-    private java.util.Map<String, Object> customDialogues;
+    private Map<String, Object> customDialogues;
     /** Achievement keys kept through editing: the builder does not edit them, but saving must not drop them. */
     private String requiredAchievement;
     private String completionAchievement;
@@ -38,6 +47,9 @@ public final class ChainDraft {
     public String id() { return id; }
     public String displayName() { return displayName; }
     public String giverKey() { return giverKey; }
+    public Difficulty tier() { return tier; }
+    public int timeLimitMinutes() { return timeLimitMinutes; }
+    public String summary() { return summary; }
     public boolean repeatable() { return repeatable; }
     public int cooldownMinutes() { return cooldownMinutes; }
     public long reward() { return reward; }
@@ -46,13 +58,18 @@ public final class ChainDraft {
     public void id(String id) { this.id = id; }
     public void displayName(String displayName) { this.displayName = displayName == null ? "" : displayName.trim(); }
     public void giverKey(String giverKey) { this.giverKey = giverKey == null || giverKey.isBlank() ? null : giverKey.trim(); }
+    public void tier(Difficulty tier) { this.tier = tier == null ? Difficulty.EASY : tier; }
+    public void timeLimitMinutes(int minutes) { this.timeLimitMinutes = Math.max(0, minutes); }
+    public void summary(String summary) { this.summary = summary == null ? "" : summary.trim(); }
     public void repeatable(boolean repeatable) { this.repeatable = repeatable; }
     public void cooldownMinutes(int minutes) { this.cooldownMinutes = Math.max(0, minutes); }
     public void reward(long reward) { this.reward = Math.max(0, reward); this.rewardRaw = null; }
     public Object rewardRaw() { return rewardRaw; }
     public void rewardRaw(Object raw) { this.rewardRaw = raw; }
-    public java.util.Map<String, Object> customDialogues() { return customDialogues; }
-    public void customDialogues(java.util.Map<String, Object> dialogues) { this.customDialogues = dialogues; }
+    public Map<String, Object> rewardTiersRaw() { return rewardTiersRaw; }
+    public void rewardTiersRaw(Map<String, Object> raw) { this.rewardTiersRaw = raw == null ? null : new LinkedHashMap<>(raw); }
+    public Map<String, Object> customDialogues() { return customDialogues; }
+    public void customDialogues(Map<String, Object> dialogues) { this.customDialogues = dialogues; }
 
     public String requiredAchievement() { return requiredAchievement; }
     public String completionAchievement() { return completionAchievement; }
@@ -80,10 +97,14 @@ public final class ChainDraft {
         ChainDraft copy = new ChainDraft(newId);
         copy.displayName = displayName;
         copy.giverKey = giverKey;
+        copy.tier = tier;
+        copy.timeLimitMinutes = timeLimitMinutes;
+        copy.summary = summary;
         copy.repeatable = repeatable;
         copy.cooldownMinutes = cooldownMinutes;
         copy.reward = reward;
         copy.rewardRaw = rewardRaw;
+        copy.rewardTiersRaw = rewardTiersRaw == null ? null : new LinkedHashMap<>(rewardTiersRaw);
         copy.customDialogues = customDialogues;
         copy.initialDialogue = initialDialogue;
         copy.enabled = enabled;
