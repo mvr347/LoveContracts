@@ -52,7 +52,10 @@ public class ContractSignListener implements Listener {
         if (action == Action.RIGHT_CLICK_BLOCK) {
             // Right click -> Open confirmation menu if contract exists in this slot, or open creation GUI if no contract
             List<Contract> active = plugin.getContractManager().getActiveContracts();
-            if (slot < active.size()) {
+            if (!plugin.getContractBoard().legacyDailyContracts()) {
+                // daily contracts are replaced by quests: the sign just opens the board
+                plugin.getContractBoard().open(player);
+            } else if (slot < active.size()) {
                 Contract contract = active.get(slot);
                 plugin.getContractBoard().confirmAccept(player, contract, () -> plugin.getContractBoard().open(player));
             } else {

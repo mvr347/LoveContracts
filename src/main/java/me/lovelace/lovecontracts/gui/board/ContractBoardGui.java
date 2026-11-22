@@ -153,8 +153,10 @@ public final class ContractBoardGui extends BoardGui {
 
     private List<Control> headerControls() {
         List<Control> controls = new ArrayList<>();
+        // with a single tab the tab button is only noise: it appears when there is something to switch to
+        long available = java.util.Arrays.stream(BoardTab.values()).filter(t -> board.tabAvailable(viewer, t)).count();
         for (BoardTab t : BoardTab.values()) {
-            if (!board.tabAvailable(viewer, t)) continue;
+            if (!board.tabAvailable(viewer, t) || available < 2) continue;
             controls.add(new Control(tabButton(t), e -> switchTab(t)));
         }
         controls.add(new Control(filterButton(), e -> cycleFilter(e.isRightClick())));
@@ -335,7 +337,7 @@ public final class ContractBoardGui extends BoardGui {
         List<ChainView> views = new ArrayList<>();
         for (ChainView view : manager.viewsFor(viewer)) {
             if (onlyChains != null && !onlyChains.contains(view.quest().getId())) continue;
-            if (chainFilter.accepts(view.status())) views.add(view);
+            if (me.lovelace.lovecontracts.gui.BoardModes.chainAccepts(chainFilter, view)) views.add(view);
         }
         views.sort(chainOrder());
         paged(views, v -> chainCards.card(viewer, v, atLimit), (v, e) -> chainClick(v, e, atLimit), "gui.empty-hint-chains");
@@ -352,6 +354,7 @@ public final class ContractBoardGui extends BoardGui {
         });
         return switch (chainSort) {
             case DEFAULT -> byStatus;
+            case TIER -> byStatus.thenComparingInt(v -> v.quest().terms().tier().ordinal());
             case REWARD_HIGH -> byStatus.thenComparing(Comparator.comparingDouble((ChainView v) -> rewardOf(v.quest())).reversed());
             case REWARD_LOW -> byStatus.thenComparingDouble(v -> rewardOf(v.quest()));
             case STEPS -> byStatus.thenComparing(Comparator.comparingInt((ChainView v) -> v.quest().TotalSteps()).reversed());

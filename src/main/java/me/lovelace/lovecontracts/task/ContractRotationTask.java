@@ -29,7 +29,8 @@ public class ContractRotationTask implements Runnable {
 
     @Override
     public void run() {
-        if (!plugin.getConfig().getBoolean("rotation.enabled", true)) {
+        if (!plugin.getConfig().getBoolean("rotation.enabled", true)
+                || !plugin.getConfig().getBoolean("quests.legacy-daily-contracts", false)) {
             return;
         }
 

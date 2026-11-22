@@ -71,6 +71,9 @@ public final class BoardModes {
     /** Filter of the chains tab. */
     public enum ChainFilter implements Mode {
         ALL("all", "Все"),
+        EASY("easy", "Лёгкие"),
+        MEDIUM("medium", "Средние"),
+        HARD("hard", "Сложные"),
         AVAILABLE("available", "Доступные"),
         ACTIVE("active", "Взятые"),
         COOLDOWN("cooldown", "Перерыв"),
@@ -92,7 +95,7 @@ public final class BoardModes {
         /** Whether a chain in this state shows under the filter. A locked or loading chain shows only under ALL. */
         public boolean accepts(me.lovelace.lovecontracts.npc.model.ChainStatus status) {
             return switch (this) {
-                case ALL -> true;
+                case ALL, EASY, MEDIUM, HARD -> true;
                 case AVAILABLE -> status == me.lovelace.lovecontracts.npc.model.ChainStatus.AVAILABLE;
                 case ACTIVE -> status == me.lovelace.lovecontracts.npc.model.ChainStatus.ACTIVE;
                 case COOLDOWN -> status == me.lovelace.lovecontracts.npc.model.ChainStatus.COOLDOWN;
@@ -101,9 +104,20 @@ public final class BoardModes {
         }
     }
 
+    /** The tier filters look at the quest's difficulty, the state filters at its state: this is the whole check. */
+    public static boolean chainAccepts(ChainFilter filter, me.lovelace.lovecontracts.npc.model.ChainView view) {
+        return switch (filter) {
+            case EASY -> view.quest().terms().tier() == me.lovelace.lovecontracts.npc.model.QuestTier.EASY;
+            case MEDIUM -> view.quest().terms().tier() == me.lovelace.lovecontracts.npc.model.QuestTier.MEDIUM;
+            case HARD -> view.quest().terms().tier() == me.lovelace.lovecontracts.npc.model.QuestTier.HARD;
+            default -> filter.accepts(view.status());
+        };
+    }
+
     /** Sort of the chains tab. */
     public enum ChainSort implements Mode {
         DEFAULT("default", "Как в списке"),
+        TIER("tier", "Сначала лёгкие"),
         REWARD_HIGH("reward-high", "От Б до М"),
         REWARD_LOW("reward-low", "От М до Б"),
         STEPS("steps", "Число этапов");

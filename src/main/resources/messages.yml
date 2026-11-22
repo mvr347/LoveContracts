@@ -16,7 +16,7 @@
 # 2026-11-21: версия 4. Единая доска контрактов (вкладки «Обычные», «Цепочки», «От игроков», «Мои»), окна
 # подтверждения для цепочек и отказов, новые тексты вкладок, цепочек и фильтров. Раздел gui берётся из jar заново
 # (прежний файл сохраняется как messages.yml.bak-<время>).
-data-version: 4
+data-version: 5
 
 gui:
   # Экранные заголовки окон (не лор предметов): стандарт их не меняет.
@@ -199,8 +199,8 @@ gui:
   tab:
     system: "<gold>Обычные"
     system-lore: "<gray>Ежедневные контракты сервера"
-    chains: "<gold>Цепочки"
-    chains-lore: "<gray>Многошаговые поручения жителей"
+    chains: "<gold>Поручения"
+    chains-lore: "<gray>Задания жителей: от простых до сложных"
     players: "<gold>От игроков"
     players-lore: "<gray>Заказы других игроков"
     mine: "<gold>Мои"
@@ -208,17 +208,21 @@ gui:
   action-open-tab: "открыть вкладку"
 
   # Цепочки NPC.
-  chain-subtitle: "<dark_gray>Цепочка поручений"
-  chain-giver: "  <gray>Заказчик: <white>{name}"
-  chain-now-npc: "  <gray>Сейчас к: <white>{name}"
+  # Карточка поручения: коротко. 2026-11-22: убраны заказчик, число этапов, повтор и список шагов.
+  quest-subtitle: "<dark_gray>Поручение"
+  quest-tier: "<gray>Сложность: {tier}"
+  tier-easy: "<green>Лёгкое"
+  tier-medium: "<yellow>Среднее"
+  tier-hard: "<red>Сложное"
+  quest-summary: "<gray>{text}"
+  quest-goal: "<gray>Цель: <white>{goal}"
+  quest-time: "<gray>Срок: <white>{time}"
+  quest-time-left: "<gray>Осталось: <white>{time}"
+  quest-reward-max: "  <dark_gray>до {amount} <dark_gray>за скорость и вежливость"
+  quest-advance: "<gray>Аванс при взятии: <white>{amount}"
+  quest-advance-paid: "<gray>Аванс выдан: <white>{amount}"
+  chain-now-npc: "  <gray>Идти к: <white>{name}"
   chain-where: "  <gray>Где: <white>{where}"
-  chain-steps-count: "  <gray>Этапов: <white>{count}"
-  chain-repeat: "  <gray>Повтор: <white>через {time}"
-  chain-once: "  <gray>Выполняется один раз"
-  chain-step-done: "  <green>✓ <gray>{description}"
-  chain-step-current: "  <yellow>→ <white>{description}"
-  chain-step-pending: "  <dark_gray>{description}"
-  chain-step-more: "  <dark_gray>и ещё этапов: {count}"
   chain-state-active: "<yellow>В процессе"
   chain-state-cooldown: "<yellow>Перерыв"
   chain-state-done: "<green>Выполнена"
@@ -262,12 +266,16 @@ gui:
   modes:
     chain-filter:
       all: "Все"
+      easy: "Лёгкие"
+      medium: "Средние"
+      hard: "Сложные"
       available: "Доступные"
       active: "Взятые"
       cooldown: "Перерыв"
       done: "Выполненные"
     chain-sort:
       default: "Как в списке"
+      tier: "Сначала лёгкие"
       reward-high: "От Б до М"
       reward-low: "От М до Б"
       steps: "Число этапов"

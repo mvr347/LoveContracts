@@ -640,7 +640,10 @@ public class NpcQuestManager implements Listener {
     public ChainView viewOf(Player player, NpcQuest quest) {
         var progress = state(player, quest);
         if (progress != null) {
-            return new ChainView(quest, ChainStatus.ACTIVE, progress.getCurrentStep(), progress.getStepProgress(), 0, LockReason.NONE);
+            long timeLeft = quest.terms().timed() && progress.getStartedAt() > 0
+                    ? Math.max(0, progress.getStartedAt() + quest.terms().timeLimitMillis() - System.currentTimeMillis()) : -1;
+            return new ChainView(quest, ChainStatus.ACTIVE, progress.getCurrentStep(), progress.getStepProgress(), 0,
+                    LockReason.NONE, timeLeft, progress.getAdvancePaid());
         }
         Map<String, Long> history = completed.get(player.getUniqueId());
         if (history == null) return new ChainView(quest, ChainStatus.LOADING, 0, 0, 0, LockReason.NONE);

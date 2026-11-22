@@ -92,10 +92,20 @@ public final class ContractBoard implements Listener {
     /** Whether the player may see and use a tab: each tab keeps the permission boundary of the menu it replaced. */
     public boolean tabAvailable(Player player, BoardTab tab) {
         return switch (tab) {
-            case SYSTEM, CHAINS -> player.hasPermission("lovecontracts.use")
+            case SYSTEM -> legacyDailyContracts() && player.hasPermission("lovecontracts.use")
+                    && !plugin.getContractManager().isContractsDisabled(player);
+            case CHAINS -> player.hasPermission("lovecontracts.use")
                     && !plugin.getContractManager().isContractsDisabled(player);
             case PLAYERS, MINE -> playerContractsVisible() && player.hasPermission("pcontracts.use");
         };
+    }
+
+    /**
+     * The daily board of generated contracts is replaced by the quests tab (all quests are chains now); it can be
+     * brought back with {@code quests.legacy-daily-contracts: true}.
+     */
+    public boolean legacyDailyContracts() {
+        return plugin.getConfig().getBoolean("quests.legacy-daily-contracts", false);
     }
 
     /**
