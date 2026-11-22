@@ -59,6 +59,10 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
         if (!player.hasPermission("pcontracts.use")) {
             return true;
         }
+        if (!board.playerContractsVisible()) {
+            player.sendMessage(mm.deserialize("<red>Контракты между игроками временно недоступны.</red>"));
+            return true;
+        }
         if (args.length == 0) {
             board.open(player, BoardTab.PLAYERS);
             return true;
@@ -276,7 +280,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
-        if (!sender.hasPermission("pcontracts.use")) return List.of();
+        if (!sender.hasPermission("pcontracts.use") || !board.playerContractsVisible()) return List.of();
 
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
