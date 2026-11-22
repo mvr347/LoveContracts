@@ -24,6 +24,10 @@ public final class ChainDraft {
     /** Achievement keys kept through editing: the builder does not edit them, but saving must not drop them. */
     private String requiredAchievement;
     private String completionAchievement;
+    /** The conversation node a click on the NPC opens; the builder writes "greeting", a hand-edited file may use another. */
+    private String initialDialogue = "greeting";
+    /** A chain switched off by hand in chains.yml stays off when the builder rewrites the file. */
+    private boolean enabled = true;
     private final List<StepDraft> steps = new ArrayList<>();
 
     public ChainDraft(String id) {
@@ -55,6 +59,11 @@ public final class ChainDraft {
     public void requiredAchievement(String key) { this.requiredAchievement = key == null || key.isBlank() ? null : key.trim(); }
     public void completionAchievement(String key) { this.completionAchievement = key == null || key.isBlank() ? null : key.trim(); }
 
+    public String initialDialogue() { return initialDialogue; }
+    public boolean enabled() { return enabled; }
+    public void initialDialogue(String node) { this.initialDialogue = node == null || node.isBlank() ? "greeting" : node.trim(); }
+    public void enabled(boolean enabled) { this.enabled = enabled; }
+
     public boolean canAddStep() {
         return steps.size() < MAX_STEPS;
     }
@@ -76,6 +85,8 @@ public final class ChainDraft {
         copy.reward = reward;
         copy.rewardRaw = rewardRaw;
         copy.customDialogues = customDialogues;
+        copy.initialDialogue = initialDialogue;
+        copy.enabled = enabled;
         copy.requiredAchievement = requiredAchievement;
         copy.completionAchievement = completionAchievement;
         for (StepDraft step : steps) copy.steps.add(step.copy());

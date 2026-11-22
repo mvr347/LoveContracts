@@ -653,6 +653,124 @@ public class NpcQuestManager implements Listener {
         });
     }
 
+    // ------------------------------------------------------------------ admin operations
+
+    /** What an admin operation did, as a sentence for the sender; delivered on the main thread. */
+    public record AdminOutcome(boolean ok, String message) {
+        static AdminOutcome ok(String message) { return new AdminOutcome(true, message); }
+        static AdminOutcome fail(String message) { return new AdminOutcome(false, message); }
+    }
+
+    @FunctionalInterface
+    private interface AdminSql { boolean run(Connection c) throws SQLException; }
+
+    /**
+     * Runs one admin write for a player and a chain on the quest writer, under the same lock as the game's own
+     * transitions, so an admin command and a click on the NPC cannot interleave. After a change the player's state is
+     * read again (online players) so memory, the board and the sidebar follow the database.
+     */
+    private void adminWrite(UUID uuid, String questId, AdminSql sql, String okMessage, String noChange,
+                            java.util.function.Consumer<AdminOutcome> done) {
+        String lock = questId == null ? null : lock(uuid, questId);
+        if (lock != null && !pending.add(lock)) {
+            done.accept(AdminOutcome.fail("С этой цепочкой сейчас выполняется другое действие, повторите через секунду."));
+            return;
+        }
+        writer.execute(() -> {
+            boolean changed = false;
+            boolean failed = false;
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                changed = sql.run(c);
+            } catch (SQLException error) {
+                failure(error);
+                failed = true;
+            }
+            boolean ok = changed, err = failed;
+            main(() -> {
+                if (lock != null) pending.remove(lock);
+                if (err) { done.accept(AdminOutcome.fail("Ошибка базы данных, подробности в консоли.")); return; }
+                if (!ok) { done.accept(AdminOutcome.fail(noChange)); return; }
+                plugin.getContractManager().invalidateCompletedCount(uuid);
+                if (Bukkit.getPlayer(uuid) != null) loadPlayerActiveQuestsFromDb(uuid);
+                done.accept(AdminOutcome.ok(okMessage));
+            });
+        });
+    }
+
+    /** Puts the chain in progress at its first step: no NPC, no cooldown, no one-time rule and no limit of three chains. */
+    public void adminStart(UUID uuid, NpcQuest quest, java.util.function.Consumer<AdminOutcome> done) {
+        adminWrite(uuid, quest.getId(), c -> { me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.forceStart(c, uuid, quest.getId()); return true; },
+                "Цепочка запущена с первого этапа.", "Не удалось запустить цепочку.", done);
+    }
+
+    /** Erases one chain of the player (progress, history, cooldown), or all of them when {@code questId} is null. */
+    public void adminClear(UUID uuid, String questId, java.util.function.Consumer<AdminOutcome> done) {
+        adminWrite(uuid, questId, c -> (questId == null
+                        ? me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.clearAll(c, uuid)
+                        : me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.clear(c, uuid, questId)) > 0,
+                questId == null ? "Все записи о цепочках игрока стёрты." : "Запись о цепочке стёрта: её можно проходить заново.",
+                "У игрока нет такой записи.", done);
+    }
+
+    /** Gives the chain up as the player would: no reward, no cooldown, it can be taken again at once. */
+    public void adminFail(UUID uuid, NpcQuest quest, java.util.function.Consumer<AdminOutcome> done) {
+        adminWrite(uuid, quest.getId(), c -> me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.abandon(c, uuid, quest.getId()),
+                "Цепочка провалена (без награды и кулдауна).", "Цепочка у игрока не активна.", done);
+    }
+
+    /** Moves an active chain to the given step (1-based) and resets that step's progress. */
+    public void adminSetStep(UUID uuid, NpcQuest quest, int stepNumber, java.util.function.Consumer<AdminOutcome> done) {
+        if (stepNumber < 1 || stepNumber > quest.TotalSteps()) {
+            done.accept(AdminOutcome.fail("Этап должен быть от 1 до " + quest.TotalSteps() + "."));
+            return;
+        }
+        adminWrite(uuid, quest.getId(), c -> me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.setStep(c, uuid, quest.getId(), stepNumber - 1),
+                "Цепочка переведена на этап " + stepNumber + ".", "Цепочка у игрока не активна.", done);
+    }
+
+    /**
+     * Completes the chain at once, whatever its state. The reward goes to the player when {@code reward} is set and the
+     * player is online (an offline player cannot be paid from here, which the answer says); the income limit is not used.
+     */
+    public void adminComplete(UUID uuid, NpcQuest quest, boolean reward, java.util.function.Consumer<AdminOutcome> done) {
+        long amount = reward && plugin.getConfig().getBoolean("rewards.money.enabled", true)
+                ? Math.round(quest.getRewards().stream().mapToDouble(r -> r.getAmount()).sum()) : 0;
+        String achievement = completionAchievements.get(quest.getId());
+        adminWrite(uuid, quest.getId(), c -> {
+            me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.forceComplete(c, uuid, quest.getId(), quest.TotalSteps(), achievement, System.currentTimeMillis());
+            return true;
+        }, "Цепочка завершена.", "Не удалось завершить цепочку.", outcome -> {
+            if (outcome.ok() && reward) {
+                Player online = Bukkit.getPlayer(uuid);
+                if (online != null) {
+                    var contract = new me.lovelace.lovecontracts.model.Contract(quest.getId(), quest.getDisplayName(), "", me.lovelace.lovecontracts.model.Difficulty.EASY,
+                            me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of());
+                    plugin.getRewardProcessor().giveRewards(online, contract, amount);
+                    done.accept(AdminOutcome.ok("Цепочка завершена, награда выдана."));
+                    return;
+                }
+                done.accept(AdminOutcome.ok("Цепочка завершена, но игрок не в сети: награда не выдана."));
+                return;
+            }
+            done.accept(outcome);
+        });
+    }
+
+    /**
+     * All stored chain rows of the player for the admin overview; read from the database, so offline players work.
+     * The callback gets {@code null} when the database could not be read: that is an error, not an empty list.
+     */
+    public void adminInspect(UUID uuid, java.util.function.Consumer<List<me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.Row>> done) {
+        writer.execute(() -> {
+            List<me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.Row> rows = null;
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                rows = me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.inspect(c, uuid);
+            } catch (SQLException error) { failure(error); }
+            var result = rows;
+            main(() -> done.accept(result));
+        });
+    }
+
     public boolean isActive(Player player, NpcQuest quest) { return state(player, quest) != null; }
 
     /** A character can discuss several ongoing stories and offer new work in the same menu. */

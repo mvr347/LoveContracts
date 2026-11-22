@@ -26,14 +26,15 @@ public final class ChainDraftYaml {
 
     public static Map<String, Object> toMap(ChainDraft chain) {
         Map<String, Object> out = new LinkedHashMap<>();
-        out.put("enabled", true);
+        out.put("enabled", chain.enabled());
         out.put("display-name", chain.displayName());
         out.put("npc-key", chain.giverKey());
         out.put("repeatable", chain.repeatable());
         out.put("cooldown-minutes", chain.cooldownMinutes());
         if (chain.requiredAchievement() != null) out.put("requires-achievement", chain.requiredAchievement());
         if (chain.completionAchievement() != null) out.put("completion-achievement", chain.completionAchievement());
-        out.put("initial-dialogue", GREETING_NODE);
+        // a generated conversation only has the greeting node, so a custom entry point is kept only with custom dialogues
+        out.put("initial-dialogue", chain.customDialogues() != null ? chain.initialDialogue() : GREETING_NODE);
         out.put("dialogues", chain.customDialogues() != null ? chain.customDialogues() : generatedDialogues());
         List<Map<String, Object>> steps = new ArrayList<>();
         for (int i = 0; i < chain.steps().size(); i++) steps.add(stepMap(i + 1, chain.steps().get(i)));
@@ -120,6 +121,8 @@ public final class ChainDraftYaml {
         chain.giverKey(key == null ? null : key.toString());
         chain.repeatable(sec.getBoolean("repeatable", true));
         chain.cooldownMinutes(sec.getInt("cooldown-minutes", 0));
+        chain.enabled(sec.getBoolean("enabled", true));
+        chain.initialDialogue(sec.getString("initial-dialogue", GREETING_NODE));
         chain.requiredAchievement(sec.getString("requires-achievement"));
         chain.completionAchievement(sec.getString("completion-achievement"));
         ConfigurationSection rewards = sec.getConfigurationSection("rewards");
@@ -143,7 +146,23 @@ public final class ChainDraftYaml {
     private static boolean isGenerated(ConfigurationSection dialogues) {
         if (dialogues.getKeys(false).size() != 1 || !dialogues.contains(GREETING_NODE)) return false;
         List<String> text = dialogues.getStringList(GREETING_NODE + ".text");
-        return text.equals(List.of("<yellow>Заказчик:</yellow> Есть работа для тебя.", "<yellow>Заказчик:</yellow> Возьмёшься?"));
+        if (!text.equals(List.of("<yellow>Заказчик:</yellow> Есть работа для тебя.", "<yellow>Заказчик:</yellow> Возьмёшься?"))) {
+            return false;
+        }
+        // the answers count too: stock text with the author's own choices is hand-written
+        return optionsMatch(dialogues.getMapList(GREETING_NODE + ".options"),
+                List.of(List.of("<green>Беру поручение</green>", "ACCEPT_QUEST"), List.of("<gray>Позже</gray>", "CLOSE")));
+    }
+
+    /** True when the options are exactly the expected (text, action) pairs, in order and without extra keys. */
+    private static boolean optionsMatch(List<?> actual, List<List<String>> expected) {
+        if (actual == null || actual.size() != expected.size()) return false;
+        for (int i = 0; i < expected.size(); i++) {
+            if (!(actual.get(i) instanceof Map<?, ?> option) || option.size() != 2) return false;
+            if (!expected.get(i).get(0).equals(String.valueOf(option.get("text")))) return false;
+            if (!expected.get(i).get(1).equals(String.valueOf(option.get("action")))) return false;
+        }
+        return true;
     }
 
     private static StepDraft stepFromMap(Map<?, ?> map) {
@@ -173,8 +192,14 @@ public final class ChainDraftYaml {
 
     private static boolean isGeneratedStepDialogue(Map<?, ?> dialogue) {
         Object text = dialogue.get("text");
-        return text instanceof List<?> list && list.size() == 1 && list.get(0) != null
-                && list.get(0).toString().endsWith(":</yellow> Слушаю тебя.");
+        if (!(text instanceof List<?> list) || list.size() != 1 || list.get(0) == null
+                || !list.get(0).toString().endsWith(":</yellow> Слушаю тебя.")) {
+            return false;
+        }
+        Object options = dialogue.get("options");
+        List<?> actual = options instanceof List<?> l ? l : null;
+        return optionsMatch(actual, List.of(List.of("<green>Передать предметы</green>", "COMPLETE_STEP"), List.of("<gray>Позже</gray>", "CLOSE")))
+                || optionsMatch(actual, List.of(List.of("<green>Продолжить</green>", "COMPLETE_STEP"), List.of("<gray>Позже</gray>", "CLOSE")));
     }
 
     private static String text(Map<?, ?> map, String key) {

@@ -35,7 +35,7 @@ import java.util.logging.Level;
 public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "reload", "rotate", "create", "npc", "sign", "gui", "chains", "complete", "fail", "stats", "reset", "toggle", "help");
+            "reload", "rotate", "create", "npc", "sign", "gui", "chains", "chain", "complete", "fail", "stats", "reset", "toggle", "help");
     private static final List<String> GUI_ACTIONS = List.of("open");
     private static final List<String> SIGN_SUBCOMMANDS = List.of("bind", "unbind", "list");
     private static final List<String> PLAYER_ARG_SUBCOMMANDS = List.of("complete", "fail", "stats", "reset", "toggle");
@@ -68,6 +68,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             case "sign" -> sign(sender, args);
             case "gui" -> gui(sender, args);
             case "chains" -> chains(sender);
+            case "chain" -> ChainAdminCommand.run(plugin, sender, args);
             case "complete" -> completeOrFail(sender, args, true);
             case "fail" -> completeOrFail(sender, args, false);
             case "stats" -> stats(sender, args);
@@ -106,6 +107,18 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                 "<aqua>/lovecontractsadmin npc</aqua> <gray>- Привязать NPC контрактов (по взгляду или выбору)</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin chains</aqua> <gray>- Конструктор цепочек поручений</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin chain start <игрок> <цепочка></aqua> <gray>- Запустить цепочку игроку (без NPC и проверок)</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin chain clear <игрок> <цепочка|all></aqua> <gray>- Стереть прогресс, историю и кулдаун</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin chain complete <игрок> <цепочка> [--no-reward]</aqua> <gray>- Завершить цепочку (с наградой)</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin chain fail <игрок> <цепочка></aqua> <gray>- Провалить: без награды и кулдауна</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin chain step <игрок> <цепочка> <номер></aqua> <gray>- Перевести на этап</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin chain info <игрок></aqua> <gray>- Цепочки игрока: этапы, история, счётчик</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin gui open <игрок></aqua> <gray>- Открыть игроку главное меню контрактов</gray>"));
         sender.sendMessage(mm.deserialize(
@@ -362,6 +375,9 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
 
         if (args.length == 1) {
             return SUBCOMMANDS.stream().filter(s -> s.startsWith(args[0].toLowerCase())).toList();
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("chain")) {
+            return ChainAdminCommand.suggest(plugin, args);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("sign")) {
             return SIGN_SUBCOMMANDS.stream().filter(s -> s.startsWith(args[1].toLowerCase())).toList();

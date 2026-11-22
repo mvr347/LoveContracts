@@ -92,4 +92,90 @@ class NpcQuestStorageTest {
             assertFalse(NpcQuestStorage.start(c, player, "once", false, 0, 1), "a one-time chain is not repeatable");
         }
     }
+
+    @Test void adminClearErasesProgressHistoryAndCooldownSoAOneTimeChainCanBeTakenAgain() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.start(c, player, "once", false, 0, 0));
+            assertEquals(SAVED, NpcQuestStorage.advance(c, player, "once", 0, 1, true, 0, 1800, 0));
+            assertFalse(NpcQuestStorage.start(c, player, "once", false, 0, 1), "one-time chain is closed");
+            assertEquals(1, NpcQuestStorage.clear(c, player, "once"));
+            assertEquals(0, NpcQuestStorage.clear(c, player, "once"), "nothing left to erase");
+            assertTrue(NpcQuestStorage.start(c, player, "once", false, 0, 1), "a cleared chain starts from scratch");
+        }
+    }
+
+    @Test void adminClearAllTouchesOnlyThatPlayer() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID a = UUID.randomUUID(), b = UUID.randomUUID();
+            NpcQuestStorage.forceStart(c, a, "one");
+            NpcQuestStorage.forceStart(c, a, "two");
+            NpcQuestStorage.forceStart(c, b, "one");
+            assertEquals(2, NpcQuestStorage.clearAll(c, a));
+            assertTrue(NpcQuestStorage.inspect(c, a).isEmpty());
+            assertEquals(1, NpcQuestStorage.inspect(c, b).size());
+        }
+    }
+
+    @Test void forceStartIgnoresCooldownAndTheOneTimeRule() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.start(c, player, "once", false, 0, 0));
+            assertEquals(SAVED, NpcQuestStorage.advance(c, player, "once", 0, 1, true, 0, 1800, 0));
+            NpcQuestStorage.forceStart(c, player, "once");
+            var row = NpcQuestStorage.inspect(c, player).getFirst();
+            assertEquals("ACTIVE", row.status());
+            assertEquals(0, row.currentStep());
+            assertEquals(1, row.completionCount(), "the history counter is kept");
+            NpcQuestStorage.forceStart(c, player, "fresh");
+            assertEquals(2, NpcQuestStorage.inspect(c, player).size(), "a chain never seen before is created");
+        }
+    }
+
+    @Test void setStepOnlyMovesAnActiveChain() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertFalse(NpcQuestStorage.setStep(c, player, "inn", 2), "no row, nothing to move");
+            assertTrue(NpcQuestStorage.start(c, player, "inn", true, 0, 0));
+            assertTrue(NpcQuestStorage.setStep(c, player, "inn", 2));
+            assertEquals(2, NpcQuestStorage.inspect(c, player).getFirst().currentStep());
+            assertFalse(NpcQuestStorage.setStep(c, player, "inn", -1));
+            assertTrue(NpcQuestStorage.abandon(c, player, "inn"));
+            assertFalse(NpcQuestStorage.setStep(c, player, "inn", 1), "an abandoned chain is not active");
+        }
+    }
+
+    @Test void forceCompleteWorksWithoutAStartCountsOnceAndQueuesTheAchievement() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            NpcQuestStorage.forceComplete(c, player, "inn", 3, "inn_done", 86_400_000L);
+            var row = NpcQuestStorage.inspect(c, player).getFirst();
+            assertEquals("COMPLETED", row.status());
+            assertEquals(3, row.currentStep());
+            assertEquals(1, row.completionCount());
+            assertEquals(86_400_000L, row.lastCompletedMillis());
+            NpcQuestStorage.forceComplete(c, player, "inn", 3, "inn_done", 86_500_000L);
+            assertEquals(2, NpcQuestStorage.inspect(c, player).getFirst().completionCount());
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT COUNT(*) FROM contract_achievement_rewards")) {
+                assertTrue(rs.next());
+                assertEquals(1, rs.getInt(1), "the same achievement is queued once");
+            }
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT COUNT(*) FROM contract_income")) {
+                assertTrue(rs.next());
+                assertEquals(0, rs.getInt(1), "an admin completion does not touch the income limit");
+            }
+        }
+    }
+
+    @Test void inspectOfAnUnknownPlayerIsEmpty() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            assertTrue(NpcQuestStorage.inspect(c, UUID.randomUUID()).isEmpty());
+        }
+    }
 }
