@@ -756,10 +756,13 @@ public class NpcQuestManager implements Listener {
         });
     }
 
-    /** All stored chain rows of the player for the admin overview; read from the database, so offline players work. */
+    /**
+     * All stored chain rows of the player for the admin overview; read from the database, so offline players work.
+     * The callback gets {@code null} when the database could not be read: that is an error, not an empty list.
+     */
     public void adminInspect(UUID uuid, java.util.function.Consumer<List<me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.Row>> done) {
         writer.execute(() -> {
-            List<me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.Row> rows = List.of();
+            List<me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.Row> rows = null;
             try (Connection c = plugin.getDatabase().getConnection()) {
                 rows = me.lovelace.lovecontracts.npc.storage.NpcQuestStorage.inspect(c, uuid);
             } catch (SQLException error) { failure(error); }

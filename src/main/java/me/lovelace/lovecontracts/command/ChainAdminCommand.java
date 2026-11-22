@@ -118,6 +118,10 @@ public final class ChainAdminCommand {
     }
 
     private static void sendInfo(LoveContracts plugin, CommandSender sender, String name, List<NpcQuestStorage.Row> rows) {
+        if (rows == null) {
+            sender.sendMessage(MM.deserialize("<red>✖ " + escape(name) + ": не удалось прочитать данные, подробности в консоли.</red>"));
+            return;
+        }
         sender.sendMessage(MM.deserialize("<dark_gray>===== <aqua>Цепочки: " + escape(name) + "</aqua> =====</dark_gray>"));
         if (rows.isEmpty()) {
             sender.sendMessage(MM.deserialize("<gray>Записей нет.</gray>"));
