@@ -133,9 +133,20 @@ public final class ChainAdminCommand {
             };
             String done = row.lastCompletedMillis() > 0 ? ", завершена " + TIME.format(Instant.ofEpochMilli(row.lastCompletedMillis())) : "";
             sender.sendMessage(MM.deserialize("<aqua>" + escape(row.questId()) + "</aqua> <" + color + ">" + row.status() + "</" + color + ">"
-                    + "<gray> этап " + (row.currentStep() + 1) + "/" + steps + ", прогресс " + row.stepProgress()
+                    + "<gray> этап " + stepLabel(row.status(), row.currentStep(), quest == null ? -1 : quest.TotalSteps()) + ", прогресс " + row.stepProgress()
                     + ", раз: " + row.completionCount() + done + (quest == null ? ", цепочки больше нет в конфиге" : "") + "</gray>"));
         }
+    }
+
+    /**
+     * "step/total" as shown to the admin. An active chain stores the 0-based step it is on; a completed one stores the
+     * number of steps (both a normal finish and the admin completion do), which is already the last step, not one past it.
+     */
+    static String stepLabel(String status, int storedStep, int total) {
+        String totalText = total < 0 ? "?" : String.valueOf(total);
+        if ("COMPLETED".equals(status)) return (total < 0 ? storedStep : total) + "/" + totalText;
+        if ("ACTIVE".equals(status)) return (total < 0 ? storedStep + 1 : Math.min(storedStep + 1, total)) + "/" + totalText;
+        return "-/" + totalText;
     }
 
     /** Online by exact name first; otherwise only a cached profile, never a blocking name lookup. */

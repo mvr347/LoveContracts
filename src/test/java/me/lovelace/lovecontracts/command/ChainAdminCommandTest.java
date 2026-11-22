@@ -70,4 +70,15 @@ class ChainAdminCommandTest {
         assertFalse(parse("start", "Steve", "smith", "extra").ok());
         assertFalse(parse("fail", "Steve", "smith", "extra").ok());
     }
+
+    @Test
+    void stepLabelShowsTheLastStepOfACompletedChainNotOnePast() {
+        assertEquals("3/3", ChainAdminCommand.stepLabel("COMPLETED", 3, 3));
+        assertEquals("1/3", ChainAdminCommand.stepLabel("ACTIVE", 0, 3));
+        assertEquals("3/3", ChainAdminCommand.stepLabel("ACTIVE", 2, 3));
+        assertEquals("3/3", ChainAdminCommand.stepLabel("ACTIVE", 9, 3), "never past the last step");
+        assertEquals("-/3", ChainAdminCommand.stepLabel("ABANDONED", 0, 3));
+        assertEquals("2/?", ChainAdminCommand.stepLabel("ACTIVE", 1, -1));
+        assertEquals("3/?", ChainAdminCommand.stepLabel("COMPLETED", 3, -1));
+    }
 }
