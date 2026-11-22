@@ -27,9 +27,14 @@ public record RewardTiers(List<Speed> speed, double interactionBonus, double max
         maxMultiplier = Math.max(1.0, maxMultiplier);
     }
 
+    /** No bonuses at all: what a quest without a declared tier pays, exactly its base reward. */
+    public static RewardTiers none() {
+        return new RewardTiers(List.of(), 0, 0, 0, 0, 1.0);
+    }
+
     public static RewardTiers defaults() {
         return new RewardTiers(List.of(new Speed(0.4, 0.25), new Speed(0.7, 0.10)),
-                0.05, 0.15, 0.05, 0.05, 1.5);
+                0.05, 0.15, 0.05, 0.0, 1.5);
     }
 
     /** Reads the {@code reward-tiers} section; every missing key falls back to {@code base}. */

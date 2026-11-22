@@ -31,22 +31,120 @@ public final class NpcQuestStorage {
             q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN completion_count INTEGER NOT NULL DEFAULT 0");
             q.executeUpdate("UPDATE player_npc_quests SET completion_count=1 WHERE last_completed_at IS NOT NULL");
         }
+        // 2026-11-22: terms of a running quest (start time for the time limit and speed bonus, advance already paid,
+        // and the quality counters). Every column defaults to 0, which reads as "unknown" for rows from older versions.
+        for (String column : new String[] {"started_at", "advance_paid", "interactions", "deaths", "surplus"}) {
+            ensureColumn(c, "player_npc_quests", column, "INTEGER NOT NULL DEFAULT 0");
+        }
+        QuestRefusalStorage.initialize(c);
         ContractIncome.initialize(c);
         me.lovelace.lovecontracts.service.AchievementEntitlements.initialize(c);
     }
 
+    private static void ensureColumn(Connection c, String table, String column, String definition) throws SQLException {
+        boolean present = false;
+        try (var q = c.createStatement(); var rs = q.executeQuery("PRAGMA table_info(" + table + ")")) {
+            while (rs.next()) if (rs.getString("name").equals(column)) present = true;
+        }
+        if (!present) try (var q = c.createStatement()) {
+            q.executeUpdate("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+        }
+    }
+
     public static boolean start(Connection c, UUID player, String id, boolean repeatable, int cooldown, long now) throws SQLException {
+        return start(c, player, id, repeatable, cooldown, now, 0);
+    }
+
+    /**
+     * Takes the chain. {@code advancePaid} is what the giver hands out on taking (0 for none): it is remembered so the
+     * final payout can subtract it and a failure can ask it back. A chain given up or expired may be taken again.
+     */
+    public static boolean start(Connection c, UUID player, String id, boolean repeatable, int cooldown, long now,
+                                long advancePaid) throws SQLException {
         try (var q = c.prepareStatement("""
-                INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status)
-                VALUES(?,?,0,0,'ACTIVE') ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
-                current_step=0,step_progress=0,status='ACTIVE'
-                WHERE player_npc_quests.status='ABANDONED'
+                INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status,
+                                              started_at,advance_paid,interactions,deaths,surplus)
+                VALUES(?,?,0,0,'ACTIVE',?,?,0,0,0) ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
+                current_step=0,step_progress=0,status='ACTIVE',started_at=excluded.started_at,
+                advance_paid=excluded.advance_paid,interactions=0,deaths=0,surplus=0
+                WHERE player_npc_quests.status IN ('ABANDONED','EXPIRED')
                 OR (player_npc_quests.status='COMPLETED' AND ?=1
                 AND CAST(strftime('%s', last_completed_at) AS INTEGER) * 1000 <= ?)
                 """)) {
             q.setString(1, player.toString()); q.setString(2, id);
-            q.setBoolean(3, repeatable); q.setLong(4, now - Math.max(0, cooldown) * 60_000L);
+            q.setLong(3, now); q.setLong(4, Math.max(0, advancePaid));
+            q.setBoolean(5, repeatable); q.setLong(6, now - Math.max(0, cooldown) * 60_000L);
             return q.executeUpdate() == 1;
+        }
+    }
+
+    /**
+     * Records an advance for a chain just taken, reserving it against the rolling income limit like any other payout.
+     * Returns what was actually granted: 0 when the limit is reached (the quest is then taken without an advance).
+     */
+    public static long grantAdvance(Connection c, UUID player, String id, long amount, long limit, long now) throws SQLException {
+        if (amount <= 0) return 0;
+        c.setAutoCommit(false);
+        try {
+            if (!ContractIncome.reserve(c, player, amount, limit, now)) {
+                c.rollback();
+                return 0;
+            }
+            try (var q = c.prepareStatement("UPDATE player_npc_quests SET advance_paid=? WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'")) {
+                q.setLong(1, amount);
+                q.setString(2, player.toString());
+                q.setString(3, id);
+                if (q.executeUpdate() != 1) {
+                    c.rollback();
+                    return 0;
+                }
+            }
+            c.commit();
+            return amount;
+        } catch (SQLException error) {
+            c.rollback();
+            throw error;
+        } finally {
+            c.setAutoCommit(true);
+        }
+    }
+
+    /** A running chain whose time limit ran out: it ends without reward or cooldown, the row stays as EXPIRED. */
+    public static boolean expire(Connection c, UUID player, String id) throws SQLException {
+        try (var q = c.prepareStatement("""
+                UPDATE player_npc_quests SET status='EXPIRED',current_step=0,step_progress=0
+                WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'
+                """)) {
+            q.setString(1, player.toString());
+            q.setString(2, id);
+            return q.executeUpdate() == 1;
+        }
+    }
+
+    /** Counts one polite dialogue choice on a running chain (feeds the interaction bonus). */
+    public static void addInteraction(Connection c, UUID player, String id) throws SQLException {
+        bump(c, "interactions", player, id);
+    }
+
+    /** Marks a delivery with a surplus on a running chain (feeds the quality bonus). */
+    public static void addSurplus(Connection c, UUID player, String id) throws SQLException {
+        bump(c, "surplus", player, id);
+    }
+
+    /** A death spoils the "no deaths" quality bonus of every chain the player is running. */
+    public static void addDeath(Connection c, UUID player) throws SQLException {
+        try (var q = c.prepareStatement("UPDATE player_npc_quests SET deaths=deaths+1 WHERE player_uuid=? AND status='ACTIVE'")) {
+            q.setString(1, player.toString());
+            q.executeUpdate();
+        }
+    }
+
+    private static void bump(Connection c, String column, UUID player, String id) throws SQLException {
+        try (var q = c.prepareStatement("UPDATE player_npc_quests SET " + column + "=" + column
+                + "+1 WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'")) {
+            q.setString(1, player.toString());
+            q.setString(2, id);
+            q.executeUpdate();
         }
     }
 

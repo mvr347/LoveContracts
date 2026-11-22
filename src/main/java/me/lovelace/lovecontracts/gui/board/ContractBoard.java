@@ -79,6 +79,13 @@ public final class ContractBoard implements Listener {
             }
             return;
         }
+        long refusedFor = plugin.getNpcQuestManager().refusalLeft(player.getUniqueId());
+        if (refusedFor > 0) {
+            // the contractor has had enough of cancelled quests: the board and /contracts stay shut for a while
+            Notify.event(player, mm.deserialize("<red>Контрактщик не станет с вами работать ещё "
+                    + DurationText.format(refusedFor) + ": вы слишком часто отказывались от поручений.</red>"));
+            return;
+        }
         new ContractBoardGui(this, plugin, player, target, target == BoardTab.CHAINS ? onlyChains : null).begin();
     }
 

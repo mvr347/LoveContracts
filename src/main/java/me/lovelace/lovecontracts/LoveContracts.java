@@ -208,6 +208,9 @@ public final class LoveContracts extends JavaPlugin {
 
         contractManager.startRotationTask();
 
+        // Quest time limits are checked on the main thread: the expiry touches the wallet and the player's chat.
+        Bukkit.getScheduler().runTaskTimer(this, () -> npcQuestManager.sweepExpired(), 20L * 60, 20L * 60);
+
         playerContractExpirationTask = new PlayerContractExpirationTask(playerContractManager);
         long pcontractIntervalTicks = 20L * 60 * getConfig().getInt("player-contracts.expiration-check-interval-minutes", 5);
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, playerContractExpirationTask,

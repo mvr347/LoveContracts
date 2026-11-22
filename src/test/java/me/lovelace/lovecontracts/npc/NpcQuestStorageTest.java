@@ -178,4 +178,85 @@ class NpcQuestStorageTest {
             assertTrue(NpcQuestStorage.inspect(c, UUID.randomUUID()).isEmpty());
         }
     }
+
+    @Test void advanceIsReservedAgainstTheIncomeLimitAndSubtractedFromThePayout() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.start(c, player, "big", false, 0, 1000));
+            assertEquals(60, NpcQuestStorage.grantAdvance(c, player, "big", 60, 1800, 1000));
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT advance_paid,started_at FROM player_npc_quests")) {
+                assertTrue(rs.next()); assertEquals(60, rs.getLong(1)); assertEquals(1000, rs.getLong(2));
+            }
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT SUM(amount) FROM contract_income")) {
+                assertTrue(rs.next()); assertEquals(60, rs.getLong(1));
+            }
+        }
+    }
+
+    @Test void advanceIsDeniedWhenTheIncomeLimitIsReached() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.start(c, player, "a", false, 0, 1));
+            assertEquals(1800, NpcQuestStorage.grantAdvance(c, player, "a", 1800, 1800, 1));
+            assertTrue(NpcQuestStorage.start(c, player, "b", false, 0, 2));
+            // the limit is spent: the quest is still taken, just without an advance
+            assertEquals(0, NpcQuestStorage.grantAdvance(c, player, "b", 50, 1800, 2));
+            try (var q = c.prepareStatement("SELECT advance_paid FROM player_npc_quests WHERE quest_id='b'"); var rs = q.executeQuery()) {
+                assertTrue(rs.next()); assertEquals(0, rs.getLong(1));
+            }
+        }
+    }
+
+    @Test void expiredChainCanBeTakenAgainWithFreshTermsAndKeepsNoCooldown() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertTrue(NpcQuestStorage.start(c, player, "late", true, 1440, 1000));
+            NpcQuestStorage.addInteraction(c, player, "late");
+            NpcQuestStorage.addDeath(c, player);
+            assertTrue(NpcQuestStorage.expire(c, player, "late"));
+            assertFalse(NpcQuestStorage.expire(c, player, "late")); // already ended
+            assertTrue(NpcQuestStorage.start(c, player, "late", true, 1440, 2000));
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT started_at,interactions,deaths,advance_paid,status FROM player_npc_quests")) {
+                assertTrue(rs.next());
+                assertEquals(2000, rs.getLong(1)); assertEquals(0, rs.getInt(2)); assertEquals(0, rs.getInt(3));
+                assertEquals(0, rs.getLong(4)); assertEquals("ACTIVE", rs.getString(5));
+            }
+        }
+    }
+
+    @Test void legacyRowsGetZeroTermsColumns() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            UUID player = UUID.randomUUID();
+            try (var q = c.createStatement()) {
+                q.executeUpdate("CREATE TABLE player_npc_quests(player_uuid TEXT,quest_id TEXT,current_step INTEGER,step_progress INTEGER,status TEXT,last_completed_at TIMESTAMP,PRIMARY KEY(player_uuid,quest_id))");
+                q.executeUpdate("INSERT INTO player_npc_quests VALUES('" + player + "','old',1,17,'ACTIVE',NULL)");
+            }
+            NpcQuestStorage.initialize(c);
+            try (var q = c.createStatement(); var rs = q.executeQuery("SELECT started_at,advance_paid,interactions,deaths FROM player_npc_quests")) {
+                assertTrue(rs.next());
+                for (int i = 1; i <= 4; i++) assertEquals(0, rs.getLong(i)); // 0 = unknown, so no limit applies to old rows
+            }
+        }
+    }
+
+    @Test void refusalStateRoundTripsAndAdminClearKeepsTheTotalOnRequest() throws Exception {
+        try (var c = DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            NpcQuestStorage.initialize(c);
+            UUID player = UUID.randomUUID();
+            assertEquals(me.lovelace.lovecontracts.npc.model.RefusalPolicy.State.EMPTY,
+                    me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, player));
+            var state = new me.lovelace.lovecontracts.npc.model.RefusalPolicy.State(2, 1, 5000, 4000, 3);
+            me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.save(c, player, state);
+            assertEquals(state, me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, player));
+            me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.clear(c, player, true);
+            assertEquals(new me.lovelace.lovecontracts.npc.model.RefusalPolicy.State(0, 0, 0, 0, 3),
+                    me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, player));
+            me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.clear(c, player, false);
+            assertEquals(me.lovelace.lovecontracts.npc.model.RefusalPolicy.State.EMPTY,
+                    me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, player));
+        }
+    }
 }

@@ -131,6 +131,7 @@ final class DialogueGui extends BoardGui {
     }
 
     private void answer(NpcDialogueOption option) {
+        if (option.isPolite()) plugin.getNpcQuestManager().recordPoliteChoice(viewer, quest);
         switch (option.getAction()) {
             case ACCEPT_QUEST -> {
                 if (expected != -1) {

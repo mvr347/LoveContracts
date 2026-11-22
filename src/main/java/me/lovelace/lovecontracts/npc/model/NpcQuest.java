@@ -20,10 +20,18 @@ public class NpcQuest {
     private final Map<String, NpcDialogueNode> dialogues;
     private final List<NpcQuestStep> steps;
     private final List<Reward> rewards;
+    private final QuestTerms terms;
 
     public NpcQuest(String id, String npcKey, String displayName, boolean repeatable, int cooldownMinutes,
                     String initialDialogueNode, Map<String, NpcDialogueNode> dialogues,
                     List<NpcQuestStep> steps, List<Reward> rewards) {
+        this(id, npcKey, displayName, repeatable, cooldownMinutes, initialDialogueNode, dialogues, steps, rewards,
+                QuestTerms.NONE);
+    }
+
+    public NpcQuest(String id, String npcKey, String displayName, boolean repeatable, int cooldownMinutes,
+                    String initialDialogueNode, Map<String, NpcDialogueNode> dialogues,
+                    List<NpcQuestStep> steps, List<Reward> rewards, QuestTerms terms) {
         this.id = id;
         this.npcKey = npcKey;
         this.displayName = displayName != null ? displayName : id;
@@ -33,6 +41,15 @@ public class NpcQuest {
         this.dialogues = dialogues != null ? new HashMap<>(dialogues) : new HashMap<>();
         this.steps = steps != null ? new ArrayList<>(steps) : new ArrayList<>();
         this.rewards = rewards != null ? new ArrayList<>(rewards) : new ArrayList<>();
+        this.terms = terms != null ? terms : QuestTerms.NONE;
+    }
+
+    /** Tier, time limit, advance and card summary; {@link QuestTerms#NONE} for a quest that declares none. */
+    public QuestTerms terms() { return terms; }
+
+    /** Base reward in coins (before speed and quality bonuses). */
+    public long baseReward() {
+        return Math.round(rewards.stream().mapToDouble(Reward::getAmount).sum());
     }
 
     public String getId() { return id; }

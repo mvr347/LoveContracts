@@ -37,7 +37,10 @@ class RewardTiersTest {
 
     @Test
     void qualityAddsNoDeathsAndSurplus() {
-        assertEquals(0.10, tiers.compute(100, 0, 0, 0, true, true).quality(), 1e-9);
+        // surplus-bonus is 0 by default (see config.yml), so only the no-deaths part counts
+        assertEquals(0.05, tiers.compute(100, 0, 0, 0, true, true).quality(), 1e-9);
+        var withSurplus = new RewardTiers(java.util.List.of(), 0, 0, 0.05, 0.05, 1.5);
+        assertEquals(0.10, withSurplus.compute(100, 0, 0, 0, true, true).quality(), 1e-9);
     }
 
     @Test
@@ -49,10 +52,11 @@ class RewardTiersTest {
 
     @Test
     void maximumReflectsEveryBonus() {
-        // 1 + 0.25 + 0.15 + 0.05 + 0.05 = 1.5, exactly the default clamp
-        assertEquals(300, tiers.maximum(200, true));
-        // without a time limit the speed bonus is out of reach: 1 + 0.15 + 0.05 + 0.05 = 1.25
-        assertEquals(250, tiers.maximum(200, false));
+        // 1 + 0.25 + 0.15 + 0.05 = 1.45
+        assertEquals(290, tiers.maximum(200, true));
+        // without a time limit the speed bonus is out of reach: 1 + 0.15 + 0.05 = 1.20
+        assertEquals(240, tiers.maximum(200, false));
+        assertEquals(200, RewardTiers.none().maximum(200, true));
     }
 
     @Test
