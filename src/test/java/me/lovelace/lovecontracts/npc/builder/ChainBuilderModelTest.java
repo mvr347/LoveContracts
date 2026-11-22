@@ -318,4 +318,55 @@ class ChainBuilderModelTest {
         assertEquals("done_key", back.copyAs("smith_v2").completionAchievement());
         assertFalse(ChainDraftYaml.toMap(sample()).containsKey("requires-achievement"));
     }
+
+    private static ChainDraft roundTrip(ChainDraft chain) {
+        org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
+        yaml.set("c", ChainDraftYaml.toMap(chain));
+        org.bukkit.configuration.file.YamlConfiguration reread = new org.bukkit.configuration.file.YamlConfiguration();
+        try {
+            reread.loadFromString(yaml.saveToString());
+        } catch (org.bukkit.configuration.InvalidConfigurationException e) {
+            throw new AssertionError(e);
+        }
+        return ChainDraftYaml.fromSection(chain.id(), reread.getConfigurationSection("c"));
+    }
+
+    @Test
+    void aDisabledChainStaysDisabled() {
+        ChainDraft chain = sample();
+        chain.enabled(false);
+        assertEquals(Boolean.FALSE, ChainDraftYaml.toMap(chain).get("enabled"));
+        assertFalse(roundTrip(chain).enabled());
+        assertTrue(roundTrip(sample()).enabled());
+        assertFalse(chain.copyAs("smith_v2").enabled());
+    }
+
+    @Test
+    void aCustomEntryPointAndItsDialoguesSurviveARoundTrip() {
+        ChainDraft chain = sample();
+        Map<String, Object> start = Map.of("text", List.of("привет"), "options", List.of(Map.of("text", "ок", "action", "ACCEPT_QUEST")));
+        Map<String, Object> greeting = Map.of("text", List.of("<yellow>Заказчик:</yellow> Есть работа для тебя.", "<yellow>Заказчик:</yellow> Возьмёшься?"),
+                "options", List.of(Map.of("text", "<green>Беру поручение</green>", "action", "ACCEPT_QUEST")));
+        chain.customDialogues(new java.util.LinkedHashMap<>(Map.of("start", start, "greeting", greeting)));
+        chain.initialDialogue("start");
+        ChainDraft back = roundTrip(chain);
+        assertEquals("start", back.initialDialogue());
+        assertNotNull(back.customDialogues());
+        assertTrue(back.customDialogues().containsKey("start"));
+        // a generated conversation always starts at the greeting, whatever the draft remembers
+        ChainDraft generated = sample();
+        generated.initialDialogue("start");
+        assertEquals("greeting", ChainDraftYaml.toMap(generated).get("initial-dialogue"));
+    }
+
+    @Test
+    void stockGreetingTextWithOwnChoicesIsNotTreatedAsGenerated() {
+        ChainDraft chain = sample();
+        Map<String, Object> greeting = Map.of("text", List.of("<yellow>Заказчик:</yellow> Есть работа для тебя.", "<yellow>Заказчик:</yellow> Возьмёшься?"),
+                "options", List.of(Map.of("text", "<red>Только за двойную плату</red>", "action", "CLOSE")));
+        chain.customDialogues(new java.util.LinkedHashMap<>(Map.of("greeting", greeting)));
+        ChainDraft back = roundTrip(chain);
+        assertNotNull(back.customDialogues(), "the author's choices must be kept");
+        assertNull(roundTrip(sample()).customDialogues(), "a really generated conversation stays generated");
+    }
 }
