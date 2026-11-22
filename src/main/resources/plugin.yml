@@ -11,7 +11,7 @@ softdepend: [PlaceholderAPI, ItemsAdder]
 commands:
   lovecontractsadmin:
     description: Admin commands for LoveContracts
-    usage: /lovecontractsadmin <reload|rotate|create|npc|sign|chains|complete|fail|stats|reset|toggle|gui|help>
+    usage: /lovecontractsadmin <reload|rotate|create|npc|sign|chains|chain|complete|fail|stats|reset|toggle|gui|help>
     # Старое имя команды (lovecontracts) и его прежние короткие алиасы остаются здесь же,
     # чтобы никто не потерял доступ по привычке — эта команда уже была чисто admin-scoped,
     # так что переименование не требует отдельного redirect-сообщения.

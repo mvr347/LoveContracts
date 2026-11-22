@@ -2,6 +2,8 @@ package me.lovelace.lovecontracts.npc.storage;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import me.lovelace.lovecontracts.util.ContractIncome;
 
@@ -92,5 +94,104 @@ public final class NpcQuestStorage {
         } catch (SQLException error) {
             c.rollback(); throw error;
         } finally { c.setAutoCommit(true); }
+    }
+
+    // ------------------------------------------------------------------ admin operations (no gameplay rules apply)
+
+    /** One stored row, for the admin overview. {@code lastCompletedMillis} is 0 when the chain was never completed. */
+    public record Row(String questId, int currentStep, int stepProgress, String status, int completionCount, long lastCompletedMillis) {
+    }
+
+    /** Puts the chain in progress at step 0 whatever its state was: cooldown, one-time rule and the chain limit are ignored. */
+    public static void forceStart(Connection c, UUID player, String id) throws SQLException {
+        try (var q = c.prepareStatement("""
+                INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status)
+                VALUES(?,?,0,0,'ACTIVE') ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
+                current_step=0,step_progress=0,status='ACTIVE'
+                """)) {
+            q.setString(1, player.toString());
+            q.setString(2, id);
+            q.executeUpdate();
+        }
+    }
+
+    /** Erases the row (progress, history, cooldown and counter): the chain starts from scratch next time. */
+    public static int clear(Connection c, UUID player, String id) throws SQLException {
+        try (var q = c.prepareStatement("DELETE FROM player_npc_quests WHERE player_uuid=? AND quest_id=?")) {
+            q.setString(1, player.toString());
+            q.setString(2, id);
+            return q.executeUpdate();
+        }
+    }
+
+    /** Erases every chain row of the player; returns how many there were. */
+    public static int clearAll(Connection c, UUID player) throws SQLException {
+        try (var q = c.prepareStatement("DELETE FROM player_npc_quests WHERE player_uuid=?")) {
+            q.setString(1, player.toString());
+            return q.executeUpdate();
+        }
+    }
+
+    /** Moves an active chain to another step (0-based) and resets its progress; false when the chain is not active. */
+    public static boolean setStep(Connection c, UUID player, String id, int step) throws SQLException {
+        if (step < 0) return false;
+        try (var q = c.prepareStatement("""
+                UPDATE player_npc_quests SET current_step=?,step_progress=0
+                WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'
+                """)) {
+            q.setInt(1, step);
+            q.setString(2, player.toString());
+            q.setString(3, id);
+            return q.executeUpdate() == 1;
+        }
+    }
+
+    /**
+     * Marks the chain completed whatever its state was and queues its achievement. The rolling income limit is not
+     * applied: an admin completion is not farming. The counter and the cooldown clock move as for a normal finish.
+     */
+    public static void forceComplete(Connection c, UUID player, String id, int totalSteps, String achievement, long now) throws SQLException {
+        c.setAutoCommit(false);
+        try {
+            try (var q = c.prepareStatement("""
+                    INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status,last_completed_at,completion_count)
+                    VALUES(?,?,?,0,'COMPLETED',datetime(? / 1000, 'unixepoch'),1)
+                    ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
+                    current_step=excluded.current_step,step_progress=0,status='COMPLETED',
+                    last_completed_at=excluded.last_completed_at,
+                    completion_count=player_npc_quests.completion_count+1
+                    """)) {
+                q.setString(1, player.toString());
+                q.setString(2, id);
+                q.setInt(3, Math.max(0, totalSteps));
+                q.setLong(4, now);
+                q.executeUpdate();
+            }
+            me.lovelace.lovecontracts.service.AchievementEntitlements.enqueue(c, player, achievement);
+            c.commit();
+        } catch (SQLException error) {
+            c.rollback();
+            throw error;
+        } finally {
+            c.setAutoCommit(true);
+        }
+    }
+
+    /** All stored rows of a player, for the admin overview (works for offline players: it reads the database only). */
+    public static List<Row> inspect(Connection c, UUID player) throws SQLException {
+        List<Row> rows = new ArrayList<>();
+        try (var q = c.prepareStatement("""
+                SELECT quest_id,current_step,step_progress,status,completion_count,
+                       COALESCE(CAST(strftime('%s', last_completed_at) AS INTEGER),0)
+                FROM player_npc_quests WHERE player_uuid=? ORDER BY quest_id
+                """)) {
+            q.setString(1, player.toString());
+            try (var rs = q.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new Row(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getString(4), rs.getInt(5), rs.getLong(6) * 1000));
+                }
+            }
+        }
+        return rows;
     }
 }
