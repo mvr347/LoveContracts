@@ -2,10 +2,13 @@ package me.lovelace.lovecontracts.service;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import me.lovelace.lovecontracts.LoveContracts;
+import me.lovelace.lovecontracts.util.LoreBar;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -43,8 +46,8 @@ public class ContractPlaceholderExpansion extends PlaceholderExpansion {
 
         UUID uuid = player.getUniqueId();
         var cm = plugin.getContractManager();
-        // No SQL here: onRequest runs on the main thread. Stats come from the online-player
-        // cache; offline players get defaults.
+        var nqm = plugin.getNpcQuestManager();
+        // No SQL here: onRequest runs on the main thread. All values come from in-memory caches.
         PlayerStatsCache.Stats st = plugin.getStatsCache().get(uuid);
 
         try {
@@ -57,26 +60,57 @@ public class ContractPlaceholderExpansion extends PlaceholderExpansion {
                 case "total_accepted" -> String.valueOf(st.totalAccepted());
                 case "current_streak" -> String.valueOf(st.currentStreak());
                 case "best_streak" -> String.valueOf(st.bestStreak());
-                case "has_active" -> String.valueOf(cm != null && cm.peekActiveContract(uuid) != null);
-                case "active_name" -> {
-                    if (cm == null) yield "None";
-                    me.lovelace.lovecontracts.model.Contract active = cm.peekActiveContract(uuid);
-                    yield active != null ? active.getDisplayName().replaceAll("<[^>]+>", "") : "None";
-                }
-                case "active_progress" -> {
-                    if (cm == null || player.getPlayer() == null) yield "0/0";
-                    me.lovelace.lovecontracts.model.Contract active = cm.peekActiveContract(uuid);
-                    if (active == null || active.getCondition() == null) yield "0/0";
-                    yield active.getCondition().getProgressString(player.getPlayer());
-                }
                 case "pending_fine" -> String.valueOf(plugin.getFineManager() != null ? plugin.getFineManager().getDebt(uuid) : 0L);
                 case "success_rate" -> PlayerStatsCache.successRate(st.totalAccepted(), st.totalCompleted());
-                case "active_contracts" -> String.valueOf(cm != null ? cm.getActiveContracts().size() : 0);
+                case "active_contracts" -> String.valueOf(nqm != null ? nqm.allQuests().size() : 0);
+
+                case "questboard_enabled" -> (nqm == null || nqm.isQuestboardEnabled(uuid)) ? "yes" : "no";
+                case "quest_count" -> {
+                    Player online = player.getPlayer();
+                    yield online != null && nqm != null ? String.valueOf(nqm.activeCount(online)) : "0";
+                }
+                case "quest_active", "has_active" -> {
+                    boolean active = focusedObjective(player) != null;
+                    yield params.equalsIgnoreCase("has_active") ? String.valueOf(active) : (active ? "yes" : "no");
+                }
+                case "quest_name", "active_name" -> {
+                    QuestSidebarText.Objective obj = focusedObjective(player);
+                    yield obj != null ? obj.name() : "—";
+                }
+                case "quest_goal" -> {
+                    QuestSidebarText.Objective obj = focusedObjective(player);
+                    yield obj != null ? obj.task() : "—";
+                }
+                case "quest_progress", "active_progress" -> {
+                    QuestSidebarText.Objective obj = focusedObjective(player);
+                    yield obj != null ? obj.progress() + "/" + obj.required() : "0/0";
+                }
+                case "quest_bar" -> {
+                    QuestSidebarText.Objective obj = focusedObjective(player);
+                    yield obj != null ? LoreBar.bar(obj.progress(), obj.required()) : "—";
+                }
+                case "quest_time_left" -> {
+                    QuestSidebarText.Objective obj = focusedObjective(player);
+                    yield obj != null && !obj.timeLeft().isBlank() ? obj.timeLeft() : "—";
+                }
+                case "quest_reward" -> {
+                    QuestSidebarText.Objective obj = focusedObjective(player);
+                    yield obj != null && !obj.rewardText().isBlank() ? obj.rewardText() : "—";
+                }
                 default -> null;
             };
         } catch (Exception e) {
             plugin.getLogger().warning("Placeholder error for " + params + ": " + e.getMessage());
             return "ERROR";
         }
+    }
+
+    private QuestSidebarText.Objective focusedObjective(OfflinePlayer offlinePlayer) {
+        Player online = offlinePlayer.getPlayer();
+        var nqm = plugin.getNpcQuestManager();
+        if (online == null || nqm == null) return null;
+        List<QuestSidebarText.Objective> list = nqm.objectives(online);
+        String focus = plugin.getQuestSidebar() != null ? plugin.getQuestSidebar().focusedId(online.getUniqueId()) : null;
+        return QuestSidebarText.select(list, focus);
     }
 }

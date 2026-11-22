@@ -1,158 +1,2354 @@
-# Дополнительные цепочки 2.0. Файл создаётся отдельно, не заменяя npc_quests.yml администратора.
-# @contractor — NPC, привязанный /lovecontractsadmin npc.
-# @brew:saloonkeeper_main — NPC выбранного провайдера с меткой lovebrew.trader=saloonkeeper_main.
-# Для другого трактирщика замените ключ после @brew: или укажите обычный ключ NPC.
+# ============================================
+# 2026-11-22: Единый пул поручений (45 квестов: 20 лёгких, 15 средних, 10 сложных).
+# Без Незера и Энда. Используются постоянные NPC сервера (@contractor, @brew:*, @actor:*).
+# ============================================
+data-version: 2
+
 npc_quests:
-  innkeeper_supplies_v2:
+  easy_bread:
+    enabled: true
     npc-key: "@contractor"
-    display-name: "<gold>Пустые полки трактира</gold>"
+    display-name: "<green>Свежий хлеб для дозора</green>"
+    tier: EASY
+    time-limit-minutes: 30
+    summary: "Страже на воротах нужен свежий хлеб. Соберите 16 буханок и передайте контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Страже на воротах нужен свежий хлеб. Соберите 16 буханок и передайте контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: BREAD
+        count: 16
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 16x BREAD контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 80
+
+  easy_coal:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Уголь для жаровен</green>"
+    tier: EASY
+    time-limit-minutes: 40
+    summary: "Похолодало, а на постах заканчивается топливо. Принесите 32 угля контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Похолодало, а на постах заканчивается топливо. Принесите 32 угля контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: COAL
+        count: 32
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 32x COAL контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 100
+
+  easy_cod:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Улов к ужину</green>"
+    tier: EASY
+    time-limit-minutes: 35
+    summary: "На городской кухне не хватает рыбы. Принесите 12 сырой трески контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> На городской кухне не хватает рыбы. Принесите 12 сырой трески контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: COD
+        count: 12
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 12x COD контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 90
+
+  easy_cobblestone:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Камень для мостовой</green>"
+    tier: EASY
+    time-limit-minutes: 30
+    summary: "После дождей размыло дорогу у площади. Доставьте 64 булыжника контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> После дождей размыло дорогу у площади. Доставьте 64 булыжника контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: COBBLESTONE
+        count: 64
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 64x COBBLESTONE контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 70
+
+  easy_oak_log:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Дубовые брёвна</green>"
+    tier: EASY
+    time-limit-minutes: 35
+    summary: "Плотникам нечем чинить навесы. Принесите 32 дубовых бревна контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Плотникам нечем чинить навесы. Принесите 32 дубовых бревна контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: OAK_LOG
+        count: 32
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 32x OAK_LOG контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 95
+
+  easy_wheat:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Мешок пшеницы</green>"
+    tier: EASY
+    time-limit-minutes: 35
+    summary: "На мельнице пустеют закрома. Соберите 32 снопа пшеницы для контрактщика."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> На мельнице пустеют закрома. Соберите 32 снопа пшеницы для контрактщика."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: WHEAT
+        count: 32
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 32x WHEAT контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 85
+
+  easy_apple:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Яблоки из сада</green>"
+    tier: EASY
+    time-limit-minutes: 45
+    summary: "Для походного пайка нужны свежие фрукты. Принесите 12 яблок контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Для походного пайка нужны свежие фрукты. Принесите 12 яблок контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: APPLE
+        count: 12
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 12x APPLE контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 110
+
+  easy_leather:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Сыромятная кожа</green>"
+    tier: EASY
+    time-limit-minutes: 45
+    summary: "Шорнику нужна кожа для ремней и сумок. Передайте 12 штук контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Шорнику нужна кожа для ремней и сумок. Передайте 12 штук контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: LEATHER
+        count: 12
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 12x LEATHER контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 115
+
+  easy_wool:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Тёплая шерсть</green>"
+    tier: EASY
+    time-limit-minutes: 40
+    summary: "В лазарете не хватает одеял. Принесите 16 блоков белой шерсти контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> В лазарете не хватает одеял. Принесите 16 блоков белой шерсти контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: WHITE_WOOL
+        count: 16
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 16x WHITE_WOOL контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 90
+
+  easy_torches:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Огни ночного дозора</green>"
+    tier: EASY
+    time-limit-minutes: 30
+    summary: "На стенах перегорели старые факелы. Соберите 32 факела и отдайте контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> На стенах перегорели старые факелы. Соберите 32 факела и отдайте контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: TORCH
+        count: 32
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 32x TORCH контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 75
+
+  easy_iron:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Железный резерв</green>"
+    tier: EASY
+    time-limit-minutes: 45
+    summary: "Мастерской срочно нужен металл на скобы. Принесите 12 железных слитков контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Мастерской срочно нужен металл на скобы. Принесите 12 железных слитков контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: IRON_INGOT
+        count: 12
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 12x IRON_INGOT контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 130
+
+  easy_carrot:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Корзина моркови</green>"
+    tier: EASY
+    time-limit-minutes: 35
+    summary: "Конюшни просят сочный корм для лошадей. Доставьте 24 моркови контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Конюшни просят сочный корм для лошадей. Доставьте 24 моркови контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: CARROT
+        count: 24
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 24x CARROT контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 80
+
+  easy_potato:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Печёный картофель</green>"
+    tier: EASY
+    time-limit-minutes: 40
+    summary: "Рабочим у каменоломни нужен сытный обед. Принесите 20 печёных картофелин контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Рабочим у каменоломни нужен сытный обед. Принесите 20 печёных картофелин контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: BAKED_POTATO
+        count: 20
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 20x BAKED_POTATO контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 95
+
+  easy_beef:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Стейки в поход</green>"
+    tier: EASY
+    time-limit-minutes: 45
+    summary: "Патруль уходит на дальний рубеж. Принесите 16 жареной говядины контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Патруль уходит на дальний рубеж. Принесите 16 жареной говядины контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: COOKED_BEEF
+        count: 16
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 16x COOKED_BEEF контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 120
+
+  easy_paper:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Бумага для канцелярии</green>"
+    tier: EASY
+    time-limit-minutes: 35
+    summary: "Писарям не на чем вести учёт поставок. Передайте 24 листа бумаги контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Писарям не на чем вести учёт поставок. Передайте 24 листа бумаги контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: PAPER
+        count: 24
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 24x PAPER контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 85
+
+  easy_arrows:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Пополнение колчанов</green>"
+    tier: EASY
+    time-limit-minutes: 40
+    summary: "Дозорные на башнях расстреляли запас стрел. Принесите 32 стрелы контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> Дозорные на башнях расстреляли запас стрел. Принесите 32 стрелы контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: ARROW
+        count: 32
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 32x ARROW контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 100
+
+  easy_glass:
+    enabled: true
+    npc-key: "@contractor"
+    display-name: "<green>Стекло для окон</green>"
+    tier: EASY
+    time-limit-minutes: 40
+    summary: "В ратуше нужно заменить выбитые рамы. Принесите 24 блока стекла контрактщику."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Контрактщик:</yellow> В ратуше нужно заменить выбитые рамы. Принесите 24 блока стекла контрактщику."
+        options:
+          - {text: "С радостью помогу вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: DELIVER_ITEM
+        material: GLASS
+        count: 24
+        target-npc-key: "@contractor"
+        target-npc-name: "Контрактщик"
+        description: "Принесите 24x GLASS контрактщику"
+        dialogue:
+          text:
+            - "<yellow>Контрактщик:</yellow> Принёс всё по списку?"
+          options:
+            - {text: "Вот всё в лучшем виде!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать заказ", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 95
+
+  easy_hunt_zombies:
+    enabled: true
+    npc-key: "@actor:hunter"
+    display-name: "<green>Тревога у заставы</green>"
+    tier: EASY
+    time-limit-minutes: 45
+    summary: "Охотник заметил бродячих мертвецов у дороги. Очистите подступы от 12 зомби."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Охотник:</yellow> У дороги снова бродят зомби. Расчисти тропу, пока не стемнело."
+        options:
+          - {text: "Сейчас же обеспечу безопасность!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Выхожу на охоту", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: KILL_ENTITY
+        entity-type: ZOMBIE
+        count: 12
+        description: "Победите 12 зомби"
+    rewards:
+      money: 120
+
+  easy_mine_iron:
+    enabled: true
+    npc-key: "@actor:craftsman"
+    display-name: "<green>Жила в холмах</green>"
+    tier: EASY
+    time-limit-minutes: 50
+    summary: "Ремесленнику не хватает руды для подков. Добудьте 16 железной руды."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Ремесленник:</yellow> Мои запасы руды иссякли. Спустись в шахту и накопай железа."
+        options:
+          - {text: "Буду рад выручить мастера!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Добуду руду", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: MINE_MATERIAL
+        material: IRON_ORE
+        count: 16
+        description: "Добудьте 16 железной руды"
+    rewards:
+      money: 140
+
+  easy_saloon_fish:
+    enabled: true
+    npc-key: "@brew:saloonkeeper_main"
+    display-name: "<green>Клёв на рассвете</green>"
+    tier: EASY
+    time-limit-minutes: 45
+    summary: "Трактирщик готовит уху к вечеру. Поймайте 8 рыб на реке."
+    repeatable: true
+    cooldown-minutes: 720
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Трактирщик:</yellow> Гости просят свежей ухи. Посиди с удочкой у реки!"
+        options:
+          - {text: "Сделаю лучший улов для вашего трактира!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Отправляюсь на рыбалку", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CATCH_FISH
+        count: 8
+        description: "Поймайте 8 рыб"
+    rewards:
+      money: 110
+
+  med_tavern_bread:
+    enabled: true
+    npc-key: "@brew:saloonkeeper_main"
+    display-name: "<yellow>Аромат свежей выпечки</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 90
+    summary: "Трактирщик просит испечь хлеб и сообщить глашатаю о начале ярмарочного обеда."
     repeatable: true
     cooldown-minutes: 1440
     initial-dialogue: greeting
     dialogues:
       greeting:
         text:
-          - "<yellow>Контрактник:</yellow> Трактирщик просил помощи: поставка припасов задерживается."
-          - "Узнай у него подробности. Он сам скажет, что нужно принести."
+          - "<yellow>Трактирщик:</yellow> К полудню соберётся полгорода, а пекарь приболел. Выручишь?"
         options:
-          - {text: "Узнать о поставке", action: NEXT_NODE, next-node: details}
-          - {text: "Возьмусь за помощь", action: ACCEPT_QUEST}
-          - {text: "Позже", action: CLOSE}
+          - {text: "Для гостей трактира всё сделаю в лучшем виде!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Берусь за выпечку", action: ACCEPT_QUEST}
+          - {text: "Что нужно сделать?", action: NEXT_NODE, next-node: details}
+          - {text: "Зайду позже", action: CLOSE}
       details:
         text:
-          - "Сначала поговори с трактирщиком, затем передай припасы и обсуди результат."
-          - "Оплата — за всю работу, после последнего разговора."
+          - "Сначала напеки 24 буханки, принеси мне, а затем предупреди глашатая."
         options:
-          - {text: "Беру поручение", action: ACCEPT_QUEST}
-          - {text: "Не сейчас", action: CLOSE}
-      fearful:
-        text:
-          - "<yellow>Контрактник:</yellow> Я слышал о твоих драках. Давай спокойно."
-          - "Трактирщику нужны припасы. Помоги без угроз — это будет хороший поступок."
-        options:
-          - {text: "Я помогу спокойно", action: ACCEPT_QUEST}
-          - {text: "Уйти", action: CLOSE}
-      skeptical:
-        text:
-          - "<yellow>Контрактник:</yellow> Слова ничего не стоят. Покажи делом, что тебе можно доверять."
-          - "У трактирщика задержались припасы. Готов помочь?"
-        options:
-          - {text: "Докажу делом", action: ACCEPT_QUEST}
-          - {text: "Позже", action: CLOSE}
-      friendly:
-        text:
-          - "<yellow>Контрактник:</yellow> Рад тебя видеть! Есть дело для надёжного человека."
-          - "Нашему трактирщику нужна помощь с припасами."
-        options:
-          - {text: "На меня можно рассчитывать", action: ACCEPT_QUEST}
-          - {text: "Зайду позже", action: CLOSE}
+          - {text: "Берусь за выпечку", action: ACCEPT_QUEST}
+          - {text: "Пока не готов", action: CLOSE}
     steps:
-      - type: VISIT_NPC
-        target-npc-key: "@brew:saloonkeeper_main"
-        target-npc-name: Трактирщик
-        description: "Расспросите трактирщика о пропавшей поставке"
-        dialogue:
-          text:
-            - "<yellow>Трактирщик:</yellow> Вечером придут гости, а хлеба совсем не осталось."
-            - "Принеси 24 обычных хлеба. После передачи поговорим ещё раз."
-          options:
-            - {text: "Принесу хлеб", action: COMPLETE_STEP}
-            - {text: "Зайду позже", action: CLOSE}
-      - type: DELIVER_ITEM
+      - step: 1
+        type: CRAFT_ITEM
+        material: BREAD
+        count: 24
+        description: "Испеките 24 буханки хлеба"
+      - step: 2
+        type: DELIVER_ITEM
         material: BREAD
         count: 24
         target-npc-key: "@brew:saloonkeeper_main"
-        target-npc-name: Трактирщик
-        description: "Передайте трактирщику 24 хлеба"
+        target-npc-name: "Трактирщик"
+        description: "Отдайте 24 хлеба трактирщику"
         dialogue:
           text:
-            - "<yellow>Трактирщик:</yellow> Удалось собрать хлеб? Я приму 24 штуки."
+            - "<yellow>Трактирщик:</yellow> Отлично пахнет! Передавай сюда."
           options:
-            - {text: "Передать 24 хлеба", action: COMPLETE_STEP}
+            - {text: "Вот свежая выпечка, прямо из печи!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать хлеб", action: COMPLETE_STEP}
             - {text: "Ещё собираю", action: CLOSE}
-      - type: VISIT_NPC
-        target-npc-key: "@brew:saloonkeeper_main"
-        target-npc-name: Трактирщик
-        description: "Обсудите результат с трактирщиком и получите награду"
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Сообщите глашатаю о готовом обеде"
         dialogue:
           text:
-            - "<yellow>Трактирщик:</yellow> Теперь гости не останутся голодными. Спасибо за помощь!"
-            - "Держи оплату. Если захочешь заглянуть в трактир — всегда рад."
+            - "<yellow>Глашатай:</yellow> Прекрасно! Сейчас же объявлю всем о горячем обеде."
           options:
-            - {text: "Завершить поручение", action: COMPLETE_STEP}
-            - {text: "Поговорим позже", action: CLOSE}
+            - {text: "Трактирщик просил передать вам добрые вести!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать весть", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
     rewards:
-      # 1600 × reward-factor 0.15 = 240 медных единиц; ниже золотой монеты.
-      money: 1600
+      money: 170
 
-  # Пример истории с несколькими обычными NPC. Включать после настройки npc-actors
-  # и координат вашей локации. Ни профессия, ни LoveBrew для неё не требуются.
-  village_remedy_v2:
-    enabled: false
-    npc-key: "@actor:captain"
-    display-name: "<gold>Лекарство для караула</gold>"
-    repeatable: false
+  med_smith_tools:
+    enabled: true
+    npc-key: "@actor:craftsman"
+    display-name: "<yellow>Обновление инвентаря</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 100
+    summary: "Ремесленник куёт кирки для гильдии. Добудьте руду, выкуйте 2 железные кирки и отнесите гильдмастеру."
+    repeatable: true
+    cooldown-minutes: 1440
     initial-dialogue: greeting
     dialogues:
       greeting:
         text:
-          - "<yellow>Капитан:</yellow> Один из дозорных вернулся с болот с лихорадкой."
-          - "Спроси травницу, что ей нужно для лекарства. Я оплачу помощь после твоего возвращения."
+          - "<yellow>Ремесленник:</yellow> Гильдия заказала новые кирки. Добудь руды и помоги с ковкой!"
         options:
-          - {text: "Я помогу дозорному", action: ACCEPT_QUEST}
-          - {text: "Кто знает о болезни больше?", action: NEXT_NODE, next-node: background}
-          - {text: "Мне нужно подумать", action: CLOSE}
-      background:
+          - {text: "С удовольствием помогу гильдии и вам!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Помогу с инструментом", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: MINE_MATERIAL
+        material: IRON_ORE
+        count: 20
+        description: "Добудьте 20 железной руды"
+      - step: 2
+        type: CRAFT_ITEM
+        material: IRON_PICKAXE
+        count: 2
+        description: "Скрафтите 2 железные кирки"
+      - step: 3
+        type: DELIVER_ITEM
+        material: IRON_PICKAXE
+        count: 2
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Доставьте 2 железные кирки гильдмастеру"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Кирки от ремесленника? Проверим закалку."
+          options:
+            - {text: "Мастер просил передать их вам лично в руки!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать кирки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 190
+
+  med_hunter_bows:
+    enabled: true
+    npc-key: "@actor:hunter"
+    display-name: "<yellow>Тетива для арены</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 100
+    summary: "Охотник собирает стрелы и луки для дуэлянта. Разгоните скелетов и передайте 2 лука на арену."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
         text:
-          - "Травница уже видела такую лихорадку. Не трать время на слухи — поговори с ней лично."
+          - "<yellow>Охотник:</yellow> Дуэлянт просил пару надёжных луков для тренировок."
         options:
-          - {text: "Отправлюсь к ней", action: ACCEPT_QUEST}
+          - {text: "Охотно помогу подготовить бойцов!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Займусь заказом", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: KILL_ENTITY
+        entity-type: SKELETON
+        count: 15
+        description: "Победите 15 скелетов"
+      - step: 2
+        type: CRAFT_ITEM
+        material: BOW
+        count: 2
+        description: "Скрафтите 2 лука"
+      - step: 3
+        type: DELIVER_ITEM
+        material: BOW
+        count: 2
+        target-npc-key: "@actor:duelist"
+        target-npc-name: "Дуэлянт"
+        description: "Передайте 2 лука дуэлянту"
+        dialogue:
+          text:
+            - "<yellow>Дуэлянт:</yellow> Отличное дерево! Примешь награду?"
+          options:
+            - {text: "Охотник подобрал для вас лучшую древесину!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Вручить луки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 185
+
+  med_bank_ledgers:
+    enabled: true
+    npc-key: "@actor:banker"
+    display-name: "<yellow>Гроссбухи для торга</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 90
+    summary: "Счётовод обновляет книги учёта. Скрафтите 6 книг, отнесите их комиссионеру и верните расписку."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Счётовод:</yellow> Комиссионеру нужны чистые книги сделок. Подготовишь шесть штук?"
+        options:
+          - {text: "Всегда рад помочь с порядком в делах!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Подготовлю книги", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CRAFT_ITEM
+        material: BOOK
+        count: 6
+        description: "Скрафтите 6 книг"
+      - step: 2
+        type: DELIVER_ITEM
+        material: BOOK
+        count: 6
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Передайте 6 книг комиссионеру"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Наконец-то свежие гроссбухи!"
+          options:
+            - {text: "Вот аккуратно переплетённые книги от счётовода.", action: COMPLETE_STEP, bonus: true}
+            - {text: "Отдать книги", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Верните расписку счётоводу"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Расписка на месте, спасибо за точность."
+          options:
+            - {text: "Комиссионер передал благодарность за оперативность.", action: COMPLETE_STEP, bonus: true}
+            - {text: "Отдать расписку", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 165
+
+  med_herald_posters:
+    enabled: true
+    npc-key: "@actor:herald"
+    display-name: "<yellow>Свитки с указами</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 95
+    summary: "Глашатай рассылает грамоты по городу. Сделайте 32 листа бумаги для гильдмастера и доложите феодалу."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Глашатай:</yellow> В ратуше кончились свитки для указов! Срочно нужна бумага."
+        options:
+          - {text: "Сделаю бумагу быстро и чисто!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Принесу свитки", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CRAFT_ITEM
+        material: PAPER
+        count: 32
+        description: "Скрафтите 32 листа бумаги"
+      - step: 2
+        type: DELIVER_ITEM
+        material: PAPER
+        count: 32
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Отнесите 32 листа бумаги гильдмастеру"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Хорошая бумага, чернила не потекут."
+          options:
+            - {text: "Передать бумагу", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Доложите феодалу о доставке свитков"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Значит, указы выйдут вовремя. Молодец."
+          options:
+            - {text: "Ваша светлость, бумаги уже в гильдии.", action: COMPLETE_STEP, bonus: true}
+            - {text: "Доложить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 160
+
+  med_feudal_feast:
+    enabled: true
+    npc-key: "@actor:feudal"
+    display-name: "<yellow>Угощение к совету</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 100
+    summary: "Феодал ждёт гостей на совет. Наловите рыбы, отдайте трактирщику 10 жареной трески и доложите феодалу."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Феодал:</yellow> Вечером у нас важный приём. Налови рыбы и передай кухне трактира."
+        options:
+          - {text: "Постараюсь достать самую свежую рыбу!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Улов будет готов", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CATCH_FISH
+        count: 10
+        description: "Поймайте 10 рыб"
+      - step: 2
+        type: DELIVER_ITEM
+        material: COOKED_COD
+        count: 10
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Передайте 10 жареной трески трактирщику"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Отлично прожарена! Подам на стол феодалу."
+          options:
+            - {text: "Отдать блюдо", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Сообщите феодалу, что ужин готов"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Прекрасно, трактирщик не подвёл — и ты тоже."
+          options:
+            - {text: "Всё уже на кухне и подаётся к столу!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Сообщить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 180
+
+  med_duel_spiders:
+    enabled: true
+    npc-key: "@actor:duelist"
+    display-name: "<yellow>Паутина в руинах</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 105
+    summary: "Дуэлянт очищает тренировочную площадку от пауков и просит отнести нити охотнику."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Дуэлянт:</yellow> У старых стен расплодились пауки. Сбей их прыть и отнеси нить охотнику."
+        options:
+          - {text: "Справлюсь чисто и без шума!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Очищу площадку", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: KILL_ENTITY
+        entity-type: SPIDER
+        count: 15
+        description: "Победите 15 пауков"
+      - step: 2
+        type: DELIVER_ITEM
+        material: STRING
+        count: 12
+        target-npc-key: "@actor:hunter"
+        target-npc-name: "Охотник"
+        description: "Принесите 12 нитей охотнику"
+        dialogue:
+          text:
+            - "<yellow>Охотник:</yellow> Прочная нить, как раз на силки пойдёт."
+          options:
+            - {text: "Передать нити", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:duelist"
+        target-npc-name: "Дуэлянт"
+        description: "Доложите дуэлянту об очистке руин"
+        dialogue:
+          text:
+            - "<yellow>Дуэлянт:</yellow> Дорога свободна, можно проводить спарринги."
+          options:
+            - {text: "Доложить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 175
+
+  med_craft_lanterns:
+    enabled: true
+    npc-key: "@actor:craftsman"
+    display-name: "<yellow>Фонари на площади</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 110
+    summary: "Ремесленник меняет уличное освещение. Добудьте уголь, соберите 8 фонарей и передайте глашатаю."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Ремесленник:</yellow> На площади по вечерам слишком темно. Поможешь сделать восемь фонарей?"
+        options:
+          - {text: "Осветить площадь — отличное дело!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Сделаю фонари", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: MINE_MATERIAL
+        material: COAL_ORE
+        count: 24
+        description: "Добудьте 24 угольной руды"
+      - step: 2
+        type: CRAFT_ITEM
+        material: LANTERN
+        count: 8
+        description: "Скрафтите 8 фонарей"
+      - step: 3
+        type: DELIVER_ITEM
+        material: LANTERN
+        count: 8
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Доставьте 8 фонарей глашатаю"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Теперь на площади будет светло даже ночью!"
+          options:
+            - {text: "Мастер постарался — фонари светят ярко!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать фонари", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 195
+
+  med_commissioner_crates:
+    enabled: true
+    npc-key: "@actor:commissioner"
+    display-name: "<yellow>Тара для каравана</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 90
+    summary: "Комиссионер готовит складские ящики. Скрафтите 8 сундуков для счётовода и вернитесь с отчётом."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Комиссионер:</yellow> Некуда складывать привезённый товар. Сколоти восемь сундуков."
+        options:
+          - {text: "Соберу самые крепкие сундуки!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Сделаю сундуки", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CRAFT_ITEM
+        material: CHEST
+        count: 8
+        description: "Скрафтите 8 сундуков"
+      - step: 2
+        type: DELIVER_ITEM
+        material: CHEST
+        count: 8
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Отнесите 8 сундуков счётоводу"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Прочные замки, то что нужно для архива."
+          options:
+            - {text: "Передать сундуки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Вернитесь к комиссионеру"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Счётная палата довольна. Держи расчёт."
+          options:
+            - {text: "Завершить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 165
+
+  med_guild_shields:
+    enabled: true
+    npc-key: "@actor:guildmaster"
+    display-name: "<yellow>Щиты для новобранцев</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 110
+    summary: "Гильдмастер снаряжает отряд. Сделайте 3 щита, передайте их дуэлянту и вернитесь с отзывом."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Гильдмастер:</yellow> Новобранцам нужны щиты перед учениями. Справишься?"
+        options:
+          - {text: "Для защиты города сделаю всё надёжно!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Выкую щиты", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CRAFT_ITEM
+        material: SHIELD
+        count: 3
+        description: "Скрафтите 3 щита"
+      - step: 2
+        type: DELIVER_ITEM
+        material: SHIELD
+        count: 3
+        target-npc-key: "@actor:duelist"
+        target-npc-name: "Дуэлянт"
+        description: "Передайте 3 щита дуэлянту"
+        dialogue:
+          text:
+            - "<yellow>Дуэлянт:</yellow> Отличная оковка, выдержит любой удар."
+          options:
+            - {text: "Проверьте баланс — делал как для себя!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Вручить щиты", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Сообщите гильдмастеру о приёмке щитов"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Дуэлянт похвалил работу. Вот твоя оплата."
+          options:
+            - {text: "Доложить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 185
+
+  med_hunter_powder:
+    enabled: true
+    npc-key: "@actor:hunter"
+    display-name: "<yellow>Тишина на переправе</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 115
+    summary: "Охотник следит за криперами у моста. Уничтожьте 10 криперов и отдайте порох ремесленнику."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Охотник:</yellow> Криперы подходят всё ближе к мосту. Прореди их и отнеси порох мастеру."
+        options:
+          - {text: "Очищу переправу без лишнего риска!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Выхожу к мосту", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: KILL_ENTITY
+        entity-type: CREEPER
+        count: 10
+        description: "Победите 10 криперов"
+      - step: 2
+        type: DELIVER_ITEM
+        material: GUNPOWDER
+        count: 10
+        target-npc-key: "@actor:craftsman"
+        target-npc-name: "Ремесленник"
+        description: "Передайте 10 пороха ремесленнику"
+        dialogue:
+          text:
+            - "<yellow>Ремесленник:</yellow> Пригодится для сигнальных огней. Спасибо!"
+          options:
+            - {text: "Передать порох", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:hunter"
+        target-npc-name: "Охотник"
+        description: "Вернитесь к охотнику"
+        dialogue:
+          text:
+            - "<yellow>Охотник:</yellow> Переправа безопасна, хорошая работа."
+          options:
+            - {text: "Отчитаться", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 200
+
+  med_tavern_barrels:
+    enabled: true
+    npc-key: "@brew:saloonkeeper_main"
+    display-name: "<yellow>Бочки для погреба</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 95
+    summary: "Трактирщик расширяет винный погреб. Скрафтите 8 бочек, сдайте в трактир и отметьте у комиссионера."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Трактирщик:</yellow> Новая партия эля уже на подходе, а тары нет. Нужны бочки!"
+        options:
+          - {text: "Ваш погреб будет в полном порядке!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Займусь бочками", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CRAFT_ITEM
+        material: BARREL
+        count: 8
+        description: "Скрафтите 8 бочек"
+      - step: 2
+        type: DELIVER_ITEM
+        material: BARREL
+        count: 8
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Отдайте 8 бочек трактирщику"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Крепкие обручи! Осталось оформить накладную."
+          options:
+            - {text: "Сдать бочки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Заверьте поставку у комиссионера"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Поставка трактира учтена. Оплата выписана!"
+          options:
+            - {text: "Заверить накладную", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 175
+
+  med_feudal_mason:
+    enabled: true
+    npc-key: "@actor:feudal"
+    display-name: "<yellow>Кладка бастиона</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 110
+    summary: "Феодал укрепляет стену. Добудьте камень, обтешите 48 каменных кирпичей и сдайте ремесленнику."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Феодал:</yellow> Южная стена требует ремонта. Нарой камня и нарежь кирпичей для мастера."
+        options:
+          - {text: "Ваша светлость, стену укрепим на века!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Выполню заказ", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: MINE_MATERIAL
+        material: STONE
+        count: 64
+        description: "Добудьте 64 камня"
+      - step: 2
+        type: CRAFT_ITEM
+        material: STONE_BRICKS
+        count: 48
+        description: "Скрафтите 48 каменных кирпичей"
+      - step: 3
+        type: DELIVER_ITEM
+        material: STONE_BRICKS
+        count: 48
+        target-npc-key: "@actor:craftsman"
+        target-npc-name: "Ремесленник"
+        description: "Доставьте 48 каменных кирпичей ремесленнику"
+        dialogue:
+          text:
+            - "<yellow>Ремесленник:</yellow> Ровная резка, хоть сейчас на кладку!"
+          options:
+            - {text: "Передать кирпичи", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+    rewards:
+      money: 190
+
+  med_bank_gold:
+    enabled: true
+    npc-key: "@actor:banker"
+    display-name: "<yellow>Золотой запас</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 120
+    summary: "Счётовод чеканит пробную партию слитков. Добудьте 12 золотой руды, переплавьте 8 слитков и сдайте феодалу."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Счётовод:</yellow> Казне нужен свежий металл. Принеси слитки, а затем доложи феодалу."
+        options:
+          - {text: "Поручение казны выполню в точности!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Добуду золото", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: MINE_MATERIAL
+        material: GOLD_ORE
+        count: 12
+        description: "Добудьте 12 золотой руды"
+      - step: 2
+        type: CRAFT_ITEM
+        material: GOLD_INGOT
+        count: 8
+        description: "Скрафтите 8 золотых слитков"
+      - step: 3
+        type: DELIVER_ITEM
+        material: GOLD_INGOT
+        count: 8
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Передайте 8 золотых слитков счётоводу"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Проба отличная. Доложи феодалу, что слитки в сейфе."
+          options:
+            - {text: "Сдать слитки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 4
+        type: VISIT_NPC
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Уведомите феодала о пополнении казны"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Казна крепка, а значит крепок и город."
+          options:
+            - {text: "Доложить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 210
+
+  med_herald_banners:
+    enabled: true
+    npc-key: "@actor:herald"
+    display-name: "<yellow>Штандарты праздника</yellow>"
+    tier: MEDIUM
+    time-limit-minutes: 95
+    summary: "Глашатай украшает ратушу. Скрафтите 4 белых флага, отнесите гильдмастеру и вернитесь с отчётом."
+    repeatable: true
+    cooldown-minutes: 1440
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Глашатай:</yellow> Скоро день города! Нужны чистые знамёна для гербов."
+        options:
+          - {text: "Город будет выглядеть торжественно!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Сошью знамёна", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CRAFT_ITEM
+        material: WHITE_BANNER
+        count: 4
+        description: "Скрафтите 4 белых флага"
+      - step: 2
+        type: DELIVER_ITEM
+        material: WHITE_BANNER
+        count: 4
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Передайте 4 флага гильдмастеру"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Наши художники уже наносят герб."
+          options:
+            - {text: "Передать знамёна", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Доложите глашатаю об украшении"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Замечательно! Праздник пройдёт на славу."
+          options:
+            - {text: "Отчитаться", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 170
+
+  hard_trade_caravan:
+    enabled: true
+    npc-key: "@actor:commissioner"
+    display-name: "<red>Судьба большого каравана</red>"
+    tier: HARD
+    time-limit-minutes: 210
+    summary: "Комиссионер собирает новый обоз через четырёх городских мастеров. Договоритесь о вагонетках и расчёте."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Комиссионер:</yellow> Мы готовим крупный обоз, но без слаженной работы всех гильдий он не выйдет."
+        options:
+          - {text: "Обеспечу полное согласие всех участников каравана!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Возьму координацию на себя", action: ACCEPT_QUEST}
+          - {text: "С кем придётся говорить?", action: NEXT_NODE, next-node: details}
+          - {text: "Зайду позже", action: CLOSE}
+      details:
+        text:
+          - "Сначала расспроси глашатая о маршруте, потом ремесленника о вагонетках и счётовода о страховке."
+        options:
+          - {text: "Возьму координацию на себя", action: ACCEPT_QUEST}
           - {text: "Пока не готов", action: CLOSE}
     steps:
-      - type: VISIT_NPC
-        target-npc-key: "@actor:herbalist"
-        target-npc-name: Травница
-        description: "Расспросите травницу о лекарстве для караула"
+      - step: 1
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Узнайте у глашатая новости о дорогах"
         dialogue:
           text:
-            - "<yellow>Травница:</yellow> Для отвара нужны восемь коричневых грибов. Осмотри старую болотную тропу."
+            - "<yellow>Глашатай:</yellow> Северный тракт чист, но ремесленнику срочно нужно железо для осей."
           options:
-            - {text: "Я найду грибы", action: COMPLETE_STEP}
-            - {text: "Поговорим позже", action: CLOSE}
+            - {text: "Благодарю за точные сведения!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передам мастеру", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
           reactions:
-            fearful:
-              text:
-                - "<yellow>Травница:</yellow> Не надо угроз. Мне страшно, но стражнику нужна помощь. Найди восемь коричневых грибов."
-            skeptical:
-              text:
-                - "<yellow>Травница:</yellow> Обещаниям я не верю. Принеси восемь коричневых грибов — тогда поговорим."
             friendly:
               text:
-                - "<yellow>Травница:</yellow> На тебя можно положиться. Найди восемь коричневых грибов, и мы поможем караулу."
-      - type: VISIT_LOCATION
-        description: "Осмотрите старую болотную тропу"
-        location: {world: world, x: 120, y: 64, z: -80, radius: 8}
-      - type: DELIVER_ITEM
-        material: BROWN_MUSHROOM
-        count: 8
-        target-npc-key: "@actor:herbalist"
-        target-npc-name: Травница
-        description: "Передайте травнице восемь коричневых грибов"
+                - "<yellow>Глашатай:</yellow> Тебе доверяю! Тракт чист, передай ремесленнику список металла."
+            skeptical:
+              text:
+                - "<yellow>Глашатай:</yellow> Посмотрим, справишься ли. Иди к ремесленнику за деталями."
+            fearful:
+              text:
+                - "<yellow>Глашатай:</yellow> Только без ссор, прошу. Мастер ждёт металл."
+      - step: 2
+        type: MINE_MATERIAL
+        material: IRON_ORE
+        count: 24
+        description: "Добудьте 24 железной руды"
+      - step: 3
+        type: CRAFT_ITEM
+        material: MINECART
+        count: 2
+        description: "Скрафтите 2 вагонетки"
+      - step: 4
+        type: DELIVER_ITEM
+        material: MINECART
+        count: 2
+        target-npc-key: "@actor:craftsman"
+        target-npc-name: "Ремесленник"
+        description: "Доставьте 2 вагонетки ремесленнику"
         dialogue:
           text:
-            - "<yellow>Травница:</yellow> Передай грибы. Отвар я приготовлю сама — сообщи капитану, что лекарство будет готово к вечеру."
+            - "<yellow>Ремесленник:</yellow> Колёса встали идеально! Отправляйся к счётоводу за полисом."
           options:
-            - {text: "Передать восемь грибов", action: COMPLETE_STEP}
-            - {text: "Я ещё не всё нашёл", action: CLOSE}
-      - type: VISIT_NPC
-        target-npc-key: "@actor:captain"
-        target-npc-name: Капитан
-        description: "Вернитесь к капитану и расскажите о лекарстве"
+            - {text: "Мастер, всё проверено и смазано!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать вагонетки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Оформите страховку груза у счётовода"
         dialogue:
           text:
-            - "<yellow>Капитан:</yellow> Значит, к вечеру дозорный получит лекарство. Спасибо за помощь."
+            - "<yellow>Счётовод:</yellow> Печать поставлена, передавай комиссионеру зелёный свет."
           options:
-            - {text: "Завершить поручение", action: COMPLETE_STEP}
-            - {text: "Зайду позже", action: CLOSE}
+            - {text: "Забрать документы", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Доложите комиссионеру о готовности обоза"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Все звенья сработали как часы. Вот достойная плата!"
+          options:
+            - {text: "Завершить дело", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
     rewards:
-      money: 1600
+      money: 240
+
+  hard_border_watch:
+    enabled: true
+    npc-key: "@actor:guildmaster"
+    display-name: "<red>Ночная стража рубежей</red>"
+    tier: HARD
+    time-limit-minutes: 220
+    summary: "Гильдмастер собирает сведения от охотника, организует зачистку нежити и ужин дозорным в трактире."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Гильдмастер:</yellow> На окраинах неспокойно. Нужен опытный боец для долгого рейда и координации."
+        options:
+          - {text: "Защитим окраины без единой ошибки!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Готов к рейду", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: VISIT_NPC
+        target-npc-key: "@actor:hunter"
+        target-npc-name: "Охотник"
+        description: "Получите разведданные у охотника"
+        dialogue:
+          text:
+            - "<yellow>Охотник:</yellow> Толпы зомби и скелетов стягиваются с востока. Начинай зачистку."
+          options:
+            - {text: "Охотно поучусь у вас следопытству!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Принято", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+          reactions:
+            friendly:
+              text:
+                - "<yellow>Охотник:</yellow> Хорошо, что пришёл именно ты. Бей их у старого дуба!"
+            skeptical:
+              text:
+                - "<yellow>Охотник:</yellow> Не хвастай заранее — покажи счёт в бою."
+      - step: 2
+        type: KILL_ENTITY
+        entity-type: ZOMBIE
+        count: 25
+        description: "Победите 25 зомби"
+      - step: 3
+        type: KILL_ENTITY
+        entity-type: SKELETON
+        count: 20
+        description: "Победите 20 скелетов"
+      - step: 4
+        type: DELIVER_ITEM
+        material: BONE
+        count: 16
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Отнесите 16 костей трактирщику для отчёта и бульона псам"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Сторожевые псы скажут спасибо! Сообщи глашатаю, что дорога открыта."
+          options:
+            - {text: "Отдать трофеи", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Передайте глашатаю весть о победе"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Народ вздохнёт спокойно! Иди к гильдмастеру за расчётом."
+          options:
+            - {text: "Передать весть", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Завершите отчёт у гильдмастера"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Превосходная служба городу."
+          options:
+            - {text: "Получить награду", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 240
+
+  hard_feudal_charter:
+    enabled: true
+    npc-key: "@actor:feudal"
+    display-name: "<red>Городская хартия</red>"
+    tier: HARD
+    time-limit-minutes: 180
+    summary: "Феодал обновляет свод законов. Согласуйте смету со счётоводом, закажите шкафы и пройдите совет гильдии."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Феодал:</yellow> Пришла пора обновить архив городской хартии. Проведи переговоры со всеми советниками."
+        options:
+          - {text: "Для меня честь служить порядку в городе!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Займусь хартией", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: VISIT_NPC
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Согласуйте бюджет хартии со счётоводом"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Средства выделены, но архиву нужны шесть новых книжных шкафов."
+          options:
+            - {text: "Согласовано", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 2
+        type: CRAFT_ITEM
+        material: BOOKSHELF
+        count: 6
+        description: "Скрафтите 6 книжных полок"
+      - step: 3
+        type: DELIVER_ITEM
+        material: BOOKSHELF
+        count: 6
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Установите 6 полок у гильдмастера"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Отличное дерево! Загляни к глашатаю — пусть назначит чтения."
+          options:
+            - {text: "Сделано с уважением к законам гильдии!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать полки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 4
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Назначьте чтение хартии у глашатая"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Завтра на рассвете зачитаю всё на площади! Подтверди у комиссионера."
+          options:
+            - {text: "Назначено", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Заверьте торговый раздел у комиссионера"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Пошлины верны до копейки. Возвращайся к феодалу."
+          options:
+            - {text: "Заверено", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Доложите феодалу о принятии хартии"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Хартия вступила в силу благодаря твоей дипломатии."
+          options:
+            - {text: "Завершить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+          reactions:
+            friendly:
+              text:
+                - "<yellow>Феодал:</yellow> Ты достоин уважения, мой друг."
+    rewards:
+      money: 235
+
+  hard_duelist_tournament:
+    enabled: true
+    npc-key: "@actor:duelist"
+    display-name: "<red>Большой турнир клинков</red>"
+    tier: HARD
+    time-limit-minutes: 200
+    summary: "Дуэлянт готовит городской турнир: договоритесь с глашатаем, выкуйте клинки и разгоните разбойников."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Дуэлянт:</yellow> Мы открываем большой турнир, но по дороге к арене бродят мародёры."
+        options:
+          - {text: "Пусть победит честнейший, я всё организую!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Подготовлю турнир", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Объявите сбор участников у глашатая"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Списки открыты! Теперь мастеру арены нужны три тренировочных меча."
+          options:
+            - {text: "Принято", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 2
+        type: CRAFT_ITEM
+        material: IRON_SWORD
+        count: 3
+        description: "Скрафтите 3 железных меча"
+      - step: 3
+        type: DELIVER_ITEM
+        material: IRON_SWORD
+        count: 3
+        target-npc-key: "@actor:duelist"
+        target-npc-name: "Дуэлянт"
+        description: "Передайте 3 железных меча дуэлянту"
+        dialogue:
+          text:
+            - "<yellow>Дуэлянт:</yellow> Баланс безупречен. Теперь разгони разбойников с перевала!"
+          options:
+            - {text: "Клинки проверены на прочность!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать клинки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 4
+        type: KILL_ENTITY
+        entity-type: PILLAGER
+        count: 10
+        description: "Победите 10 разбойников"
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Закажите пир победителей у трактирщика"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Столы накрыты! Сообщи феодалу, что турнир может начинаться."
+          options:
+            - {text: "Заказать пир", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Передайте феодалу приглашение на открытие"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Прекрасная организация! Турнир открыт."
+          options:
+            - {text: "Завершить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 240
+
+  hard_harvest_crisis:
+    enabled: true
+    npc-key: "@brew:saloonkeeper_main"
+    display-name: "<red>Праздник урожая</red>"
+    tier: HARD
+    time-limit-minutes: 190
+    summary: "Трактирщик спасает праздник урожая вместе с комиссионером, ремесленником и феодалом."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Трактирщик:</yellow> Обоз с мукой задержался, а гости уже едут. Без помощи пяти рук не успеть!"
+        options:
+          - {text: "Праздник обязательно состоится, я берусь!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Спасём праздник", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Уточните у комиссионера остатки зерна"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> На складе пусто, собери 48 пшеницы и отнеси трактирщику."
+          options:
+            - {text: "Понял", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 2
+        type: DELIVER_ITEM
+        material: WHEAT
+        count: 48
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Принесите 48 пшеницы трактирщику"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Мука пошла в дело! Испеки дюжину тыквенных пирогов для замка."
+          options:
+            - {text: "Передать пшеницу", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: CRAFT_ITEM
+        material: PUMPKIN_PIE
+        count: 12
+        description: "Скрафтите 12 тыквенных пирогов"
+      - step: 4
+        type: DELIVER_ITEM
+        material: PUMPKIN_PIE
+        count: 12
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Доставьте 12 пирогов феодалу"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Аромат на весь зал! Передай глашатаю сигнал к началу."
+          options:
+            - {text: "Примите горячие пироги к празднику!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Вручить пироги", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Передайте глашатаю сигнал к началу праздника"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Трублю сбор! Вернись к трактирщику за долей."
+          options:
+            - {text: "Подать сигнал", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Отметьте успех у трактирщика"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Зал полон, гости поют — вот твоя заслуженная награда!"
+          options:
+            - {text: "Получить награду", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 230
+
+  hard_copper_network:
+    enabled: true
+    npc-key: "@actor:craftsman"
+    display-name: "<red>Медный громоотвод</red>"
+    tier: HARD
+    time-limit-minutes: 220
+    summary: "Ремесленник защищает башни от гроз: добудьте медь, соберите громоотводы и обойдите совет."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Ремесленник:</yellow> Надвигается сезон гроз. Нужно поставить громоотводы на главные здания города."
+        options:
+          - {text: "Безопасность города превыше всего!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Займусь защитой", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: MINE_MATERIAL
+        material: COPPER_ORE
+        count: 32
+        description: "Добудьте 32 медной руды"
+      - step: 2
+        type: CRAFT_ITEM
+        material: LIGHTNING_ROD
+        count: 6
+        description: "Скрафтите 6 громоотводов"
+      - step: 3
+        type: DELIVER_ITEM
+        material: LIGHTNING_ROD
+        count: 6
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Передайте 6 громоотводов гильдмастеру"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> На шпилях будет надёжно. Предупреди глашатая о работах."
+          options:
+            - {text: "Передать громоотводы", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 4
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Предупредите глашатая о монтаже на башнях"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Передам жителям держаться подальше от лесов. Иди к счётоводу."
+          options:
+            - {text: "Предупредить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Закройте смету работ у счётовода"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Расходы утверждены. Сообщи комиссионеру и возвращайся к мастеру."
+          options:
+            - {text: "Все чеки и расписки в полном порядке!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Утвердить смету", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Отметьте приёмку у комиссионера"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Отметка поставлена!"
+          options:
+            - {text: "Отметить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 7
+        type: VISIT_NPC
+        target-npc-key: "@actor:craftsman"
+        target-npc-name: "Ремесленник"
+        description: "Доложите ремесленнику о завершении"
+        dialogue:
+          text:
+            - "<yellow>Ремесленник:</yellow> Теперь никакая буря не страшна. Спасибо!"
+          options:
+            - {text: "Завершить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 240
+
+  hard_harbor_route:
+    enabled: true
+    npc-key: "@actor:commissioner"
+    display-name: "<red>Речной маршрут</red>"
+    tier: HARD
+    time-limit-minutes: 210
+    summary: "Комиссионер открывает речную линию. Наловите лосося для трактира, постройте лодки и передайте охотнику."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Комиссионер:</yellow> Мы запускаем речную переправу, чтобы ускорить доставку припасов."
+        options:
+          - {text: "Отличная идея для торговли города!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Помогу с переправой", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: CATCH_FISH
+        count: 16
+        description: "Поймайте 16 рыб"
+      - step: 2
+        type: DELIVER_ITEM
+        material: SALMON
+        count: 8
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Передайте 8 сырого лосося трактирщику"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Лучший лосось с переката! Сколоти пару лодок для дозора."
+          options:
+            - {text: "Отдать лосося", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 3
+        type: CRAFT_ITEM
+        material: OAK_BOAT
+        count: 2
+        description: "Скрафтите 2 дубовые лодки"
+      - step: 4
+        type: DELIVER_ITEM
+        material: OAK_BOAT
+        count: 2
+        target-npc-key: "@actor:hunter"
+        target-npc-name: "Охотник"
+        description: "Доставьте 2 лодки охотнику на пристань"
+        dialogue:
+          text:
+            - "<yellow>Охотник:</yellow> Лёгкий ход! Предупреди счётовода о запуске пошлины."
+          options:
+            - {text: "Лодки осмотрены и готовы к спуску на воду!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать лодки", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Оформите сбор переправы у счётовода"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Тариф внесён в книгу. Возвращайся к комиссионеру."
+          options:
+            - {text: "Оформить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Доложите комиссионеру об открытии линии"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Речная линия открыта! Вот твоя награда."
+          options:
+            - {text: "Завершить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 235
+
+  hard_night_guard:
+    enabled: true
+    npc-key: "@actor:hunter"
+    display-name: "<red>Охота под луной</red>"
+    tier: HARD
+    time-limit-minutes: 240
+    summary: "Охотник организует ночной дозор: уничтожьте пауков и криперов, соберите костры и проверьте посты."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Охотник:</yellow> Ночью в лесу слишком шумно. Нужно расчистить просеку и расставить сигнальные костры."
+        options:
+          - {text: "Ни один монстр не проскочит мимо постов!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Выдвигаюсь в дозор", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: KILL_ENTITY
+        entity-type: SPIDER
+        count: 20
+        description: "Победите 20 пауков"
+      - step: 2
+        type: KILL_ENTITY
+        entity-type: CREEPER
+        count: 15
+        description: "Победите 15 криперов"
+      - step: 3
+        type: CRAFT_ITEM
+        material: CAMPFIRE
+        count: 6
+        description: "Скрафтите 6 костров"
+      - step: 4
+        type: DELIVER_ITEM
+        material: CAMPFIRE
+        count: 6
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Отдайте 6 костров гильдмастеру для постов"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Огни зажгутся по всему периметру! Предупреди дуэлянта."
+          options:
+            - {text: "Передать костры", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:duelist"
+        target-npc-name: "Дуэлянт"
+        description: "Передайте смену караула дуэлянту"
+        dialogue:
+          text:
+            - "<yellow>Дуэлянт:</yellow> Бойцы уже выходят на посты. Отчитайся глашатаю."
+          options:
+            - {text: "Все рубежи проверены и чисты!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать смену", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Доложите глашатаю о спокойной ночи"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Добрые вести! Возвращайся к охотнику."
+          options:
+            - {text: "Доложить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 7
+        type: VISIT_NPC
+        target-npc-key: "@actor:hunter"
+        target-npc-name: "Охотник"
+        description: "Завершите дозор у охотника"
+        dialogue:
+          text:
+            - "<yellow>Охотник:</yellow> Просека чиста до самого утра. Отличная вылазка."
+          options:
+            - {text: "Завершить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 240
+
+  hard_vault_audit:
+    enabled: true
+    npc-key: "@actor:banker"
+    display-name: "<red>Ревизия хранилища</red>"
+    tier: HARD
+    time-limit-minutes: 195
+    summary: "Счётовод обновляет печати и чернила. Пройдите проверку с комиссионером, добудьте лазурит и доложите феодалу."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Счётовод:</yellow> Раз в сезон мы сверяем казну и обновляем лазуритовые печати."
+        options:
+          - {text: "Гарантирую полную аккуратность и порядок!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Помогу с ревизией", action: ACCEPT_QUEST}
+          - {text: "Зайду позже", action: CLOSE}
+    steps:
+      - step: 1
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Сверьте реестр товаров у комиссионера"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Все накладные сходятся. Осталось добыть 16 лазуритовой руды."
+          options:
+            - {text: "Сверка окончена", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 2
+        type: MINE_MATERIAL
+        material: LAPIS_ORE
+        count: 16
+        description: "Добудьте 16 лазуритовой руды"
+      - step: 3
+        type: DELIVER_ITEM
+        material: LAPIS_LAZULI
+        count: 16
+        target-npc-key: "@actor:craftsman"
+        target-npc-name: "Ремесленник"
+        description: "Отнесите 16 лазурита ремесленнику для печатей"
+        dialogue:
+          text:
+            - "<yellow>Ремесленник:</yellow> Краситель готов, штемпель вырезан! Неси феодалу на подпись."
+          options:
+            - {text: "Вот отборный камень для новых печатей!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать лазурит", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 4
+        type: VISIT_NPC
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Подпишите акт ревизии у феодала"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Подпись поставлена. Возвращайся к счётоводу."
+          options:
+            - {text: "Подписать акт", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 5
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Сообщите глашатаю о завершении ревизии"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Объявляю, что торги продолжаются в обычном режиме!"
+          options:
+            - {text: "Сообщить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 6
+        type: VISIT_NPC
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Сдайте итоговый отчёт счётоводу"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Баланс сошёлся до медной монеты. Спасибо за помощь!"
+          options:
+            - {text: "Завершить", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 235
+
+  hard_grand_assembly:
+    enabled: true
+    npc-key: "@actor:guildmaster"
+    display-name: "<red>Большой совет гильдий</red>"
+    tier: HARD
+    time-limit-minutes: 240
+    summary: "Гильдмастер созывает все восемь ветвей власти на совет. Подготовьте торт, часы и обойдите всех участников."
+    repeatable: true
+    cooldown-minutes: 2880
+    initial-dialogue: greeting
+    dialogues:
+      greeting:
+        text:
+          - "<yellow>Гильдмастер:</yellow> Наступает день Большого совета. Только самый надёжный посланник сможет собрать всех вовремя."
+        options:
+          - {text: "Обещаю, каждый гость будет вовремя и в лучшем настроении!", action: ACCEPT_QUEST, bonus: true}
+          - {text: "Стану посланником совета", action: ACCEPT_QUEST}
+          - {text: "Кого нужно обойти?", action: NEXT_NODE, next-node: details}
+          - {text: "Зайду позже", action: CLOSE}
+      details:
+        text:
+          - "Глашатая, трактирщика, феодала, дуэлянта, счётовода и комиссионера — и вернуться ко мне."
+        options:
+          - {text: "Стану посланником совета", action: ACCEPT_QUEST}
+          - {text: "Пока не готов", action: CLOSE}
+    steps:
+      - step: 1
+        type: VISIT_NPC
+        target-npc-key: "@actor:herald"
+        target-npc-name: "Глашатай"
+        description: "Предупредите глашатая о созыве совета"
+        dialogue:
+          text:
+            - "<yellow>Глашатай:</yellow> Вестники разосланы. Загляни в трактир за десертом."
+          options:
+            - {text: "К трактирщику", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 2
+        type: VISIT_NPC
+        target-npc-key: "@brew:saloonkeeper_main"
+        target-npc-name: "Трактирщик"
+        description: "Договоритесь с трактирщиком о сладком столе"
+        dialogue:
+          text:
+            - "<yellow>Трактирщик:</yellow> Если принесёшь феодалу три праздничных торта, он будет в восторге!"
+          options:
+            - {text: "Приготовим торты", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 3
+        type: DELIVER_ITEM
+        material: CAKE
+        count: 3
+        target-npc-key: "@actor:feudal"
+        target-npc-name: "Феодал"
+        description: "Вручите 3 торта феодалу"
+        dialogue:
+          text:
+            - "<yellow>Феодал:</yellow> Великолепно! Предупреди дуэлянта о почётном карауле."
+          options:
+            - {text: "Ваш любимый десерт к началу совета!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Подать торты", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 4
+        type: VISIT_NPC
+        target-npc-key: "@actor:duelist"
+        target-npc-name: "Дуэлянт"
+        description: "Вызовите караул у дуэлянта"
+        dialogue:
+          text:
+            - "<yellow>Дуэлянт:</yellow> Караул выдвигается. Нам с комиссионером не хватает точных часов для регламента."
+          options:
+            - {text: "Сделаю часы", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 5
+        type: CRAFT_ITEM
+        material: CLOCK
+        count: 2
+        description: "Скрафтите 2 часов"
+      - step: 6
+        type: DELIVER_ITEM
+        material: CLOCK
+        count: 2
+        target-npc-key: "@actor:banker"
+        target-npc-name: "Счётовод"
+        description: "Передайте 2 часов счётоводу"
+        dialogue:
+          text:
+            - "<yellow>Счётовод:</yellow> Теперь речи регламентированы до секунды! Остался комиссионер."
+          options:
+            - {text: "Идут секунду в секунду!", action: COMPLETE_STEP, bonus: true}
+            - {text: "Передать часы", action: COMPLETE_STEP}
+            - {text: "Ещё собираю", action: CLOSE}
+      - step: 7
+        type: VISIT_NPC
+        target-npc-key: "@actor:commissioner"
+        target-npc-name: "Комиссионер"
+        description: "Подтвердите кворум у комиссионера"
+        dialogue:
+          text:
+            - "<yellow>Комиссионер:</yellow> Все делегаты на месте. Докладывай гильдмастеру!"
+          options:
+            - {text: "К гильдмастеру", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+      - step: 8
+        type: VISIT_NPC
+        target-npc-key: "@actor:guildmaster"
+        target-npc-name: "Гильдмастер"
+        description: "Откройте совет отчётом у гильдмастера"
+        dialogue:
+          text:
+            - "<yellow>Гильдмастер:</yellow> Большой совет открыт вовремя! Это было безупречное поручение."
+          options:
+            - {text: "Завершить совет", action: COMPLETE_STEP}
+            - {text: "Позже", action: CLOSE}
+    rewards:
+      money: 240

@@ -5,10 +5,8 @@ package me.lovelace.lovecontracts.gui.board;
  * {@code gui.tab-*} messages the tab uses.
  */
 public enum BoardTab {
-    /** The daily contracts of the server (what {@code /contracts} used to open). */
-    SYSTEM("system"),
-    /** Multi-step chains of NPC givers. */
-    CHAINS("chains"),
+    /** Unified NPC errands / quests. */
+    QUESTS("quests"),
     /** Open offers of other players. */
     PLAYERS("players"),
     /** The viewer's own player contracts. */

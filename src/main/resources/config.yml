@@ -14,7 +14,9 @@ playstyle:
 
 # Ежедневная ротация
 rotation:
-  enabled: true
+  # 2026-11-22: отключена после перехода на единую систему поручений в npc_stories.yml;
+  # пул ежедневных контрактов больше не обновляется (активные ранее контракты доигрываются по таймеру).
+  enabled: false
   time: "13:00"          # HH:mm по времени сервера (раз в день в 13:00)
   timezone: "UTC"
   daily-count: 20
@@ -38,44 +40,40 @@ rotation:
 # Все суммы плагина — в медных единицах; в конфигах можно писать и строкой "3i 50c"
 # (c = медная, i = железная, g = золотая, d = алмазная).
 stories:
-  # Средние, сложные и одноразовые заказы: инструктаж → работа → отчёт у NPC.
-  # Уже принятые старые заказы можно завершить; простые остаются в ротации доски.
-  convert-complex-orders: true
+  # 2026-11-22: отключена конвертация из contracts.yml — все поручения теперь описаны
+  # напрямую в npc_stories.yml без автогенерации 3-шаговых шаблонов.
+  convert-complex-orders: false
 
 economy:
   contracts-v2:
-    # Только награды/штрафы системных контрактов; не затрагивает заказы игроков и LoveCore.
+    # Только награды/штрафы системных поручений; не затрагивает заказы игроков и LoveCore.
     reward-factor: 0.15
     max-reward: 240
     # 1 золотая = 2000 медных. За любые 24 часа можно заработать не более 1800.
     # Это скользящее окно, а не сбрасывающийся в полночь дневной лимит. 0 отключает лимит.
     rolling-income-limit: 1800
-  # Множитель наград контрактов и NPC-квестов поверх значений из contracts.yml / npc_quests.yml.
-  # Почему отдельно: чтобы поднять или опустить все награды одним числом, не правя 40 контрактов.
+  # 2026-11-22: вариативная награда за скорость, вежливые диалоги и качество выполнения.
+  # Потолок 1.5 удерживает суммарный бонус в пределах +50% к базе, чтобы даже при совпадении всех
+  # трёх факторов награда не выходила за экономику сервера (240 * 1.5 = 360 при лимите 1800/24ч).
+  reward-tiers:
+    max-multiplier: 1.5
+  # Множитель наград контрактов и NPC-квестов поверх значений из npc_stories.yml.
+  # Почему отдельно: чтобы поднять или опустить все награды одним числом, не правя десятки записей.
   reward-scale: 1.0
-  # То же для штрафов за провал. Штраф ≈ 35 % награды (см. шапку contracts.yml).
+  # То же для штрафов за провал.
   penalty-scale: 1.0
   # Применять ли общий индекс цен LoveCore (/lovecoreadmin economy index) к наградам и штрафам.
-  # Выключайте, если хотите, чтобы инфляция сервера не двигала именно награды контрактов.
+  # Выключайте, если хотите, чтобы инфляция сервера не двигала именно награды поручений.
   use-price-index: true
-  # 2026-10-04: награды контрактов с предметом в условии (добыча/крафт) привязаны к модели цен LoveCore
-  # (economy v2): модель × количество × work-factor / награда из contracts.yml. Причина: раньше суммы были
-  # зашиты в yml и правки цен в LoveCore до контрактов не доходили. Множитель ограничен [min-ratio, max-ratio],
-  # чтобы ошибочная цена в модели не сделала награду абсурдной; штраф меняется на тот же множитель.
-  # work-factor 0.5 — платим вдвое меньше рыночной цены добычи (остальное — «зарплата» за гарантированный заказ).
+  # 2026-10-04: награды поручений с предметом в условии привязаны к модели цен LoveCore (economy v2).
   model-rewards:
     enabled: true
     work-factor: 0.5
     min-ratio: 0.5
     max-ratio: 3.0
-  # Шаги суммы награды в меню создания контракта (клик по кругу): числа или строки "1i". Если ключа нет,
-  # шагами служат номиналы монет LoveCore (экономика v2: 1 / 100 / 2 000 / 20 000), а не зашитые числа.
-  # creation-reward-steps: [100, 2000, 20000]
   migration:
     # Во сколько раз пересчитать суммы в БД (штрафы, открытые заказы игроков, отложенные выплаты)
-    # при каждом шаге economy.scale-version в LoveCore. Почему 5: цена алмаза выросла с ~50 до 100,
-    # типичные цены — в 3-8 раз, ×5 — середина; перед пересчётом делается копия contracts.db.pre-economy-v*.
-    # Отклонения потом правятся индексом цен LoveCore.
+    # при каждом шаге economy.scale-version в LoveCore.
     factor: 5.0
 
 # Настройки наград — все награды выдаются только физической валютой LoveCore
@@ -85,9 +83,9 @@ rewards:
 
 # Штрафы
 penalties:
-  enabled: true
+  enabled: false
   money:
-    enabled: true
+    enabled: false
   reputation:
     enabled: false
   track-failures: true
@@ -95,10 +93,11 @@ penalties:
 # GUI
 gui:
   enabled: true
-  title: "<gradient:#55FF55:#55FFFF>Доска контрактов</gradient>"
+  title: "<gradient:#55FF55:#55FFFF>Доска поручений</gradient>"
   auto-update: true
   update-interval-ms: 500
   locked-head-texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMmM1MGUzZTYxNTBkMDdjY2EwOWVkNzA3YjI0NDA0M2M5NDM3ZGJkMWJlOThlZTA4YWUwMzQwY2NiNmQ1OGM4OSJ9fX0="
+  # 2026-11-22: единая кнопка закрытия по стандарту gui-gen-6 (3ed1aba7...)
   close-head-texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ=="
   sort-head-texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM2MzZWQ3In19fQ=="
   type-filter-head-texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOGViODFlZjg5MDIzNzk2NTBiYTc5ZjQ1NzIzZDZiOWM4ODgzODhhMDBmYzRlMTkyZjM0NTRmZTE5Mzg4MmVlMSJ9fX0="
@@ -110,7 +109,7 @@ gui:
     completed: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTkyZDYxOGFjMzVlYzZhM2MyMTgzOWY0M2Q2YmViNGNmNWY4MTEyM2E3Zjg4YWFiZGU4YjZjNTIzOWZhNmJjIn19fQ=="
     failed: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjYzNmEzNWI1ZjJiMjJiZDMxNGUyOTQ5MWRhY2F2MDllOGU3MWUzMzQxNzM1MWI3NjVkMzAxNzg1ZDRhNDlkZSJ9fX0="
     active: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2Y1NDhkNDIyZGUyZDhhMWU0YjdkODcwZTVhYjEyMmEzYmQxZDFkODdhOWRlZmMyNTUzMDI3MzYxOGQwNmM4In19fQ=="
-    taken: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMmM1MGUzZTYxNTBkMDdjY2AwOWVkNzA3YjI0NDA0M2M5NDM3ZGJkMWJlOThlZTA4YWUwMzQwY2NiNmQ1OGM4OSJ9fX0="
+    taken: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMmM1MGUzZTYxNTBkMDdjY2EwOWVkNzA3YjI0NDA0M2M5NDM3ZGJkMWJlOThlZTA4YWUwMzQwY2NiNmQ1OGM4OSJ9fX0="
 
   difficulty-textures:
     starter: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2Y1NDhkNDIyZGUyZDhhMWU0YjdkODcwZTVhYjEyMmEzYmQxZDFkODdhOWRlZmMyNTUzMDI3MzYxOGQwNmM4In19fQ=="
@@ -131,23 +130,15 @@ gui:
     stats: "BOOK"
 
 # 2026-11-21: секция integrations.npc-provider удалена. NPC доски и цепочек теперь поставляет только
-# LoveEssential (Citizens и прочие провайдеры не поддерживаются): выбирать больше не из чего. Оставленный на
-# сервере ключ integrations.npc-provider игнорируется, плагин один раз пишет об этом в лог.
+# LoveEssential (Citizens и прочие провайдеры не поддерживаются): выбирать больше не из чего.
 
-# NPC доски контрактов
+# NPC доски поручений
 npc:
   enabled: true
   info-update-interval: 10
-  # 2026-10-22: ключ NPC LoveEssential (строка): его id вида ext-xxxxxxxx, имя либо номер NPC из /npc list,
-  # записанный текстом ("5"). 2026-11-21: провайдер теперь один, поэтому ключ всегда читается как NPC
-  # LoveEssential. Пустая строка = NPC не привязан,
-  # доска всё равно доступна через /contracts и таблички. Привязывается командой /lovecontractsadmin npc.
-  # Старый числовой ключ npc.id при запуске переносится сюда сам (-1 = не привязан), значение не теряется.
   key: ""
 
-  # "Живые" реакции на реальные вежливость/стиль игры (LoveBehavior). Срабатывает только при
-  # ОТКРЫТИИ доски новых контрактов (нет активного контракта) — сдачу/отмену уже принятого
-  # контракта эта секция не блокирует, игрок получает своё. Без LoveBehavior не действует.
+  # "Живые" реакции на реальные вежливость/стиль игры (LoveBehavior).
   npc-dialogue:
     reject:
       enabled: true
@@ -186,10 +177,8 @@ database:
 # Заказы между игроками (/pcontract)
 player-contracts:
   enabled: true
-
-  # 2026-11-22: вкладки «От игроков»/«Мои» и команда /pcontract скрыты. Почему: заказы между игроками пока не
-  # доработаны (создание уже отключено), а пустые вкладки только путают. Данные, возвраты эскроу и выплаты
-  # продолжают работать, скрыт только вход в интерфейс. Включить обратно: true.
+  # 2026-11-22: интерфейс и команды /pcontract временно скрыты по просьбе владельца,
+  # фоновые возвраты эскроу и обработка уже открытых заказов в БД не затрагиваются.
   ui-enabled: false
 
   min-reputation-to-create: 0
@@ -200,22 +189,18 @@ player-contracts:
   allow-self-accept: false
 
   # Границы награды в заказе игрока (число или строка монет: "1i", "100d").
-  # 2026-10-05: ключи min-gold-reward / max-gold-reward переименованы (никакого «золота» в экономике нет —
-  # награда платится любыми монетами) и границы расширены: от 1 медной до 100 алмазных монет (2 000 000 меди).
-  # Почему так: заказ на дешёвый предмет стоит копейки, и порог в железную монету (100) не давал его создать;
-  # потолок в 100 алмазных нужен под дорогие заказы (незерит, маяки). Налог создания считается от награды.
+  # 2026-10-05: границы от 1 медной до 100 алмазных монет (2 000 000 меди) под крупные заказы.
   min-reward: 1
   max-reward: "100d"
   creation-tax-percent: 5
 
   # Корректировка налога на создание контракта по вежливости/стилю игры создателя
-  # (LoveCore.BehaviorLevels, ставит LoveBehavior).
   behavior-tax-adjustment:
     enabled: true
-    discount-percent: 0.10       # вежливым/добрым — скидка от creation-tax-percent
-    surcharge-percent: 0.10      # токсичным — надбавка
-    politeness-good-threshold: 5 # ступень вежливости 0-6
-    politeness-bad-threshold: 1  # ступень вежливости 0-6 и ниже
+    discount-percent: 0.10
+    surcharge-percent: 0.10
+    politeness-good-threshold: 5
+    politeness-bad-threshold: 1
 
   min-deadline-hours: 1
   max-deadline-hours: 168
@@ -242,11 +227,26 @@ quest-scoreboard:
   enabled: true
   priority: 20
 
-# Имена персонажей не зависят от профессии или плагина.
-# npc-actors:
-#   herbalist:
-#     npc-key: herbalist_main
-#   captain:
-#     tag-key: settlement.role
-#     tag-value: captain
-npc-actors: {}
+# 2026-11-22: постоянные NPC города для сюжетных поручений (ключи из LoveEssential).
+npc-actors:
+  innkeeper:
+    npc-key: "ext-3ade3b32"
+  craftsman:
+    npc-key: "ext-16e5a977"
+  hunter:
+    npc-key: "ext-2417a6f6"
+  herald:
+    npc-key: "ext-9fc5a55d"
+  guildmaster:
+    npc-key: "ext-0f72a311"
+  feudal:
+    tag-key: "loveshops_feudal"
+    tag-value: "true"
+  banker:
+    tag-key: "loveshops_type"
+    tag-value: "banker"
+  commissioner:
+    tag-key: "loveshops_type"
+    tag-value: "commissioner"
+  duelist:
+    npc-key: "323"

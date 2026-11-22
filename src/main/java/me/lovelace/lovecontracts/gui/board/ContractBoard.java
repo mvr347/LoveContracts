@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The one contract board: every way into the contracts (the {@code /contracts} and {@code /pcontract} commands, the board
- * NPC, signs, NPCs that offer several chains) opens {@link ContractBoardGui} on the right tab. This class tracks the open
+ * NPC, signs, NPCs that offer several quests) opens {@link ContractBoardGui} on the right tab. This class tracks the open
  * boards so other code can refresh them, and builds the confirmation windows of the risky actions.
  */
 public final class ContractBoard implements Listener {
@@ -45,24 +45,22 @@ public final class ContractBoard implements Listener {
 
     // ------------------------------------------------------------------ opening
 
-    /** The board on its first tab, the daily contracts. */
+    /** The board on its first tab, the unified quests. */
     public void open(Player player) {
-        open(player, BoardTab.SYSTEM);
+        open(player, BoardTab.QUESTS);
     }
 
     public void open(Player player, BoardTab tab) {
         launch(player, tab, null);
     }
 
-    /** The chains tab limited to the given chains: what an NPC with several conversations offers. */
+    /** The quests tab limited to the given quests: what an NPC with several conversations offers. */
     public void openChains(Player player, Collection<String> questIds) {
-        launch(player, BoardTab.CHAINS, questIds == null ? null : Set.copyOf(questIds));
+        launch(player, BoardTab.QUESTS, questIds == null ? null : Set.copyOf(questIds));
     }
 
     private void launch(Player player, BoardTab tab, Set<String> onlyChains) {
         if (player == null || !player.isOnline()) return;
-        // The board is shared, the permissions are not: the daily contracts and chains need lovecontracts.use (and the
-        // admin toggle), the player-contract tabs need pcontracts.use. A tab the player may not use is never offered.
         BoardTab target = tab;
         if (!tabAvailable(player, target)) {
             target = null;
@@ -79,15 +77,16 @@ public final class ContractBoard implements Listener {
             }
             return;
         }
-        new ContractBoardGui(this, plugin, player, target, target == BoardTab.CHAINS ? onlyChains : null).begin();
+        new ContractBoardGui(this, plugin, player, target, target == BoardTab.QUESTS ? onlyChains : null).begin();
     }
 
-    /** Whether the player may see and use a tab: each tab keeps the permission boundary of the menu it replaced. */
+    /** Whether the player may see and use a tab: player contracts UI can be hidden via config. */
     public boolean tabAvailable(Player player, BoardTab tab) {
         return switch (tab) {
-            case SYSTEM, CHAINS -> player.hasPermission("lovecontracts.use")
+            case QUESTS -> player.hasPermission("lovecontracts.use")
                     && !plugin.getContractManager().isContractsDisabled(player);
-            case PLAYERS, MINE -> playerContractsVisible() && player.hasPermission("pcontracts.use");
+            case PLAYERS, MINE -> playerContractsVisible()
+                    && player.hasPermission("pcontracts.use");
         };
     }
 
@@ -114,7 +113,7 @@ public final class ContractBoard implements Listener {
         return gui != null && gui.isShown();
     }
 
-    /** Redraws the player's board in place (a contract changed, a rotation happened); no-op when it is not open. */
+    /** Redraws the player's board in place; no-op when it is not open. */
     public void refresh(Player player) {
         if (player == null) return;
         ContractBoardGui gui = open.get(player.getUniqueId());
@@ -185,7 +184,7 @@ public final class ContractBoard implements Listener {
         confirm(player, yesName, yesLines, onConfirm, onCancel);
     }
 
-    /** Taking a daily contract: what it does, what it needs and what it pays. */
+    /** Taking a daily contract: kept for backwards compatibility if a legacy sign/caller triggers it. */
     public void confirmAccept(Player player, Contract contract, Runnable onCancel) {
         MessageManager messages = messages();
         boolean penalty = ContractLore.hasPenalty(contract);
@@ -216,7 +215,7 @@ public final class ContractBoard implements Listener {
                 () -> plugin.getContractManager().acceptContract(player, contract.getId()), onCancel);
     }
 
-    /** Taking an NPC chain from the board. */
+    /** Taking an NPC quest / errand from the board or dialogue. */
     public void confirmTakeChain(Player player, NpcQuest quest, Runnable onCancel, Runnable onConfirm) {
         MessageManager messages = messages();
         List<String> lines = new ArrayList<>();
@@ -233,10 +232,7 @@ public final class ContractBoard implements Listener {
         confirm(player, messages.text("gui.confirm-yes-chain"), lines, onConfirm, onCancel);
     }
 
-    /**
-     * Giving something up (a daily contract, a chain, a player contract): the window says what is lost. {@code losses}
-     * are the effect rows ({@code gui.effect-*} keys) that apply to this case.
-     */
+    /** Giving something up: the window says what is lost. */
     public void confirmAbandon(Player player, String targetName, List<String> losses, Runnable onConfirm, Runnable onCancel) {
         MessageManager messages = messages();
         List<String> lines = new ArrayList<>();

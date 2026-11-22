@@ -60,7 +60,7 @@ public class PlayerContractCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (!board.playerContractsVisible()) {
-            player.sendMessage(mm.deserialize("<red>Контракты между игроками временно недоступны.</red>"));
+            player.sendMessage(mm.deserialize("<yellow>Контракты между игроками временно недоступны.</yellow>"));
             return true;
         }
         if (args.length == 0) {

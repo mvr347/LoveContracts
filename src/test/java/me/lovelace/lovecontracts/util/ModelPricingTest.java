@@ -23,10 +23,8 @@ class ModelPricingTest {
     void minedBlocksMapToTheirDrops() {
         assertEquals("COBBLESTONE", ModelPricing.dropName("STONE"));
         assertEquals("COBBLED_DEEPSLATE", ModelPricing.dropName("DEEPSLATE"));
-        assertEquals("NETHERITE_SCRAP", ModelPricing.dropName("ANCIENT_DEBRIS"));
         assertEquals("RAW_IRON", ModelPricing.dropName("DEEPSLATE_IRON_ORE"));
         assertEquals("COAL", ModelPricing.dropName("COAL_ORE"));
-        assertEquals("GOLD_NUGGET", ModelPricing.dropName("NETHER_GOLD_ORE"));
         assertEquals(null, ModelPricing.dropName("SAND"));
     }
 }

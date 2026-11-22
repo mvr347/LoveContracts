@@ -41,13 +41,20 @@ final class DialogueGui extends BoardGui {
     private final NpcHandle speaker;
     /** Index of the step this conversation is for; {@code -1} when it offers a chain that is not taken yet. */
     private final int expected;
+    /** Polite/bonus options selected earlier in the same offer conversation before accepting. */
+    private final int pendingBonus;
 
     DialogueGui(LoveContracts plugin, Player viewer, NpcQuest quest, NpcDialogueNode node, NpcHandle speaker, int expected) {
+        this(plugin, viewer, quest, node, speaker, expected, 0);
+    }
+
+    DialogueGui(LoveContracts plugin, Player viewer, NpcQuest quest, NpcDialogueNode node, NpcHandle speaker, int expected, int pendingBonus) {
         super(plugin, viewer);
         this.quest = quest;
         this.node = node;
         this.speaker = speaker;
         this.expected = expected;
+        this.pendingBonus = pendingBonus;
     }
 
     @Override
@@ -131,6 +138,10 @@ final class DialogueGui extends BoardGui {
     }
 
     private void answer(NpcDialogueOption option) {
+        int nextBonus = pendingBonus + (option.isBonus() ? 1 : 0);
+        if (option.isBonus() && expected >= 0) {
+            plugin.getNpcQuestManager().recordBonusInteraction(viewer, quest);
+        }
         switch (option.getAction()) {
             case ACCEPT_QUEST -> {
                 if (expected != -1) {
@@ -138,7 +149,7 @@ final class DialogueGui extends BoardGui {
                     return;
                 }
                 plugin.getContractBoard().confirmTakeChain(viewer, quest, this::reopen, () -> {
-                    plugin.getNpcQuestManager().startQuest(viewer, quest);
+                    plugin.getNpcQuestManager().startQuest(viewer, quest, nextBonus);
                 });
             }
             case NEXT_NODE -> {
@@ -147,7 +158,7 @@ final class DialogueGui extends BoardGui {
                     viewer.closeInventory();
                     return;
                 }
-                new DialogueGui(plugin, viewer, quest, next, speaker, expected).open();
+                new DialogueGui(plugin, viewer, quest, next, speaker, expected, nextBonus).open();
             }
             case COMPLETE_STEP -> {
                 viewer.closeInventory();

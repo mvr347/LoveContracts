@@ -3,7 +3,9 @@ package me.lovelace.lovecontracts.npc.storage;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import me.lovelace.lovecontracts.util.ContractIncome;
 
@@ -20,16 +22,37 @@ public final class NpcQuestStorage {
                       current_step INT NOT NULL DEFAULT 0, step_progress INT NOT NULL DEFAULT 0,
                       status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE', last_completed_at TIMESTAMP NULL,
                       completion_count INTEGER NOT NULL DEFAULT 0,
+                      started_at INTEGER NOT NULL DEFAULT 0,
+                      no_deaths INTEGER NOT NULL DEFAULT 1,
+                      bonus_interactions INTEGER NOT NULL DEFAULT 0,
+                      surplus_delivered INTEGER NOT NULL DEFAULT 0,
                       PRIMARY KEY (player_uuid, quest_id))
                     """);
+            q.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS player_questboard_prefs (
+                      player_uuid VARCHAR(36) PRIMARY KEY,
+                      enabled INTEGER NOT NULL DEFAULT 1)
+                    """);
         }
-        boolean counter = false;
+        Set<String> cols = new HashSet<>();
         try (var q = c.createStatement(); var rs = q.executeQuery("PRAGMA table_info(player_npc_quests)")) {
-            while (rs.next()) if (rs.getString("name").equals("completion_count")) counter = true;
+            while (rs.next()) cols.add(rs.getString("name"));
         }
-        if (!counter) try (var q = c.createStatement()) {
+        if (!cols.contains("completion_count")) try (var q = c.createStatement()) {
             q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN completion_count INTEGER NOT NULL DEFAULT 0");
             q.executeUpdate("UPDATE player_npc_quests SET completion_count=1 WHERE last_completed_at IS NOT NULL");
+        }
+        if (!cols.contains("started_at")) try (var q = c.createStatement()) {
+            q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN started_at INTEGER NOT NULL DEFAULT 0");
+        }
+        if (!cols.contains("no_deaths")) try (var q = c.createStatement()) {
+            q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN no_deaths INTEGER NOT NULL DEFAULT 1");
+        }
+        if (!cols.contains("bonus_interactions")) try (var q = c.createStatement()) {
+            q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN bonus_interactions INTEGER NOT NULL DEFAULT 0");
+        }
+        if (!cols.contains("surplus_delivered")) try (var q = c.createStatement()) {
+            q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN surplus_delivered INTEGER NOT NULL DEFAULT 0");
         }
         ContractIncome.initialize(c);
         me.lovelace.lovecontracts.service.AchievementEntitlements.initialize(c);
@@ -37,15 +60,16 @@ public final class NpcQuestStorage {
 
     public static boolean start(Connection c, UUID player, String id, boolean repeatable, int cooldown, long now) throws SQLException {
         try (var q = c.prepareStatement("""
-                INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status)
-                VALUES(?,?,0,0,'ACTIVE') ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
-                current_step=0,step_progress=0,status='ACTIVE'
-                WHERE player_npc_quests.status='ABANDONED'
+                INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status,started_at,no_deaths,bonus_interactions,surplus_delivered)
+                VALUES(?,?,0,0,'ACTIVE',?,1,0,0) ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
+                current_step=0,step_progress=0,status='ACTIVE',
+                started_at=excluded.started_at,no_deaths=1,bonus_interactions=0,surplus_delivered=0
+                WHERE player_npc_quests.status IN ('ABANDONED','EXPIRED')
                 OR (player_npc_quests.status='COMPLETED' AND ?=1
                 AND CAST(strftime('%s', last_completed_at) AS INTEGER) * 1000 <= ?)
                 """)) {
-            q.setString(1, player.toString()); q.setString(2, id);
-            q.setBoolean(3, repeatable); q.setLong(4, now - Math.max(0, cooldown) * 60_000L);
+            q.setString(1, player.toString()); q.setString(2, id); q.setLong(3, now);
+            q.setBoolean(4, repeatable); q.setLong(5, now - Math.max(0, cooldown) * 60_000L);
             return q.executeUpdate() == 1;
         }
     }
@@ -62,6 +86,66 @@ public final class NpcQuestStorage {
             q.setString(1, player.toString());
             q.setString(2, id);
             return q.executeUpdate() == 1;
+        }
+    }
+
+    /** Marks an active quest expired due to time limit; no penalty, can be retaken immediately. */
+    public static boolean expire(Connection c, UUID player, String id) throws SQLException {
+        try (var q = c.prepareStatement("""
+                UPDATE player_npc_quests SET status='EXPIRED',current_step=0,step_progress=0
+                WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'
+                """)) {
+            q.setString(1, player.toString());
+            q.setString(2, id);
+            return q.executeUpdate() == 1;
+        }
+    }
+
+    /** Records a player death against all currently active quests (disables the no-death quality bonus). */
+    public static int markDeath(Connection c, UUID player) throws SQLException {
+        try (var q = c.prepareStatement("UPDATE player_npc_quests SET no_deaths=0 WHERE player_uuid=? AND status='ACTIVE'")) {
+            q.setString(1, player.toString());
+            return q.executeUpdate();
+        }
+    }
+
+    public static void addBonusInteraction(Connection c, UUID player, String id) throws SQLException {
+        try (var q = c.prepareStatement(
+                "UPDATE player_npc_quests SET bonus_interactions=bonus_interactions+1 WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'")) {
+            q.setString(1, player.toString());
+            q.setString(2, id);
+            q.executeUpdate();
+        }
+    }
+
+    public static void addSurplus(Connection c, UUID player, String id, int surplus) throws SQLException {
+        if (surplus <= 0) return;
+        try (var q = c.prepareStatement(
+                "UPDATE player_npc_quests SET surplus_delivered=surplus_delivered+? WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'")) {
+            q.setInt(1, surplus);
+            q.setString(2, player.toString());
+            q.setString(3, id);
+            q.executeUpdate();
+        }
+    }
+
+    public static boolean loadQuestboardEnabled(Connection c, UUID player) throws SQLException {
+        try (var q = c.prepareStatement("SELECT enabled FROM player_questboard_prefs WHERE player_uuid=?")) {
+            q.setString(1, player.toString());
+            try (var rs = q.executeQuery()) {
+                return !rs.next() || rs.getInt(1) != 0;
+            }
+        }
+    }
+
+    public static void saveQuestboardEnabled(Connection c, UUID player, boolean enabled) throws SQLException {
+        try (var q = c.prepareStatement("""
+                INSERT INTO player_questboard_prefs(player_uuid, enabled) VALUES(?,?)
+                ON CONFLICT(player_uuid) DO UPDATE SET enabled=excluded.enabled
+                """)) {
+            q.setString(1, player.toString());
+            q.setInt(2, enabled ? 1 : 0);
+            q.executeUpdate();
         }
     }
 
@@ -104,13 +188,18 @@ public final class NpcQuestStorage {
 
     /** Puts the chain in progress at step 0 whatever its state was: cooldown, one-time rule and the chain limit are ignored. */
     public static void forceStart(Connection c, UUID player, String id) throws SQLException {
+        forceStart(c, player, id, System.currentTimeMillis());
+    }
+
+    public static void forceStart(Connection c, UUID player, String id, long now) throws SQLException {
         try (var q = c.prepareStatement("""
-                INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status)
-                VALUES(?,?,0,0,'ACTIVE') ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
-                current_step=0,step_progress=0,status='ACTIVE'
+                INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status,started_at,no_deaths,bonus_interactions,surplus_delivered)
+                VALUES(?,?,0,0,'ACTIVE',?,1,0,0) ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
+                current_step=0,step_progress=0,status='ACTIVE',started_at=excluded.started_at,no_deaths=1,bonus_interactions=0,surplus_delivered=0
                 """)) {
             q.setString(1, player.toString());
             q.setString(2, id);
+            q.setLong(3, now);
             q.executeUpdate();
         }
     }

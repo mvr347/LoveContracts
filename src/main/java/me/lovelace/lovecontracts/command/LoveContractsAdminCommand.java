@@ -137,6 +137,10 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
     }
 
     private void create(CommandSender sender) {
+        if (!plugin.getConfig().getBoolean("player-contracts.ui-enabled", false)) {
+            sender.sendMessage(mm.deserialize("<yellow>Создание контрактов временно недоступно.</yellow>"));
+            return;
+        }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(mm.deserialize("<red>Команда доступна только игрокам.</red>"));
             return;
