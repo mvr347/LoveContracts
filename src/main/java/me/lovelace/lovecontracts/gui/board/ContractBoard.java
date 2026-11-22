@@ -85,9 +85,17 @@ public final class ContractBoard implements Listener {
         return switch (tab) {
             case QUESTS -> player.hasPermission("lovecontracts.use")
                     && !plugin.getContractManager().isContractsDisabled(player);
-            case PLAYERS, MINE -> plugin.getConfig().getBoolean("player-contracts.ui-enabled", false)
+            case PLAYERS, MINE -> playerContractsVisible()
                     && player.hasPermission("pcontracts.use");
         };
+    }
+
+    /**
+     * Whether the player-to-player contract UI (tabs, /pcontract) is shown. Data, escrow refunds and payouts keep
+     * working when it is hidden, only the entry points disappear.
+     */
+    public boolean playerContractsVisible() {
+        return plugin.getConfig().getBoolean("player-contracts.ui-enabled", false);
     }
 
     // ------------------------------------------------------------------ tracking
