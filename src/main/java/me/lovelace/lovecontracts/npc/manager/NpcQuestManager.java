@@ -627,6 +627,7 @@ public class NpcQuestManager implements Listener {
                 || !event.npc().providerId().equals(plugin.getNpcBridge().providerId())) return;
         Player player = event.getPlayer();
         if (player.isSneaking()) return; // Deliberate access to the NPC's ordinary profession.
+        if (ordinaryClick.contains(player.getUniqueId())) return; // replayed by the choice window
         String key = event.npc().key();
         if (!completed.containsKey(player.getUniqueId())) {
             // Avoid opening a competing profession menu until quest state has loaded.
@@ -648,8 +649,28 @@ public class NpcQuestManager implements Listener {
         conversations.addAll(getQuestsForNpc(key).stream().filter(q -> available(player, q)).toList());
         if (conversations.isEmpty()) return;
         event.setCancelled(true);
-        if (conversations.size() == 1) openNpcInteraction(player, conversations.getFirst().getId());
-        else plugin.getContractBoard().openChains(player, conversations.stream().map(NpcQuest::getId).toList());
+        Runnable openContract = () -> {
+            if (conversations.size() == 1) openNpcInteraction(player, conversations.getFirst().getId());
+            else plugin.getContractBoard().openChains(player, conversations.stream().map(NpcQuest::getId).toList());
+        };
+        // quests.npc-click-mode: "contract" opens the conversation at once (the NPC's own menu only by Shift),
+        // "choice" asks first, so the NPC's ordinary function stays reachable without sneaking
+        if ("choice".equalsIgnoreCase(plugin.getConfig().getString("quests.npc-click-mode", "contract"))) {
+            new me.lovelace.lovecontracts.npc.gui.NpcChoiceGui(plugin, player, event.npc(), openContract).open();
+        } else {
+            openContract.run();
+        }
+    }
+
+    /** Players whose next NPC click is the replay from the choice window: the contract handler must let it pass. */
+    private final java.util.Set<UUID> ordinaryClick = ConcurrentHashMap.newKeySet();
+
+    public void allowOrdinaryClick(Player player) {
+        ordinaryClick.add(player.getUniqueId());
+    }
+
+    public void forgetOrdinaryClick(Player player) {
+        ordinaryClick.remove(player.getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
