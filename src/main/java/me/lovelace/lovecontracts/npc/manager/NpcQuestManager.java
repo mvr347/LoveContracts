@@ -585,9 +585,6 @@ public class NpcQuestManager implements Listener {
             player.sendMessage(mm.deserialize(maxActive() == 1 ? "<yellow>Сначала завершите текущее поручение.</yellow>"
                     : "<yellow>Сначала завершите одно из активных поручений.</yellow>")); return;
         }
-        if (plugin.getConfig().getBoolean("quests.one-assignment-at-a-time", true) && ExternalAssignments.hasBounty(player)) {
-            player.sendMessage(mm.deserialize("<yellow>Вы ведёте заказ охотников. Завершите или отмените его, прежде чем брать поручение.</yellow>")); return;
-        }
         if (!available(player, quest)) { player.sendMessage(mm.deserialize("<yellow>Поручение уже принято или ещё недоступно.</yellow>")); return; }
         long refusedFor = refusalLeft(player.getUniqueId());
         if (refusedFor > 0) {

@@ -34,10 +34,8 @@ class NpcChoiceMessagesTest {
     }
 
     @Test
-    void oneAssignmentAtATimeByDefault() {
-        var config = yaml("config.yml");
-        assertEquals(1, config.getInt("quests.max-active"));
-        assertTrue(config.getBoolean("quests.one-assignment-at-a-time"));
+    void oneDialogueQuestAtATimeByDefault() {
+        assertEquals(1, yaml("config.yml").getInt("quests.max-active"));
     }
 
     @Test
