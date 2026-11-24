@@ -34,4 +34,15 @@ public final class ContractIncome {
             return s.executeUpdate() == 1;
         }
     }
+
+    /** Gives back part of a reservation that was never paid: a negative entry inside the same window cancels it. */
+    public static void release(Connection connection, UUID player, long amount, long now) throws SQLException {
+        if (amount <= 0) return;
+        try (var s = connection.prepareStatement("INSERT INTO contract_income(player, earned_at, amount) VALUES (?, ?, ?)")) {
+            s.setString(1, player.toString());
+            s.setLong(2, now);
+            s.setLong(3, -amount);
+            s.executeUpdate();
+        }
+    }
 }

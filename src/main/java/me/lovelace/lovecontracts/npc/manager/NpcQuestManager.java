@@ -599,7 +599,10 @@ public class NpcQuestManager implements Listener {
         UUID uuid = player.getUniqueId();
         String lock = lock(uuid, quest.getId());
         if (!pending.add(lock)) return;
-        long advanceWanted = me.lovelace.lovecontracts.npc.reward.QuestSettlement.advance(baseReward(quest), advancePercent(quest));
+        // no economy at runtime means giveRewards would pay nothing: then no advance is recorded at all
+        boolean economyUp = dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.economy.LoveEconomy.class).isPresent();
+        long advanceWanted = economyUp
+                ? me.lovelace.lovecontracts.npc.reward.QuestSettlement.advance(baseReward(quest), advancePercent(quest)) : 0;
         long incomeLimit = plugin.getConfig().getLong("economy.contracts-v2.rolling-income-limit", 1800);
         int friendlyBonus = "friendly".equals(mood(player)) ? 1 : 0;
         int totalInitialBonus = Math.max(0, initialBonusInteractions) + friendlyBonus;
@@ -639,11 +642,8 @@ public class NpcQuestManager implements Listener {
                         var progress = activePlayerQuests.getOrDefault(uuid, Map.of()).get(quest.getId());
                         if (progress != null) progress.setAdvancePaid(0);
                         writer.execute(() -> {
-                            try (Connection c = plugin.getDatabase().getConnection();
-                                 var q = c.prepareStatement("UPDATE player_npc_quests SET advance_paid=0 WHERE player_uuid=? AND quest_id=?")) {
-                                q.setString(1, uuid.toString());
-                                q.setString(2, quest.getId());
-                                q.executeUpdate();
+                            try (Connection c = plugin.getDatabase().getConnection()) {
+                                NpcQuestStorage.revokeAdvance(c, uuid, quest.getId(), advance, now);
                             } catch (SQLException error) { failure(error); }
                         });
                     }

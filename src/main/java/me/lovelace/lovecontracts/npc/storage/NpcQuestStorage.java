@@ -98,7 +98,7 @@ public final class NpcQuestStorage {
                 INSERT INTO player_npc_quests(player_uuid,quest_id,current_step,step_progress,status,started_at,no_deaths,bonus_interactions,surplus_delivered)
                 VALUES(?,?,0,0,'ACTIVE',?,1,0,0) ON CONFLICT(player_uuid,quest_id) DO UPDATE SET
                 current_step=0,step_progress=0,status='ACTIVE',
-                started_at=excluded.started_at,no_deaths=1,bonus_interactions=0,surplus_delivered=0
+                started_at=excluded.started_at,no_deaths=1,bonus_interactions=0,surplus_delivered=0,advance_paid=0
                 WHERE player_npc_quests.status IN ('ABANDONED','EXPIRED')
                 OR (player_npc_quests.status='COMPLETED' AND ?=1
                 AND CAST(strftime('%s', last_completed_at) AS INTEGER) * 1000 <= ?)
@@ -121,6 +121,29 @@ public final class NpcQuestStorage {
             q.setString(1, player.toString());
             q.setString(2, id);
             return q.executeUpdate() == 1;
+        }
+    }
+
+    /**
+     * Takes back an advance that was recorded but never handed over (the player left in between): the quest goes on
+     * without it, and the amount is released from the rolling income limit so it does not block later payouts.
+     */
+    public static void revokeAdvance(Connection c, UUID player, String id, long amount, long now) throws SQLException {
+        if (amount <= 0) return;
+        c.setAutoCommit(false);
+        try {
+            try (var q = c.prepareStatement("UPDATE player_npc_quests SET advance_paid=0 WHERE player_uuid=? AND quest_id=?")) {
+                q.setString(1, player.toString());
+                q.setString(2, id);
+                q.executeUpdate();
+            }
+            ContractIncome.release(c, player, amount, now);
+            c.commit();
+        } catch (SQLException error) {
+            c.rollback();
+            throw error;
+        } finally {
+            c.setAutoCommit(true);
         }
     }
 
