@@ -570,8 +570,12 @@ public class NpcQuestManager implements Listener {
     }
 
     private void begin(Player player, NpcQuest quest, int initialBonusInteractions) {
-        if (activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).size() + pending.stream().filter(k -> k.startsWith(player.getUniqueId() + ":")).count() >= MAX_ACTIVE_CHAINS) {
-            player.sendMessage(mm.deserialize("<yellow>Сначала завершите одно из трёх активных поручений.</yellow>")); return;
+        if (activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).size() + pending.stream().filter(k -> k.startsWith(player.getUniqueId() + ":")).count() >= maxActive()) {
+            player.sendMessage(mm.deserialize(maxActive() == 1 ? "<yellow>Сначала завершите текущее поручение.</yellow>"
+                    : "<yellow>Сначала завершите одно из активных поручений.</yellow>")); return;
+        }
+        if (plugin.getConfig().getBoolean("quests.one-assignment-at-a-time", true) && ExternalAssignments.hasBounty(player)) {
+            player.sendMessage(mm.deserialize("<yellow>Вы ведёте заказ охотников. Завершите или отмените его, прежде чем брать поручение.</yellow>")); return;
         }
         if (!available(player, quest)) { player.sendMessage(mm.deserialize("<yellow>Поручение уже принято или ещё недоступно.</yellow>")); return; }
         UUID uuid = player.getUniqueId();
@@ -741,8 +745,18 @@ public class NpcQuestManager implements Listener {
         });
     }
 
-    /** How many chains a player may carry at once. */
-    public static final int MAX_ACTIVE_CHAINS = 3;
+    /**
+     * How many chains a player may carry at once: quests.max-active (default 1, one assignment at a time for the
+     * whole server). Players who already carry more keep them; they just cannot take another until they are below.
+     */
+    public static int maxActive() {
+        try {
+            return Math.max(1, org.bukkit.plugin.java.JavaPlugin.getPlugin(me.lovelace.lovecontracts.LoveContracts.class)
+                    .getConfig().getInt("quests.max-active", 1));
+        } catch (RuntimeException | LinkageError e) {
+            return 1;
+        }
+    }
 
     /** Every loaded chain with its state for this player, in the order of the definition files. */
     public List<ChainView> viewsFor(Player player) {

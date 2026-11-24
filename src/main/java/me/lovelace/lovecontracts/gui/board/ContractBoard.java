@@ -224,7 +224,7 @@ public final class ContractBoard implements Listener {
         lines.add("");
         lines.add(messages.text("gui.section-effects"));
         lines.add(messages.text("gui.effect-chain-active"));
-        lines.add(messages.text("gui.effect-chain-limit", Map.of("max", String.valueOf(NpcQuestManager.MAX_ACTIVE_CHAINS))));
+        lines.add(messages.text("gui.effect-chain-limit", Map.of("max", String.valueOf(NpcQuestManager.maxActive()))));
         lines.add("");
         lines.add(messages.text("gui.section-reward"));
         lines.addAll(ContractLore.coinRows(ContractLore.rewardLines(quest.getRewards())));

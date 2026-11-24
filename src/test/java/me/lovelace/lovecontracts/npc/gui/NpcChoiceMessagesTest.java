@@ -32,4 +32,11 @@ class NpcChoiceMessagesTest {
     void clickModeDefaultsToTheOldBehaviour() {
         assertEquals("contract", yaml("config.yml").getString("quests.npc-click-mode"));
     }
+
+    @Test
+    void oneAssignmentAtATimeByDefault() {
+        var config = yaml("config.yml");
+        assertEquals(1, config.getInt("quests.max-active"));
+        assertTrue(config.getBoolean("quests.one-assignment-at-a-time"));
+    }
 }

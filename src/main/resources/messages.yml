@@ -246,7 +246,7 @@ gui:
   confirm-yes-abandon: "<red>Отказаться</red>"
   confirm-abandon-subtitle: "<dark_gray>Подтверждение отказа"
   effect-chain-active: "  <green>+ <gray>Поручение станет вашим активным заданием"
-  effect-chain-limit: "  <gray>Одновременно можно вести до {max} поручений"
+  effect-chain-limit: "  <gray>Одновременно можно вести не больше: <white>{max}"
   effect-abandon-progress: "  <red>− <gray>Прогресс будет потерян"
   effect-abandon-chain: "  <gray>Поручение можно будет взять заново"
   action-confirm-abandon: "подтвердить отказ"
