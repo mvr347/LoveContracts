@@ -159,6 +159,17 @@ gui:
   npc-dialogue-subtitle: "<dark_gray>Разговор"
   npc-option-subtitle: "<dark_gray>Ответ"
 
+  # Окно выбора при клике по NPC с активным поручением (quests.npc-click-mode: choice).
+  npc-choice-title: "<gold>Разговор"
+  npc-choice-contract: "<gold>Поручение <dark_gray>|</dark_gray> <yellow>Разговор</yellow>"
+  npc-choice-contract-sub: "<dark_gray>Ваше активное поручение"
+  npc-choice-contract-hint: "<gray>Поговорить о поручении"
+  npc-choice-contract-action: "открыть разговор"
+  npc-choice-ordinary: "<aqua>Обычное занятие <dark_gray>|</dark_gray> <yellow>Услуги</yellow>"
+  npc-choice-ordinary-sub: "<dark_gray>То, чем персонаж занимается обычно"
+  npc-choice-ordinary-hint: "<gray>Магазин, ремонт или другое занятие NPC"
+  npc-choice-ordinary-action: "открыть услуги"
+
   # Доска заказов игроков.
   player-board-subtitle: "<dark_gray>Заказ игрока"
   player-task-creator: "  <gray>Наниматель: <white>{creator}"

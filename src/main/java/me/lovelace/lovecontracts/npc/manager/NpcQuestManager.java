@@ -596,6 +596,7 @@ public class NpcQuestManager implements Listener {
                 || !event.npc().providerId().equals(plugin.getNpcBridge().providerId())) return;
         Player player = event.getPlayer();
         if (player.isSneaking()) return; // Deliberate access to the NPC's ordinary profession.
+        if (ordinaryClick.contains(player.getUniqueId())) return; // replayed by the choice window
         String key = event.npc().key();
         if (!completed.containsKey(player.getUniqueId())) {
             // Avoid opening a competing profession menu until quest state has loaded.
@@ -617,8 +618,55 @@ public class NpcQuestManager implements Listener {
         conversations.addAll(getQuestsForNpc(key).stream().filter(q -> available(player, q)).toList());
         if (conversations.isEmpty()) return;
         event.setCancelled(true);
-        if (conversations.size() == 1) openNpcInteraction(player, conversations.getFirst().getId());
-        else plugin.getContractBoard().openChains(player, conversations.stream().map(NpcQuest::getId).toList());
+        Runnable openContract = () -> {
+            if (conversations.size() == 1) openNpcInteraction(player, conversations.getFirst().getId());
+            else plugin.getContractBoard().openChains(player, conversations.stream().map(NpcQuest::getId).toList());
+        };
+        // quests.npc-click-mode: "contract" opens the conversation at once (the NPC's own menu only by Shift),
+        // "choice" asks first, so the NPC's ordinary function stays reachable without sneaking
+        if ("choice".equalsIgnoreCase(plugin.getConfig().getString("quests.npc-click-mode", "contract"))) {
+            new me.lovelace.lovecontracts.npc.gui.NpcChoiceGui(plugin, player, event.npc(), openContract).open();
+        } else {
+            openContract.run();
+        }
+    }
+
+    /** Players whose next NPC click is the replay from the choice window: the contract handler must let it pass. */
+    private final java.util.Set<UUID> ordinaryClick = ConcurrentHashMap.newKeySet();
+
+    public void allowOrdinaryClick(Player player) {
+        ordinaryClick.add(player.getUniqueId());
+    }
+
+    public void forgetOrdinaryClick(Player player) {
+        ordinaryClick.remove(player.getUniqueId());
+    }
+
+    /** Short per-player summary for the scoreboard placeholders: in-memory only, safe for a 1 s main-thread timer. */
+    public record ActiveSummary(String name, int step, int steps, String task, int progress, int required, int count) {}
+
+    public ActiveSummary activeSummary(UUID playerId) {
+        var active = activePlayerQuests.get(playerId);
+        if (active == null || active.isEmpty()) return null;
+        for (var entry : active.entrySet()) {
+            var quest = questMap.get(entry.getKey());
+            if (quest == null) continue;
+            var step = quest.getStep(entry.getValue().getCurrentStep());
+            if (step == null) continue;
+            String name = me.lovelace.lovecontracts.service.QuestSidebar.plain(quest.getDisplayName());
+            String task = me.lovelace.lovecontracts.service.QuestSidebar.plain(step.getDescription());
+            int shown = entry.getValue().getStepProgress();
+            if (step.getType() == NpcQuestStep.Type.DELIVER_ITEM) { // same count the sidebar shows: items carried
+                shown = 0;
+                Player online = org.bukkit.Bukkit.getPlayer(playerId);
+                if (online != null) for (var item : online.getInventory().getStorageContents())
+                    if (item != null && item.getType() == step.getMaterial() && !item.hasItemMeta()) shown += item.getAmount();
+                shown = Math.min(shown, step.getCount());
+            }
+            return new ActiveSummary(name, entry.getValue().getCurrentStep() + 1, quest.TotalSteps(), task,
+                    shown, step.getCount(), active.size());
+        }
+        return null;
     }
 
     /** How many chains a player may carry at once. */

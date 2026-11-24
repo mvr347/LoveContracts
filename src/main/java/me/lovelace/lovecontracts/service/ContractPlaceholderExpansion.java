@@ -71,6 +71,29 @@ public class ContractPlaceholderExpansion extends PlaceholderExpansion {
                 }
                 case "pending_fine" -> String.valueOf(plugin.getFineManager() != null ? plugin.getFineManager().getDebt(uuid) : 0L);
                 case "success_rate" -> PlayerStatsCache.successRate(st.totalAccepted(), st.totalCompleted());
+                // Any current assignment: a quest chain first, otherwise the daily contract. In-memory data only.
+                case "has_active_any" -> String.valueOf(anyActive(uuid, cm));
+                case "active_any_name" -> {
+                    var chain = plugin.getNpcQuestManager() != null ? plugin.getNpcQuestManager().activeSummary(uuid) : null;
+                    if (chain != null) yield chain.name();
+                    var daily = cm != null ? cm.peekActiveContract(uuid) : null;
+                    yield daily != null ? daily.getDisplayName().replaceAll("<[^>]+>", "") : "None";
+                }
+                case "active_any_step" -> {
+                    var chain = plugin.getNpcQuestManager() != null ? plugin.getNpcQuestManager().activeSummary(uuid) : null;
+                    yield chain != null ? chain.step() + "/" + chain.steps() : "";
+                }
+                case "active_any_task" -> {
+                    var chain = plugin.getNpcQuestManager() != null ? plugin.getNpcQuestManager().activeSummary(uuid) : null;
+                    yield chain != null ? chain.task() : "";
+                }
+                case "active_any_progress" -> {
+                    var chain = plugin.getNpcQuestManager() != null ? plugin.getNpcQuestManager().activeSummary(uuid) : null;
+                    if (chain != null) yield chain.progress() + "/" + chain.required();
+                    var daily = cm != null ? cm.peekActiveContract(uuid) : null;
+                    if (daily == null || daily.getCondition() == null || player.getPlayer() == null) yield "0/0";
+                    yield daily.getCondition().getProgressString(player.getPlayer());
+                }
                 case "active_contracts" -> String.valueOf(cm != null ? cm.getActiveContracts().size() : 0);
                 default -> null;
             };
@@ -78,5 +101,10 @@ public class ContractPlaceholderExpansion extends PlaceholderExpansion {
             plugin.getLogger().warning("Placeholder error for " + params + ": " + e.getMessage());
             return "ERROR";
         }
+    }
+
+    private boolean anyActive(UUID uuid, me.lovelace.lovecontracts.manager.ContractManager cm) {
+        if (plugin.getNpcQuestManager() != null && plugin.getNpcQuestManager().activeSummary(uuid) != null) return true;
+        return cm != null && cm.peekActiveContract(uuid) != null;
     }
 }
