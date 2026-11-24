@@ -35,7 +35,7 @@ import java.util.logging.Level;
 public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "reload", "rotate", "create", "npc", "sign", "gui", "chains", "chain", "complete", "fail", "stats", "reset", "toggle", "help");
+            "reload", "rotate", "create", "npc", "sign", "gui", "chains", "chain", "refusals", "complete", "fail", "stats", "reset", "toggle", "help");
     private static final List<String> GUI_ACTIONS = List.of("open");
     private static final List<String> SIGN_SUBCOMMANDS = List.of("bind", "unbind", "list");
     private static final List<String> PLAYER_ARG_SUBCOMMANDS = List.of("complete", "fail", "stats", "reset", "toggle");
@@ -69,6 +69,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             case "gui" -> gui(sender, args);
             case "chains" -> chains(sender);
             case "chain" -> ChainAdminCommand.run(plugin, sender, args);
+            case "refusals" -> refusals(sender, args);
             case "complete" -> completeOrFail(sender, args, true);
             case "fail" -> completeOrFail(sender, args, false);
             case "stats" -> stats(sender, args);
@@ -78,6 +79,44 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             default -> sendHelp(sender);
         }
         return true;
+    }
+
+    /**
+     * {@code refusals <player>} shows the cancel streak, block and block counter; {@code refusals clear <player> [all]}
+     * lifts the block and resets the streak and level ({@code all} also zeroes the lifetime block counter).
+     */
+    private void refusals(CommandSender sender, String[] args) {
+        boolean clear = args.length >= 2 && args[1].equalsIgnoreCase("clear");
+        int nameAt = clear ? 2 : 1;
+        if (args.length <= nameAt) {
+            sender.sendMessage(mm.deserialize("<red>✖ Использование: /lovecontractsadmin refusals <игрок> | refusals clear <игрок> [all]</red>"));
+            return;
+        }
+        String name = args[nameAt];
+        org.bukkit.OfflinePlayer target = plugin.getServer().getPlayerExact(name);
+        if (target == null) target = plugin.getServer().getOfflinePlayerIfCached(name);
+        if (target == null) {
+            sender.sendMessage(mm.deserialize("<red>✖ Игрок «" + name + "» не найден.</red>"));
+            return;
+        }
+        java.util.UUID uuid = target.getUniqueId();
+        var manager = plugin.getNpcQuestManager();
+        if (clear) {
+            boolean resetTotal = args.length > nameAt + 1 && args[nameAt + 1].equalsIgnoreCase("all");
+            manager.adminClearRefusals(uuid, resetTotal, ok -> sender.sendMessage(mm.deserialize(ok
+                    ? "<green>✔ Блокировка снята, счётчик отказов обнулён" + (resetTotal ? " вместе с числом блокировок" : "") + ": " + name + ".</green>"
+                    : "<red>✖ Не удалось сбросить отказы (см. консоль).</red>")));
+            return;
+        }
+        manager.adminRefusals(uuid, state -> {
+            long now = System.currentTimeMillis();
+            long left = me.lovelace.lovecontracts.npc.model.RefusalPolicy.remaining(state, now);
+            sender.sendMessage(mm.deserialize("<gray>Отказы игрока <white>" + name + "</white>: подряд <white>" + state.streak()
+                    + "</white>, уровень блокировки <white>" + state.lockLevel() + "</white>, всего блокировок <white>"
+                    + state.totalLocks() + "</white>, "
+                    + (left > 0 ? "<red>заблокирован ещё " + me.lovelace.lovecontracts.gui.board.DurationText.format(left) + "</red>"
+                            : "<green>не заблокирован</green>") + ".</gray>"));
+        });
     }
 
     /** The in-game chain builder: needs a player, the menus are inventories. */
@@ -107,6 +146,10 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
                 "<aqua>/lovecontractsadmin npc</aqua> <gray>- Привязать NPC контрактов (по взгляду или выбору)</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin chains</aqua> <gray>- Конструктор цепочек поручений</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin refusals <игрок></aqua> <gray>- Отказы от поручений: счётчик, блокировка, число блокировок</gray>"));
+        sender.sendMessage(mm.deserialize(
+                "<aqua>/lovecontractsadmin refusals clear <игрок> [all]</aqua> <gray>- Снять блокировку контрактщика и обнулить счётчик</gray>"));
         sender.sendMessage(mm.deserialize(
                 "<aqua>/lovecontractsadmin chain start <игрок> <цепочка></aqua> <gray>- Запустить цепочку игроку (без NPC и проверок)</gray>"));
         sender.sendMessage(mm.deserialize(
@@ -390,6 +433,15 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
             return GUI_ACTIONS.stream().filter(s -> s.startsWith(args[1].toLowerCase())).toList();
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("gui")) {
+            return plugin.getServer().getOnlinePlayers().stream().map(Player::getName)
+                    .filter(n -> n.toLowerCase().startsWith(args[2].toLowerCase())).toList();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("refusals")) {
+            return java.util.stream.Stream.concat(java.util.stream.Stream.of("clear"),
+                            plugin.getServer().getOnlinePlayers().stream().map(Player::getName))
+                    .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase())).toList();
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("refusals") && args[1].equalsIgnoreCase("clear")) {
             return plugin.getServer().getOnlinePlayers().stream().map(Player::getName)
                     .filter(n -> n.toLowerCase().startsWith(args[2].toLowerCase())).toList();
         }

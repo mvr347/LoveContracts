@@ -256,7 +256,7 @@ public final class ContractBoardGui extends BoardGui {
 
     private void renderQuests() {
         NpcQuestManager manager = plugin.getNpcQuestManager();
-        boolean atLimit = manager.activeCount(viewer) >= NpcQuestManager.MAX_ACTIVE_CHAINS;
+        boolean atLimit = manager.activeCount(viewer) >= NpcQuestManager.maxActive();
         List<ChainView> views = new ArrayList<>();
         for (ChainView view : manager.viewsFor(viewer)) {
             if (onlyChains != null && !onlyChains.contains(view.quest().getId())) continue;

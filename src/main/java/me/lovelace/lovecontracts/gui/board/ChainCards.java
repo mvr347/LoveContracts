@@ -134,7 +134,7 @@ final class ChainCards {
                     base64 = HeadUtil.getHeadTexture("locked", HeadTextures.LOCKED);
                     name = LoreBlocks.disabledName(style(), quest.getDisplayName());
                     lines.addAll(LoreBlocks.blocked(style(), LoreBlocks.status(style(), "locked"),
-                            text("gui.chain-reason-limit", Map.of("max", String.valueOf(NpcQuestManager.MAX_ACTIVE_CHAINS))),
+                            text("gui.chain-reason-limit", Map.of("max", String.valueOf(NpcQuestManager.maxActive()))),
                             Hint.of(Click.LEFT, text("gui.action-take-chain"))));
                 } else {
                     lines.addAll(LoreBlocks.clicks(style(),
