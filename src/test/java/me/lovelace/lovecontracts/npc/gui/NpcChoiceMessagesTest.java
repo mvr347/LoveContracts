@@ -39,4 +39,14 @@ class NpcChoiceMessagesTest {
         assertEquals(1, config.getInt("quests.max-active"));
         assertTrue(config.getBoolean("quests.one-assignment-at-a-time"));
     }
+
+    @Test
+    void advanceAndAntifarmDefaultsAreShipped() {
+        var config = yaml("config.yml");
+        assertEquals(0, config.getInt("quests.economy.easy.advance-percent"));
+        assertEquals(20, config.getInt("quests.economy.medium.advance-percent"));
+        assertEquals(30, config.getInt("quests.economy.hard.advance-percent"));
+        assertEquals(3, config.getInt("quests.antifarm.cancel-streak"));
+        assertEquals(3, config.getIntegerList("quests.antifarm.lock-durations-minutes").size());
+    }
 }

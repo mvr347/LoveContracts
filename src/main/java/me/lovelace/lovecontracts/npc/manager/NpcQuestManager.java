@@ -43,6 +43,8 @@ public class NpcQuestManager implements Listener {
         private boolean noDeaths;
         private int bonusInteractions;
         private int surplusDelivered;
+        /** What the giver already paid as an advance: subtracted from the final payout, owed back on failure. */
+        private long advancePaid;
 
         public ActiveQuestProgress(int currentStep, int stepProgress) {
             this(currentStep, stepProgress, System.currentTimeMillis(), true, 0, 0);
@@ -64,6 +66,8 @@ public class NpcQuestManager implements Listener {
         public boolean isNoDeaths() { return noDeaths; }
         public int getBonusInteractions() { return bonusInteractions; }
         public int getSurplusDelivered() { return surplusDelivered; }
+        public long getAdvancePaid() { return advancePaid; }
+        public void setAdvancePaid(long advancePaid) { this.advancePaid = Math.max(0, advancePaid); }
 
         public void setCurrentStep(int currentStep) { this.currentStep = currentStep; }
         public void setStepProgress(int stepProgress) { this.stepProgress = stepProgress; }
@@ -74,6 +78,8 @@ public class NpcQuestManager implements Listener {
     }
 
     private final LoveContracts plugin;
+    /** Cancel streak and block of each online player; loaded on join, written through on every change. */
+    private final Map<UUID, me.lovelace.lovecontracts.npc.model.RefusalPolicy.State> refusals = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<UUID, Map<String, Long>> completed = new HashMap<>();
     private final Map<UUID, UUID> sessions = new HashMap<>();
     private final Set<String> pending = new HashSet<>();
@@ -122,6 +128,7 @@ public class NpcQuestManager implements Listener {
             completed.remove(uuid);
             sessions.remove(uuid);
             questboardEnabled.remove(uuid);
+            refusals.remove(uuid);
         }
     }
 
@@ -494,17 +501,21 @@ public class NpcQuestManager implements Listener {
             boolean qbEnabled = true;
             try (Connection c = plugin.getDatabase().getConnection()) {
                 qbEnabled = NpcQuestStorage.loadQuestboardEnabled(c, uuid);
+                var refusal = me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, uuid);
+                main(() -> { if (session.equals(sessions.get(uuid))) refusals.put(uuid, refusal); });
                 try (var q = c.prepareStatement(
                         "SELECT quest_id,current_step,step_progress,status,COALESCE(strftime('%s',last_completed_at),0),"
-                                + "started_at,no_deaths,bonus_interactions,surplus_delivered FROM player_npc_quests WHERE player_uuid=?")) {
+                                + "started_at,no_deaths,bonus_interactions,surplus_delivered,advance_paid FROM player_npc_quests WHERE player_uuid=?")) {
                     q.setString(1, uuid.toString());
                     try (var rs = q.executeQuery()) {
                         while (rs.next()) {
                             String status = rs.getString(4);
                             if ("ACTIVE".equals(status)) {
-                                active.put(rs.getString(1), new ActiveQuestProgress(
+                                var progress = new ActiveQuestProgress(
                                         rs.getInt(2), rs.getInt(3), rs.getLong(6),
-                                        rs.getInt(7) != 0, rs.getInt(8), rs.getInt(9)));
+                                        rs.getInt(7) != 0, rs.getInt(8), rs.getInt(9));
+                                progress.setAdvancePaid(rs.getLong(10));
+                                active.put(rs.getString(1), progress);
                             } else if (!"ABANDONED".equals(status) && !"EXPIRED".equals(status)) {
                                 history.put(rs.getString(1), rs.getLong(5) * 1000);
                             }
@@ -578,14 +589,24 @@ public class NpcQuestManager implements Listener {
             player.sendMessage(mm.deserialize("<yellow>Вы ведёте заказ охотников. Завершите или отмените его, прежде чем брать поручение.</yellow>")); return;
         }
         if (!available(player, quest)) { player.sendMessage(mm.deserialize("<yellow>Поручение уже принято или ещё недоступно.</yellow>")); return; }
+        long refusedFor = refusalLeft(player.getUniqueId());
+        if (refusedFor > 0) {
+            player.sendMessage(mm.deserialize("<red>Контрактщик не станет с вами работать ещё "
+                    + me.lovelace.lovecontracts.gui.board.DurationText.format(refusedFor)
+                    + ": вы слишком часто отказывались от поручений.</red>"));
+            return;
+        }
         UUID uuid = player.getUniqueId();
         String lock = lock(uuid, quest.getId());
         if (!pending.add(lock)) return;
+        long advanceWanted = me.lovelace.lovecontracts.npc.reward.QuestSettlement.advance(baseReward(quest), advancePercent(quest));
+        long incomeLimit = plugin.getConfig().getLong("economy.contracts-v2.rolling-income-limit", 1800);
         int friendlyBonus = "friendly".equals(mood(player)) ? 1 : 0;
         int totalInitialBonus = Math.max(0, initialBonusInteractions) + friendlyBonus;
         long now = System.currentTimeMillis();
         writer.execute(() -> {
             boolean success = false;
+            long granted = 0;
             try (Connection c = plugin.getDatabase().getConnection()) {
                 success = NpcQuestStorage.start(c, uuid, quest.getId(), quest.isRepeatable(), quest.getCooldownMinutes(), now);
                 if (success && totalInitialBonus > 0) {
@@ -593,13 +614,40 @@ public class NpcQuestManager implements Listener {
                         NpcQuestStorage.addBonusInteraction(c, uuid, quest.getId());
                     }
                 }
+                if (success && advanceWanted > 0) {
+                    granted = NpcQuestStorage.grantAdvance(c, uuid, quest.getId(), advanceWanted, incomeLimit, now);
+                }
             } catch (SQLException error) { failure(error); }
             boolean accepted = success;
+            long advance = granted;
             main(() -> {
                 pending.remove(lock);
                 if (!accepted) { if (player.isOnline()) player.sendMessage(mm.deserialize("<red>Поручение не принято. Попробуйте позже.</red>")); return; }
-                if (completed.containsKey(uuid)) activePlayerQuests.computeIfAbsent(uuid, k -> new LinkedHashMap<>())
-                        .put(quest.getId(), new ActiveQuestProgress(0, 0, now, true, totalInitialBonus, 0));
+                if (completed.containsKey(uuid)) {
+                    var started = new ActiveQuestProgress(0, 0, now, true, totalInitialBonus, 0);
+                    started.setAdvancePaid(advance);
+                    activePlayerQuests.computeIfAbsent(uuid, k -> new LinkedHashMap<>()).put(quest.getId(), started);
+                }
+                if (advance > 0) {
+                    if (player.isOnline()) {
+                        player.sendMessage(mm.deserialize("<yellow>Заказчик выдал аванс. Если вы не выполните поручение, "
+                                + "его придётся вернуть со штрафом " + penaltyPercent(quest) + "% от награды.</yellow>"));
+                        plugin.getRewardProcessor().giveRewards(player, asContract(quest), advance);
+                    } else {
+                        // the player left before the advance could be handed over: the quest goes on without one,
+                        // so nothing unpaid is later subtracted from the payout or charged back
+                        var progress = activePlayerQuests.getOrDefault(uuid, Map.of()).get(quest.getId());
+                        if (progress != null) progress.setAdvancePaid(0);
+                        writer.execute(() -> {
+                            try (Connection c = plugin.getDatabase().getConnection();
+                                 var q = c.prepareStatement("UPDATE player_npc_quests SET advance_paid=0 WHERE player_uuid=? AND quest_id=?")) {
+                                q.setString(1, uuid.toString());
+                                q.setString(2, quest.getId());
+                                q.executeUpdate();
+                            } catch (SQLException error) { failure(error); }
+                        });
+                    }
+                }
                 if (player.isOnline()) {
                     if (plugin.getQuestSidebar() != null) plugin.getQuestSidebar().focus(uuid, "story:" + quest.getId());
                     player.sendMessage(mm.deserialize("<green>Поручение принято: </green>" + quest.getDisplayName()));
@@ -722,6 +770,9 @@ public class NpcQuestManager implements Listener {
         UUID uuid = player.getUniqueId();
         String lock = lock(uuid, quest.getId());
         if (!pending.add(lock)) return;
+        // without an advance an expired quest stays penalty-free (as before); with one, it is owed back with the penalty
+        long advanceOwed = state(player, quest) != null ? state(player, quest).getAdvancePaid() : 0;
+        long owed = advanceOwed > 0 ? me.lovelace.lovecontracts.npc.reward.QuestSettlement.debt(baseReward(quest), advanceOwed, penaltyPercent(quest)) : 0;
         writer.execute(() -> {
             boolean expired = false;
             try (Connection c = plugin.getDatabase().getConnection()) {
@@ -736,8 +787,13 @@ public class NpcQuestManager implements Listener {
                     var history = completed.get(uuid);
                     if (history != null) history.remove(quest.getId());
                     Player online = Bukkit.getPlayer(uuid);
-                    if (online != null) {
-                        Notify.important(online, mm.deserialize("<yellow>Срок поручения истёк: </yellow>" + quest.getDisplayName() + " <gray>(без штрафа)</gray>"));
+                    if (online == null) {
+                        // the debt of an offline player goes straight to the fine ledger
+                        if (owed > 0 && plugin.getFineManager() != null) plugin.getFineManager().addDebt(uuid, owed);
+                    } else {
+                        Notify.important(online, mm.deserialize("<yellow>Срок поручения истёк: </yellow>" + quest.getDisplayName()
+                                + (owed > 0 ? " <gray>(аванс возвращается со штрафом)</gray>" : " <gray>(без штрафа)</gray>")));
+                        if (owed > 0) plugin.getRewardProcessor().chargeDebt(online, owed);
                         if (plugin.getContractBoard() != null) plugin.getContractBoard().refresh(online);
                     }
                 }
@@ -837,7 +893,9 @@ public class NpcQuestManager implements Listener {
     public void abandon(Player player, NpcQuest quest) {
         if (player == null || quest == null) return;
         UUID uuid = player.getUniqueId();
-        if (state(player, quest) == null) return;
+        ActiveQuestProgress taken = state(player, quest);
+        if (taken == null) return;
+        long advanceOwed = taken.getAdvancePaid();
         String lock = lock(uuid, quest.getId());
         if (!pending.add(lock)) return;
         writer.execute(() -> {
@@ -855,11 +913,148 @@ public class NpcQuestManager implements Listener {
                     if (history != null) history.remove(quest.getId());
                 }
                 Player online = Bukkit.getPlayer(uuid);
+                if (ok) {
+                    // the cancel is already saved: its consequences apply to a player who just left as well
+                    if (advanceOwed > 0) {
+                        long owed = me.lovelace.lovecontracts.npc.reward.QuestSettlement.debt(baseReward(quest), advanceOwed, penaltyPercent(quest));
+                        if (online != null) plugin.getRewardProcessor().chargeDebt(online, owed);
+                        else if (plugin.getFineManager() != null) plugin.getFineManager().addDebt(uuid, owed);
+                    }
+                    registerCancel(uuid, online);
+                }
                 if (online == null) return;
                 online.sendMessage(mm.deserialize(ok
                         ? "<yellow>Вы отказались от поручения: </yellow>" + quest.getDisplayName()
                         : "<red>Не удалось отказаться от поручения. Повторите попытку.</red>"));
                 if (plugin.getContractBoard() != null) plugin.getContractBoard().refresh(online);
+            });
+        });
+    }
+
+
+    // ------------------------------------------------------------------ advance and cancel anti-farm
+
+    /** Base reward of a quest in coins, before speed and quality bonuses (the same sum the payout uses). */
+    private long baseReward(NpcQuest quest) {
+        return plugin.getConfig().getBoolean("rewards.money.enabled", true)
+                ? Math.round(quest.getRewards().stream().mapToDouble(Reward::getAmount).sum()) : 0;
+    }
+
+    private int[] economyOf(NpcQuest quest) {
+        String tier = quest.getTier().name().toLowerCase(java.util.Locale.ROOT);
+        var section = plugin.getConfig().getConfigurationSection("quests.economy." + tier);
+        int[] builtIn = switch (quest.getTier()) {
+            case MEDIUM -> new int[] {20, 10};
+            case HARD -> new int[] {30, 20};
+            default -> new int[] {0, 0};
+        };
+        if (section == null) return builtIn;
+        return new int[] {Math.max(0, Math.min(100, section.getInt("advance-percent", builtIn[0]))),
+                Math.max(0, Math.min(100, section.getInt("penalty-percent", builtIn[1])))};
+    }
+
+    /** Share of the base reward paid as an advance on taking the quest (0 for easy ones). */
+    private int advancePercent(NpcQuest quest) { return economyOf(quest)[0]; }
+
+    /** Extra share of the base reward owed on failure, on top of the advance. */
+    private int penaltyPercent(NpcQuest quest) { return economyOf(quest)[1]; }
+
+    private me.lovelace.lovecontracts.model.Contract asContract(NpcQuest quest) {
+        return new me.lovelace.lovecontracts.model.Contract(quest.getId(), quest.getDisplayName(), "", quest.getTier(),
+                me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of());
+    }
+
+    private me.lovelace.lovecontracts.npc.model.RefusalPolicy.Config refusalConfig() {
+        var section = plugin.getConfig().getConfigurationSection("quests.antifarm");
+        if (section == null) return me.lovelace.lovecontracts.npc.model.RefusalPolicy.Config.defaults();
+        long[] locks = section.getLongList("lock-durations-minutes").stream().mapToLong(m -> Math.max(1, m) * 60_000L).toArray();
+        return new me.lovelace.lovecontracts.npc.model.RefusalPolicy.Config(section.getInt("cancel-streak", 3), locks,
+                section.getInt("level-decay-days", 30));
+    }
+
+    public me.lovelace.lovecontracts.npc.model.RefusalPolicy.State refusalState(UUID uuid) {
+        return refusals.getOrDefault(uuid, me.lovelace.lovecontracts.npc.model.RefusalPolicy.State.EMPTY);
+    }
+
+    /** Milliseconds the contractor still refuses to deal with the player; 0 when the player is free to work. */
+    public long refusalLeft(UUID uuid) {
+        return me.lovelace.lovecontracts.npc.model.RefusalPolicy.remaining(refusalState(uuid), System.currentTimeMillis());
+    }
+
+    private void saveRefusal(UUID uuid, me.lovelace.lovecontracts.npc.model.RefusalPolicy.State state) {
+        refusals.put(uuid, state);
+        writer.execute(() -> {
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.save(c, uuid, state);
+            } catch (SQLException error) { failure(error); }
+        });
+    }
+
+    private me.lovelace.lovecontracts.npc.model.RefusalPolicy.State loadRefusalNow(UUID uuid) {
+        try (Connection c = plugin.getDatabase().getConnection()) {
+            return me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, uuid);
+        } catch (SQLException error) {
+            failure(error);
+            return me.lovelace.lovecontracts.npc.model.RefusalPolicy.State.EMPTY;
+        }
+    }
+
+    /** The player cancelled a taken quest: counts toward the streak and may start a block. Main thread. */
+    private void registerCancel(UUID uuid, Player player) {
+        var config = refusalConfig();
+        long now = System.currentTimeMillis();
+        // a player who already left has no cached state: read the saved one so the streak is not lost
+        var before = refusals.containsKey(uuid) ? refusalState(uuid) : loadRefusalNow(uuid);
+        var after = me.lovelace.lovecontracts.npc.model.RefusalPolicy.onCancel(before, now, config);
+        saveRefusal(uuid, after);
+        if (player == null) return;
+        if (me.lovelace.lovecontracts.npc.model.RefusalPolicy.locked(after, now)) {
+            player.sendMessage(mm.deserialize("<red>Контрактщик устал от ваших отказов и не будет работать с вами "
+                    + me.lovelace.lovecontracts.gui.board.DurationText.format(me.lovelace.lovecontracts.npc.model.RefusalPolicy.remaining(after, now))
+                    + ".</red>"));
+        } else {
+            int left = config.threshold() - after.streak();
+            if (left <= 1) {
+                player.sendMessage(mm.deserialize("<yellow>Ещё один отказ подряд, и контрактщик перестанет с вами работать.</yellow>"));
+            }
+        }
+    }
+
+    /** A quest was finished: the streak of cancels is over. Main thread. */
+    private void registerCompletion(UUID uuid) {
+        var before = refusalState(uuid);
+        if (before.streak() == 0) return;
+        saveRefusal(uuid, me.lovelace.lovecontracts.npc.model.RefusalPolicy.onCompleted(before));
+    }
+
+
+    /** What an admin sees about a player's cancel streak and blocks, and what clearing does; delivered on the main thread. */
+    public void adminRefusals(UUID uuid, java.util.function.Consumer<me.lovelace.lovecontracts.npc.model.RefusalPolicy.State> done) {
+        writer.execute(() -> {
+            me.lovelace.lovecontracts.npc.model.RefusalPolicy.State state = me.lovelace.lovecontracts.npc.model.RefusalPolicy.State.EMPTY;
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                state = me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, uuid);
+            } catch (SQLException error) { failure(error); }
+            var result = state;
+            main(() -> done.accept(result));
+        });
+    }
+
+    /** Lifts the block and zeroes the streak and level; {@code resetTotal} also zeroes the lifetime block counter. */
+    public void adminClearRefusals(UUID uuid, boolean resetTotal, java.util.function.Consumer<Boolean> done) {
+        writer.execute(() -> {
+            boolean ok = false;
+            me.lovelace.lovecontracts.npc.model.RefusalPolicy.State state = me.lovelace.lovecontracts.npc.model.RefusalPolicy.State.EMPTY;
+            try (Connection c = plugin.getDatabase().getConnection()) {
+                me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.clear(c, uuid, !resetTotal);
+                state = me.lovelace.lovecontracts.npc.storage.QuestRefusalStorage.load(c, uuid);
+                ok = true;
+            } catch (SQLException error) { failure(error); }
+            boolean saved = ok;
+            var result = state;
+            main(() -> {
+                if (saved && refusals.containsKey(uuid)) refusals.put(uuid, result);
+                done.accept(saved);
             });
         });
     }
@@ -1070,6 +1265,13 @@ public class NpcQuestManager implements Listener {
     private void advanceStep(Player player, NpcQuest quest, List<org.bukkit.inventory.ItemStack> taken) {
         ActiveQuestProgress state = state(player, quest);
         if (state == null) return;
+        // a late finish between two expiry sweeps must not pay: the deadline decides, not the sweep timer
+        if (quest.getTimeLimitMinutes() > 0 && state.getStartedAt() > 0
+                && System.currentTimeMillis() >= state.getStartedAt() + quest.getTimeLimitMinutes() * 60_000L) {
+            for (var stack : taken) for (var overflow : player.getInventory().addItem(stack).values()) player.getWorld().dropItemNaturally(player.getLocation(), overflow);
+            expireQuest(player, quest);
+            return;
+        }
         UUID uuid = player.getUniqueId();
         String lock = lock(uuid, quest.getId());
         if (!pending.add(lock)) return;
@@ -1088,7 +1290,9 @@ public class NpcQuestManager implements Listener {
                         state.getSurplusDelivered(),
                         plugin.getConfig().getDouble("economy.reward-tiers.max-multiplier", 1.5))
                 : new RewardTiers.Calculation(baseReward, 1.0, List.of());
-        long reward = calc.finalReward();
+        // the advance was already paid when the quest was taken: only the rest is paid at the end
+        long reward = finish ? me.lovelace.lovecontracts.npc.reward.QuestSettlement.payout(calc.finalReward(), state.getAdvancePaid())
+                : calc.finalReward();
         long limit = plugin.getConfig().getLong("economy.contracts-v2.rolling-income-limit", 1800);
         writer.execute(() -> {
             boolean success = false, budget = true;
@@ -1119,6 +1323,7 @@ public class NpcQuestManager implements Listener {
                     plugin.getStatBus().ifPresent(bus -> bus.record(uuid, "contracts.completed", 1));
                     if (activePlayerQuests.containsKey(uuid)) onlineState.remove(quest.getId());
                     if (completed.containsKey(uuid)) completed.get(uuid).put(quest.getId(), now);
+                    registerCompletion(uuid);
                     var contract = new me.lovelace.lovecontracts.model.Contract(quest.getId(), quest.getDisplayName(), "", quest.getTier(),
                             me.lovelace.lovecontracts.model.ContractType.REPEATING, -1, 1, 1, 1440, false, true, quest.getRewards(), List.of());
                     plugin.getRewardProcessor().giveRewards(player, contract, reward);

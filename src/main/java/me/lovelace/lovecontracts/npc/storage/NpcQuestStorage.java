@@ -54,8 +54,43 @@ public final class NpcQuestStorage {
         if (!cols.contains("surplus_delivered")) try (var q = c.createStatement()) {
             q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN surplus_delivered INTEGER NOT NULL DEFAULT 0");
         }
+        if (!cols.contains("advance_paid")) try (var q = c.createStatement()) {
+            q.executeUpdate("ALTER TABLE player_npc_quests ADD COLUMN advance_paid INTEGER NOT NULL DEFAULT 0");
+        }
+        QuestRefusalStorage.initialize(c);
         ContractIncome.initialize(c);
         me.lovelace.lovecontracts.service.AchievementEntitlements.initialize(c);
+    }
+
+    /**
+     * Records an advance for a chain just taken, reserving it against the rolling income limit like any other payout.
+     * Returns what was actually granted: 0 when the limit is reached (the quest is then taken without an advance).
+     */
+    public static long grantAdvance(Connection c, UUID player, String id, long amount, long limit, long now) throws SQLException {
+        if (amount <= 0) return 0;
+        c.setAutoCommit(false);
+        try {
+            if (!ContractIncome.reserve(c, player, amount, limit, now)) {
+                c.rollback();
+                return 0;
+            }
+            try (var q = c.prepareStatement("UPDATE player_npc_quests SET advance_paid=? WHERE player_uuid=? AND quest_id=? AND status='ACTIVE'")) {
+                q.setLong(1, amount);
+                q.setString(2, player.toString());
+                q.setString(3, id);
+                if (q.executeUpdate() != 1) {
+                    c.rollback();
+                    return 0;
+                }
+            }
+            c.commit();
+            return amount;
+        } catch (SQLException error) {
+            c.rollback();
+            throw error;
+        } finally {
+            c.setAutoCommit(true);
+        }
     }
 
     public static boolean start(Connection c, UUID player, String id, boolean repeatable, int cooldown, long now) throws SQLException {

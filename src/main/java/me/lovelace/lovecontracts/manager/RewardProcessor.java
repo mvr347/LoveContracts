@@ -101,8 +101,17 @@ public class RewardProcessor {
         }
 
         if (moneyEnabled && explicitMoneyPenalty > 0.0) {
-            long fullAmount = Math.round(explicitMoneyPenalty);
-            LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
+            chargeDebt(player, Math.round(explicitMoneyPenalty));
+        }
+    }
+
+    /**
+     * Takes {@code fullAmount} from the player now as far as the wallet allows; whatever is left becomes a fine debt
+     * that is collected later. Shared by failed contracts and by quests that expired or were cancelled after an advance.
+     */
+    public void chargeDebt(Player player, long fullAmount) {
+        if (player == null || fullAmount <= 0) return;
+        LoveCore.service(LoveEconomy.class).ifPresentOrElse(economy -> {
                 long currentBalance = economy.balance(player);
                 long immediateCharge = Math.min(fullAmount, currentBalance);
                 if (immediateCharge > 0) {
@@ -125,6 +134,5 @@ public class RewardProcessor {
                     plugin.getFineManager().addDebt(player.getUniqueId(), fullAmount);
                 }
             });
-        }
     }
 }
