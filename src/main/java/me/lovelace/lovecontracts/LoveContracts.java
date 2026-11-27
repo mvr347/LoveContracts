@@ -95,6 +95,8 @@ public final class LoveContracts extends JavaPlugin {
     private final me.lovelace.lovecontracts.util.PlacedBlockTracker placedBlockTracker =
             new me.lovelace.lovecontracts.util.PlacedBlockTracker(this, 50_000, 60L * 60_000L);
     private me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI npcDialogueGUI;
+    private me.lovelace.lovecontracts.npc.dialog.NpcDialogs npcDialogs;
+    private me.lovelace.lovecontracts.npc.dialog.NpcDialogWindow npcDialogWindow;
 
     @Override
     public void onEnable() {
@@ -107,6 +109,7 @@ public final class LoveContracts extends JavaPlugin {
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("npc_quests.yml");
         saveResourceIfMissing("npc_stories.yml");
+        saveResourceIfMissing("npc_dialogs.yml");
         refreshOutdatedData("contracts.yml");
         refreshOutdatedData("npc_quests.yml");
         refreshOutdatedData("npc_stories.yml");
@@ -134,6 +137,7 @@ public final class LoveContracts extends JavaPlugin {
 
         npcQuestDatabase = new me.lovelace.lovecontracts.npc.storage.NpcQuestDatabase(this);
         npcQuestDatabase.initialize();
+        loadNpcDialogs();
         npcQuestManager = new me.lovelace.lovecontracts.npc.manager.NpcQuestManager(this, npcQuestDatabase);
         npcQuestManager.loadFromConfig();
         for (var player : Bukkit.getOnlinePlayers()) npcQuestManager.loadPlayerActiveQuestsFromDb(player.getUniqueId());
@@ -428,6 +432,15 @@ public final class LoveContracts extends JavaPlugin {
     public me.lovelace.lovecontracts.util.PlacedBlockTracker getPlacedBlockTracker() { return placedBlockTracker; }
     public me.lovelace.lovecontracts.npc.manager.NpcQuestManager getNpcQuestManager() { return npcQuestManager; }
     public me.lovelace.lovecontracts.npc.gui.NpcDialogueGUI getNpcDialogueGUI() { return npcDialogueGUI; }
+    public me.lovelace.lovecontracts.npc.dialog.NpcDialogs getNpcDialogs() { return npcDialogs; }
+    public me.lovelace.lovecontracts.npc.dialog.NpcDialogWindow getNpcDialogWindow() { return npcDialogWindow; }
+
+    /** Reads npc_dialogs.yml (what each NPC says and which buttons it has); also used by the reload command. */
+    public void loadNpcDialogs() {
+        npcDialogs = me.lovelace.lovecontracts.npc.dialog.NpcDialogs.load(
+                org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(getDataFolder(), "npc_dialogs.yml")));
+        npcDialogWindow = new me.lovelace.lovecontracts.npc.dialog.NpcDialogWindow(this, npcDialogs);
+    }
     public me.lovelace.lovecontracts.manager.FineManager getFineManager() { return fineManager; }
     public MessageManager getMessageManager() { return messageManager; }
     public Optional<StatBus> getStatBus() { return statBus; }

@@ -230,6 +230,7 @@ public class LoveContractsAdminCommand implements CommandExecutor, TabCompleter 
         plugin.reloadConfig();
         plugin.loadHeadsConfig();
         plugin.reloadContentDefinitions();
+        plugin.loadNpcDialogs();
         plugin.getSignManager().load();
         plugin.getSignManager().updateAllSigns();
         sender.sendMessage(mm.deserialize("<green>✔ Конфигурация и heads.yml перезагружены — загружено " +

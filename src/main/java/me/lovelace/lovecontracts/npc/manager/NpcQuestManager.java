@@ -488,7 +488,11 @@ public class NpcQuestManager implements Listener {
     public void onJoin(PlayerJoinEvent event) { loadPlayerActiveQuestsFromDb(event.getPlayer().getUniqueId()); }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent event) { cleanupPlayer(event.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent event) {
+        cleanupPlayer(event.getPlayer().getUniqueId());
+        clickGate.forget(event.getPlayer().getUniqueId());
+        plugin.getNpcDialogs().forget(event.getPlayer().getUniqueId());
+    }
 
     public void loadPlayerActiveQuestsFromDb(UUID uuid) {
         UUID session = UUID.randomUUID();
@@ -585,7 +589,7 @@ public class NpcQuestManager implements Listener {
             player.sendMessage(mm.deserialize(maxActive() == 1 ? "<yellow>Сначала завершите текущее поручение.</yellow>"
                     : "<yellow>Сначала завершите одно из активных поручений.</yellow>")); return;
         }
-        if (!available(player, quest)) { player.sendMessage(mm.deserialize("<yellow>Поручение уже принято или ещё недоступно.</yellow>")); return; }
+        if (!available(player, quest)) { tell(player, "<yellow>Поручение уже принято или ещё недоступно.</yellow>"); return; }
         long refusedFor = refusalLeft(player.getUniqueId());
         if (refusedFor > 0) {
             player.sendMessage(mm.deserialize("<red>Контрактщик не станет с вами работать ещё "
@@ -622,7 +626,7 @@ public class NpcQuestManager implements Listener {
             long advance = granted;
             main(() -> {
                 pending.remove(lock);
-                if (!accepted) { if (player.isOnline()) player.sendMessage(mm.deserialize("<red>Поручение не принято. Попробуйте позже.</red>")); return; }
+                if (!accepted) { if (player.isOnline()) tell(player, "<red>Поручение не принято. Попробуйте позже.</red>"); return; }
                 if (completed.containsKey(uuid)) {
                     var started = new ActiveQuestProgress(0, 0, now, true, totalInitialBonus, 0);
                     started.setAdvancePaid(advance);
@@ -669,49 +673,103 @@ public class NpcQuestManager implements Listener {
         });
     }
 
-    /** Quest interactions reserve this click before profession menus; other players are unaffected. */
+    /** Repeat clicks on one NPC within this window are ignored: a spammed click must not reopen windows or flood the chat. */
+    private static final long CLICK_WINDOW_MILLIS = 600L;
+    private final me.lovelace.lovecontracts.util.ClickGate clickGate = new me.lovelace.lovecontracts.util.ClickGate();
+
+    /**
+     * Right click on an NPC of this plugin's provider, before the other plugins' professions (LOWEST). NPCs listed in
+     * npc_dialogs.yml open the dialog window; any other NPC is only taken over when an active quest needs it (it is a
+     * control point of the quest). Quests are never offered by the NPCs themselves: the contractor's board hands them out.
+     */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onNpcClick(dev.lovelace.lovecore.api.npc.NpcClickEvent event) {
         if (event.click() != dev.lovelace.lovecore.api.npc.NpcClick.RIGHT || event.npc() == null
                 || !event.npc().providerId().equals(plugin.getNpcBridge().providerId())) return;
         Player player = event.getPlayer();
         if (player.isSneaking()) return; // Deliberate access to the NPC's ordinary profession.
-        if (ordinaryClick.contains(player.getUniqueId())) return; // replayed by the choice window
+        if (ordinaryClick.contains(player.getUniqueId())) return; // replayed by the dialog window
         String key = event.npc().key();
+        if (!clickGate.allowClick(player.getUniqueId(), key, System.currentTimeMillis(), CLICK_WINDOW_MILLIS)) {
+            event.setCancelled(true);
+            return;
+        }
+        var entry = dialogEntryFor(key);
         if (!completed.containsKey(player.getUniqueId())) {
             // Avoid opening a competing profession menu until quest state has loaded.
-            if (questMap.values().stream().anyMatch(q -> matches(q.getNpcKey(), key) || q.getSteps().stream().anyMatch(s -> matches(s.getTargetNpcKey(), key)))) {
+            if (entry != null || questMap.values().stream().anyMatch(q -> matches(q.getNpcKey(), key) || q.getSteps().stream().anyMatch(s -> matches(s.getTargetNpcKey(), key)))) {
                 event.setCancelled(true);
-                player.sendMessage(mm.deserialize("<yellow>Данные поручений загружаются. Повторите разговор через секунду.</yellow>"));
+                tell(player, "<yellow>Данные поручений загружаются. Повторите разговор через секунду.</yellow>");
             }
             return;
         }
-        var conversations = new ArrayList<NpcQuest>();
+        var control = controlQuests(player, key);
+        if (entry == null) {
+            if (control.isEmpty()) return;
+            event.setCancelled(true);
+            if (control.size() == 1) openNpcInteraction(player, control.getFirst().getId());
+            else plugin.getContractBoard().openChains(player, control.stream().map(NpcQuest::getId).toList());
+            return;
+        }
+        event.setCancelled(true);
+        plugin.getNpcDialogWindow().open(player, event.npc(), entry, questLines(player, control), null);
+    }
+
+    /** The dialog entry of an NPC from npc_dialogs.yml, or null. */
+    private me.lovelace.lovecontracts.npc.dialog.NpcDialogs.Entry dialogEntryFor(String npcKey) {
+        for (var entry : plugin.getNpcDialogs().entries()) {
+            if (matches(entry.key(), npcKey)) return entry;
+        }
+        return null;
+    }
+
+    /** Active quests whose current step is a talk with this NPC, or that are ready to be reported to it. */
+    private List<NpcQuest> controlQuests(Player player, String key) {
+        var out = new ArrayList<NpcQuest>();
         for (var entry : activePlayerQuests.getOrDefault(player.getUniqueId(), Map.of()).entrySet()) {
             var quest = questMap.get(entry.getKey());
             if (quest == null) continue;
             var step = quest.getStep(entry.getValue().getCurrentStep());
             if (step != null && (matches(step.getTargetNpcKey(), key)
                     || step.getTargetNpcKey() == null && entry.getValue().getStepProgress() >= step.getCount()
-                    && matches(quest.getNpcKey(), key))) conversations.add(quest);
+                    && matches(quest.getNpcKey(), key))) out.add(quest);
         }
-        conversations.addAll(getQuestsForNpc(key).stream().filter(q -> available(player, q)).toList());
-        if (conversations.isEmpty()) return;
-        event.setCancelled(true);
-        Runnable openContract = () -> {
-            if (conversations.size() == 1) openNpcInteraction(player, conversations.getFirst().getId());
-            else plugin.getContractBoard().openChains(player, conversations.stream().map(NpcQuest::getId).toList());
-        };
-        // quests.npc-click-mode: "contract" opens the conversation at once (the NPC's own menu only by Shift),
-        // "choice" asks first, so the NPC's ordinary function stays reachable without sneaking
-        if ("choice".equalsIgnoreCase(plugin.getConfig().getString("quests.npc-click-mode", "contract"))) {
-            new me.lovelace.lovecontracts.npc.gui.NpcChoiceGui(plugin, player, event.npc(), openContract).open();
-        } else {
-            openContract.run();
+        return out;
+    }
+
+    private List<me.lovelace.lovecontracts.npc.dialog.NpcDialogWindow.QuestLine> questLines(Player player, List<NpcQuest> quests) {
+        var out = new ArrayList<me.lovelace.lovecontracts.npc.dialog.NpcDialogWindow.QuestLine>();
+        for (NpcQuest quest : quests) {
+            var progress = state(player, quest);
+            var step = progress == null ? null : quest.getStep(progress.getCurrentStep());
+            String text = step != null && step.getDescription() != null && !step.getDescription().isBlank()
+                    ? step.getDescription() : quest.getDisplayName();
+            out.add(new me.lovelace.lovecontracts.npc.dialog.NpcDialogWindow.QuestLine(quest.getId(),
+                    net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().stripTags(text)));
+        }
+        return out;
+    }
+
+    /** Sends a line unless it is an exact repeat of the previous one within a few seconds (spam protection). */
+    private void tell(Player player, String miniMessage) {
+        if (clickGate.allowLine(player.getUniqueId(), miniMessage, System.currentTimeMillis(), 4_000L)) {
+            player.sendMessage(mm.deserialize(miniMessage));
         }
     }
 
-    /** Players whose next NPC click is the replay from the choice window: the contract handler must let it pass. */
+    /** Fires the click again so the NPC's own plugin (shop, smith, guildmaster...) opens its menu. */
+    public void replayOrdinaryClick(Player player, dev.lovelace.lovecore.api.npc.NpcHandle npc) {
+        if (npc == null || !player.isOnline()) return;
+        allowOrdinaryClick(player);
+        try {
+            Bukkit.getPluginManager().callEvent(new dev.lovelace.lovecore.api.npc.NpcClickEvent(player, npc,
+                    dev.lovelace.lovecore.api.npc.NpcClick.RIGHT));
+        } finally {
+            forgetOrdinaryClick(player);
+        }
+    }
+
+    /** Players whose next NPC click is the replay from the dialog window: the contract handler must let it pass. */
     private final java.util.Set<UUID> ordinaryClick = ConcurrentHashMap.newKeySet();
 
     public void allowOrdinaryClick(Player player) {
@@ -1012,7 +1070,7 @@ public class NpcQuestManager implements Listener {
         } else {
             int left = config.threshold() - after.streak();
             if (left <= 1) {
-                player.sendMessage(mm.deserialize("<yellow>Ещё один отказ подряд, и контрактщик перестанет с вами работать.</yellow>"));
+                tell(player, "<yellow>Ещё один отказ подряд, и контрактщик перестанет с вами работать.</yellow>");
             }
         }
     }
@@ -1205,7 +1263,7 @@ public class NpcQuestManager implements Listener {
         NpcQuest quest = questMap.get(id);
         if (quest == null || !available(player, quest)) return;
         var npc = plugin.getNpcBridge().provider().flatMap(p -> java.util.Optional.ofNullable(resolveKey(quest.getNpcKey())).flatMap(p::byKey)).orElse(null);
-        if (!canInteract(player, npc)) { player.sendMessage(mm.deserialize("<yellow>Подойдите к заказчику этого поручения.</yellow>")); return; }
+        if (!canInteract(player, npc)) { tell(player, "<yellow>Подойдите к заказчику этого поручения.</yellow>"); return; }
         String mood = mood(player);
         NpcDialogueNode node = quest.getDialogueNode(mood);
         if (node == null) node = quest.getDialogueNode(quest.getInitialDialogueNode());
